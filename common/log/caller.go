@@ -1,0 +1,58 @@
+// Copyright 2018 The uranus Authors
+// This file is part of the uranus library.
+//
+// The uranus library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The uranus library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
+
+package log
+
+import (
+	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
+
+	"github.com/Sirupsen/logrus"
+)
+
+const depth = 10
+
+// CallerHook represents a caller hook of logrus
+type CallerHook struct {
+}
+
+// Fire adds a callers field in logger instance
+func (hook *CallerHook) Fire(entry *logrus.Entry) error {
+	entry.Data["caller"] = hook.caller()
+	return nil
+}
+
+// Levels returns support levels
+func (hook *CallerHook) Levels() []logrus.Level {
+	return []logrus.Level{
+		logrus.PanicLevel,
+		logrus.FatalLevel,
+		logrus.ErrorLevel,
+		logrus.WarnLevel,
+		logrus.InfoLevel,
+		logrus.DebugLevel,
+	}
+}
+
+func (hook *CallerHook) caller() string {
+	if _, file, line, ok := runtime.Caller(depth); ok {
+		return strings.Join([]string{filepath.Base(file), strconv.Itoa(line)}, ":")
+	}
+	// not sure what the convention should be here
+	return ""
+}

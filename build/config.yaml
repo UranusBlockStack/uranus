@@ -1,0 +1,42 @@
+# Logging verbosity: debug, info, warn, error, fatal, panic
+log-level: "debug"
+# Logging format: text,json.
+log-format: "text"
+
+# Data directory for the databases
+# node-datadir: 
+
+# HTTP and RPC server listening interface
+rpc-host: "localhost"
+
+# HTTP and RPC server listening port
+rpc-port: 8000
+# HTTP and RPC accept cross origin requests
+rpc-cors: []
+
+# Price bump percentage to replace an already existing transaction
+txpool-pricebump: 1
+
+# Minimum gas price limit to enforce for acceptance into the pool
+txpool-pricelimit: 10
+
+# Minimum number of executable transaction slots guaranteed per account
+txpool-accountslots: 16
+
+# Maximum number of non-executable transaction slots permitted per account
+txpool-accountqueue: 4096
+
+# Maximum number of executable transaction slots for all accounts
+txpool-globalslots: 64
+
+# Minimum number of non-executable transaction slots for all accounts
+txpool-globalqueue: 1024
+
+# Maximum amount of time non-executable transaction are queued
+txpool-timeout: 3h
+
+# Network listening port
+p2p-listenaddr: ":7090"
+
+# Maximum number of network peers
+p2p-maxpeers: 25
