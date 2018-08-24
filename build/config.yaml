@@ -40,3 +40,15 @@ p2p-listenaddr: ":7090"
 
 # Maximum number of network peers
 p2p-maxpeers: 25
+
+# Public address for block mining rewards (default = first account created)
+# miner-conbase: 
+
+# Block extra data set by the miner (default =  version)
+# miner-extradata: 
+
+# Number of CPU threads to use for mining
+miner-threads: 1
+
+# Enable mining
+miner-start: false

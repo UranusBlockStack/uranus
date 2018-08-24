@@ -223,3 +223,9 @@ func (b *Block) WithSeal(header *BlockHeader) *Block {
 		transactions: b.transactions,
 	}
 }
+
+// WithStateRoot  a block with the given state root.
+func (b *Block) WithStateRoot(root utils.Hash) *Block {
+	b.header.StateRoot = root
+	return b
+}

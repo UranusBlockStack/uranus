@@ -102,19 +102,26 @@ func (v *Validator) ValidateHeader(header *types.BlockHeader, config *params.Cha
 // ValidateTxs verifies the the block header's transaction root before already validated header
 func (v *Validator) ValidateTxs(block *types.Block) error {
 	// Check whether the block's known, and if not, that it's linkable
-	if v.ledger.HasBlock(block.Hash()) && v.ledger.HasState(block.Hash()) {
+	if v.ledger.HasBlock(block.Hash()) && v.ledger.HasState(block.StateRoot()) {
 		return ErrKnownBlock
 	}
 
-	if !v.ledger.HasState(block.PreviousHash()) {
-		if !v.ledger.HasBlock(block.PreviousHash()) {
-			return ErrUnknownAncestor
-		}
+	parent := v.ledger.GetBlock(block.PreviousHash())
+	if parent == nil {
+
 		return ErrPrunedAncestor
+	} else {
+		if !v.ledger.HasState(parent.StateRoot()) {
+			if !v.ledger.HasBlock(parent.Hash()) {
+				return ErrUnknownAncestor
+			}
+			return ErrPrunedAncestor
+		}
 	}
 
 	// check txs root hash
 	header := block.BlockHeader()
+
 	if root := types.DeriveRootHash(block.Transactions()); root != header.TransactionsRoot {
 		return ErrTxsRootHash(root, header.TransactionsRoot)
 	}

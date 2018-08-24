@@ -28,6 +28,7 @@ func NewWork(blk *types.Block, height uint64, state *state.StateDB) *Work {
 		Block:  blk,
 		Height: height,
 		state:  state,
+		signer: types.Signer{},
 	}
 }
 

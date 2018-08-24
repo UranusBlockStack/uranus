@@ -34,3 +34,26 @@ func FileExists(file string) bool {
 	_, err := os.Stat(file)
 	return !os.IsNotExist(err)
 }
+
+// OpenDir opens or creates a dir
+// If the dir already exists, open it . If it does not,
+// It will create the file with mode 0700.
+func OpenDir(dir string) (string, error) {
+	exists, err := IsDirExist(dir)
+	if !exists {
+		err = os.MkdirAll(dir, 0700)
+	}
+	return dir, err
+}
+
+// IsDirExist determines whether a directory exists
+func IsDirExist(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}

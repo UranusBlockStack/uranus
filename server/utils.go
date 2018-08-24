@@ -17,8 +17,15 @@
 package server
 
 import (
+	"runtime"
+
 	"github.com/UranusBlockStack/uranus/common/db"
+	"github.com/UranusBlockStack/uranus/common/log"
+	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/consensus/pow"
 	"github.com/UranusBlockStack/uranus/node"
+	"github.com/UranusBlockStack/uranus/params"
+	"github.com/UranusBlockStack/uranus/wallet"
 )
 
 // CreateDB creates the chain database.
@@ -28,4 +35,33 @@ func CreateDB(ctx *node.Context, config *UranusConfig, name string) (db.Database
 		return nil, err
 	}
 	return db, nil
+}
+
+func checkMinerConfig(cfg *pow.Config, wallet *wallet.Wallet) *pow.Config {
+	// extra data
+	if uint64(len([]byte(cfg.ExtraData))) > params.MaxExtraDataSize {
+		log.Warnf("Miner extra data exceed limit extra: %v, limit:%v", cfg.ExtraData, params.MaxExtraDataSize)
+		cfg.ExtraData = ""
+	}
+
+	// threads
+	if cfg.MinerThreads <= 0 {
+		cfg.MinerThreads = 1
+	} else if cfg.MinerThreads > runtime.NumCPU() {
+		cfg.MinerThreads = runtime.NumCPU()
+	}
+
+	// coinbase
+
+	if !utils.IsHexAddr(cfg.CoinBaseAddr) || (utils.HexToAddress(cfg.CoinBaseAddr) == (utils.Address{})) {
+		account, err := wallet.NewAccount("conbase")
+		if err != nil {
+			log.Warn("generate conbase account failed: %v", err)
+			return cfg
+		}
+		log.Warn("CoinBase automatically configured address: %v, passphrase: %v", account.Address, "conbase")
+		cfg.CoinBaseAddr = account.Address.Hex()
+	}
+
+	return cfg
 }

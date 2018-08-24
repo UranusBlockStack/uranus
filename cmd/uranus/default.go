@@ -21,6 +21,8 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/fdlimit"
 	"github.com/UranusBlockStack/uranus/common/log"
+	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/consensus/pow"
 	"github.com/UranusBlockStack/uranus/core/ledger"
 	"github.com/UranusBlockStack/uranus/core/txpool"
 	"github.com/UranusBlockStack/uranus/node"
@@ -45,7 +47,29 @@ func defaultUranusConfig() *server.UranusConfig {
 		DBCache:      512,
 		TrieCache:    256,
 		TrieTimeout:  60 * time.Minute,
+		StartMiner:   false,
+		MinerConfig:  defaultMinerConifg(),
 		TxPoolConfig: defaultTxPoolConfig(),
+	}
+}
+
+func defaultMinerConifg() *pow.Config {
+	return &pow.Config{
+		CoinBaseAddr: utils.Address{}.Hex(),
+		MinerThreads: 1,
+		ExtraData:    VersionFunc,
+	}
+}
+
+func defaultTxPoolConfig() *txpool.Config {
+	return &txpool.Config{
+		PriceLimit:      1,
+		PriceBump:       10,
+		AccountSlots:    16,
+		GlobalSlots:     4096,
+		AccountQueue:    64,
+		GlobalQueue:     1024,
+		TimeoutDuration: 3 * time.Hour,
 	}
 }
 
@@ -64,18 +88,6 @@ func defaultP2PConfig() *p2p.Config {
 	return &p2p.Config{
 		ListenAddr: ":7090",
 		MaxPeers:   25,
-	}
-}
-
-func defaultTxPoolConfig() *txpool.Config {
-	return &txpool.Config{
-		PriceLimit:      1,
-		PriceBump:       10,
-		AccountSlots:    16,
-		GlobalSlots:     4096,
-		AccountQueue:    64,
-		GlobalQueue:     1024,
-		TimeoutDuration: 3 * time.Hour,
 	}
 }
 

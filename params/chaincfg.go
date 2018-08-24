@@ -22,8 +22,7 @@ import (
 )
 
 type ChainConfig struct {
-	ChainID          *big.Int
-	InitCoinBaseAddr string
+	ChainID *big.Int
 }
 
 // String implements fmt.Stringer.

@@ -14,40 +14,34 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
 
-package server
+package wallet
 
 import (
-	"encoding/json"
-	"time"
+	"crypto/ecdsa"
 
-	"github.com/UranusBlockStack/uranus/consensus/pow"
-	"github.com/UranusBlockStack/uranus/core/ledger"
-	"github.com/UranusBlockStack/uranus/core/txpool"
+	"github.com/UranusBlockStack/uranus/common/utils"
 )
 
-// UranusConfig uranus config
-type UranusConfig struct {
-	// If nil, the default genesis block is used.
-	Genesis *ledger.Genesis
-
-	DBHandles   int
-	DBCache     int
-	TrieCache   int
-	TrieTimeout time.Duration
-
-	StartMiner bool `mapstructure:"miner-start"`
-
-	// Ledger config
-	LedgerConfig *ledger.Config
-
-	// Transaction pool options
-	TxPoolConfig *txpool.Config
-
-	// miner config
-	MinerConfig *pow.Config
+type encryptedKey struct {
+	Address string     `json:"addr"`
+	Crypto  cryptoJSON `json:"crypto"`
 }
 
-func (c UranusConfig) String() string {
-	cfgJSON, _ := json.Marshal(c)
-	return string(cfgJSON)
+type cryptoJSON struct {
+	Cipher     string `json:"cipher"`
+	CipherText string `json:"ciphertext"`
+	CipherIV   string `json:"iv"`
+	KDF        string `json:"kdf"`
+	KDFSalt    string `json:"kdfsalt"`
+	MAC        string `json:"mac"`
+}
+
+type lockAccount struct {
+	account    *Account
+	passphrase string
+}
+
+type Account struct {
+	Address    utils.Address
+	PrivateKey *ecdsa.PrivateKey
 }

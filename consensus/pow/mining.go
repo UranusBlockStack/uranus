@@ -15,6 +15,12 @@ import (
 	"github.com/UranusBlockStack/uranus/params"
 )
 
+type Config struct {
+	CoinBaseAddr string `mapstructure:"miner-coinbase"`
+	MinerThreads int    `mapstructure:"miner-threads"`
+	ExtraData    string `mapstructure:"miner-extradata"`
+}
+
 const (
 	// hpsUpdateSecs is the number of seconds to wait in between each
 	// update to the hashes per second monitor.
@@ -37,24 +43,27 @@ type UMiner struct {
 	updateHashes chan uint64
 	uranus       consensus.IUranus
 
+	extraData   []byte
 	coinbase    *utils.Address
 	currentWork *Work
 	engine      *cpuminer.CpuMiner
 	config      *params.ChainConfig
 }
 
-func NewUranusMiner(config *params.ChainConfig, uranus consensus.IUranus) *UMiner {
-	coinbase := utils.HexToAddress(config.InitCoinBaseAddr)
+func NewUranusMiner(config *params.ChainConfig, minerCfg *Config, uranus consensus.IUranus) *UMiner {
+	coinbase := utils.HexToAddress(minerCfg.CoinBaseAddr)
 	return &UMiner{
 		config:           config,
 		uranus:           uranus,
 		mining:           0,
 		canStart:         0,
+		threads:          int32(minerCfg.MinerThreads),
 		stopCh:           make(chan struct{}),
 		speedMonitorQuit: make(chan struct{}),
 		workCh:           make(chan *Work),
 		recvCh:           make(chan *Result),
 		updateHashes:     make(chan uint64),
+		extraData:        []byte(minerCfg.ExtraData),
 		coinbase:         &coinbase,
 		engine:           cpuminer.NewCpuMiner(),
 	}
@@ -163,6 +172,12 @@ out:
 }
 
 func (m *UMiner) GenerateBlocks(work *Work, quit <-chan struct{}) {
+	work.Block.WithStateRoot(work.state.IntermediateRoot(true))
+	header := m.currentWork.Block.BlockHeader()
+	header.ExtraData = m.extraData
+	block := types.NewBlock(header, work.txs, work.receipts)
+	work.Block = block
+
 	if result, err := m.engine.Mine(work.Block, quit, int(m.threads), m.updateHashes); result != nil {
 		log.Infof("Successfully sealed new block number: %v, hash: %v", result.Height(), result.Hash())
 		m.recvCh <- &Result{work, result}

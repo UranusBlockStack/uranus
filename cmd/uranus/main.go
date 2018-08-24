@@ -118,7 +118,11 @@ func init() {
 	falgs.Uint64Var(&startConfig.UranusConfig.TxPoolConfig.GlobalQueue, "txpool_globalqueue", startConfig.UranusConfig.TxPoolConfig.GlobalQueue, "Minimum number of non-executable transaction slots for all accounts")
 	falgs.DurationVar(&startConfig.UranusConfig.TxPoolConfig.TimeoutDuration, "txpool_timeout", startConfig.UranusConfig.TxPoolConfig.TimeoutDuration, "Maximum amount of time non-executable transaction are queued")
 
-	// todo miner
+	// miner
+	falgs.StringVar(&startConfig.UranusConfig.MinerConfig.CoinBaseAddr, "miner_conbase", "", "Public address for block mining rewards (default = first account created)")
+	falgs.StringVar(&startConfig.UranusConfig.MinerConfig.ExtraData, "miner_extradata", startConfig.UranusConfig.MinerConfig.ExtraData, "Block extra data set by the miner")
+	falgs.IntVar(&startConfig.UranusConfig.MinerConfig.MinerThreads, "miner_threads", startConfig.UranusConfig.MinerConfig.MinerThreads, "Number of CPU threads to use for mining")
+	falgs.BoolVar(&startConfig.UranusConfig.StartMiner, "miner_start", startConfig.UranusConfig.StartMiner, "Enable mining")
 
 	//----------viper config file---------------
 
@@ -146,6 +150,11 @@ func init() {
 	viper.BindPFlag("txpool-globalqueue", falgs.Lookup("txpool_globalqueue"))
 	viper.BindPFlag("txpool-timeout", falgs.Lookup("txpool_timeout"))
 
+	//miner
+	viper.BindPFlag("miner-conbase", falgs.Lookup("miner_conbase"))
+	viper.BindPFlag("miner-extradata", falgs.Lookup("miner_extradata"))
+	viper.BindPFlag("miner-threads", falgs.Lookup("miner_threads"))
+	viper.BindPFlag("miner-start", falgs.Lookup("miner_start"))
 }
 
 func initConfig() {
@@ -180,11 +189,20 @@ func unmarshalCfgFile(startConfig *StartConfig) error {
 		return err
 	}
 
+	// uranus
+	if err := viper.Unmarshal(startConfig.UranusConfig); err != nil {
+		return err
+	}
+
 	// txpool
 	if err := viper.Unmarshal(startConfig.UranusConfig.TxPoolConfig); err != nil {
 		return err
 	}
 
+	// miner
+	if err := viper.Unmarshal(startConfig.UranusConfig.MinerConfig); err != nil {
+		return err
+	}
 	return nil
 }
 

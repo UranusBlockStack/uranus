@@ -33,6 +33,7 @@ import (
 	"github.com/UranusBlockStack/uranus/params"
 	"github.com/UranusBlockStack/uranus/rpc"
 	"github.com/UranusBlockStack/uranus/rpcapi"
+	"github.com/UranusBlockStack/uranus/wallet"
 )
 
 // Uranus implements the service.
@@ -44,6 +45,7 @@ type Uranus struct {
 	blockchain *core.BlockChain
 	txPool     *txpool.TxPool
 	chainDb    db.Database // Block chain database
+	wallet     *wallet.Wallet
 
 	protocolManager *node.ProtocolManager
 
@@ -67,32 +69,34 @@ func New(ctx *node.Context, config *UranusConfig) (*Uranus, error) {
 		return nil, err
 	}
 
-	Uranus := &Uranus{
+	uranus := &Uranus{
 		config:       config,
 		chainDb:      chainDb,
 		chainConfig:  chainCfg,
 		shutdownChan: make(chan bool),
 	}
 
+	uranus.wallet = wallet.NewWallet(ctx.ResolvePath("keystore"))
+
 	// blockchain
 	log.Debugf("Initialised chain configuration: %v", chainCfg)
-	Uranus.blockchain, err = core.NewBlockChain(config.LedgerConfig, Uranus.chainConfig, chainDb, nil, &vm.Config{})
+	uranus.blockchain, err = core.NewBlockChain(config.LedgerConfig, uranus.chainConfig, chainDb, nil, &vm.Config{})
 	if err != nil {
 		return nil, err
 	}
 	// txpool
-	Uranus.txPool = txpool.New(config.TxPoolConfig, Uranus.chainConfig, Uranus.blockchain)
+	uranus.txPool = txpool.New(config.TxPoolConfig, uranus.chainConfig, uranus.blockchain)
 
 	// miner
-	Uranus.miner = pow.NewUranusMiner(Uranus.chainConfig, &MinerBakend{u: Uranus})
+	uranus.miner = pow.NewUranusMiner(uranus.chainConfig, checkMinerConfig(uranus.config.MinerConfig, uranus.wallet), &MinerBakend{u: uranus})
 
 	// api
-	Uranus.uranusAPI = &APIBackend{u: Uranus}
+	uranus.uranusAPI = &APIBackend{u: uranus}
 
 	var miner consensus.Engine
-	Uranus.protocolManager, _ = node.NewProtocolManager(&feed.TypeMux{}, Uranus.chainConfig, Uranus.txPool, Uranus.blockchain, Uranus.chainDb, miner)
+	uranus.protocolManager, _ = node.NewProtocolManager(&feed.TypeMux{}, uranus.chainConfig, uranus.txPool, uranus.blockchain, uranus.chainDb, miner)
 
-	return Uranus, nil
+	return uranus, nil
 }
 
 // Protocols implements node.Service.
@@ -120,8 +124,9 @@ func (u *Uranus) APIs() []rpc.API {
 func (u *Uranus) Start(p2p *p2p.Server) error {
 	log.Info("start uranus service...")
 	// start miner
-	u.miner.Start()
-
+	if u.config.StartMiner {
+		u.miner.Start()
+	}
 	// start p2p
 	u.protocolManager.Start(p2p.MaxPeers)
 	return nil

@@ -145,14 +145,12 @@ func (bc *BlockChain) processBlocks() {
 		}
 		bc.chainHeadFeed.Send(event)
 
-		// bc.postEvent(event, logs)
-
 	}
 
 }
 
 func (bc *BlockChain) postEvent(events interface{}, logs []*types.Log) {
-	// bc.chainHeadFeed.Send(event)
+	// todo
 }
 
 func (bc *BlockChain) InsertChain(blocks types.Blocks) (int, error) {
@@ -197,13 +195,14 @@ func (bc *BlockChain) insertChain(block *types.Block) (interface{}, []*types.Log
 				return nil, nil, err
 			}
 		}
-
 		parent := bc.GetBlock(block.PreviousHash())
 		for !bc.HasState(parent.StateRoot()) {
 			parent = bc.GetBlock(parent.PreviousHash())
 		}
 		return bc.insertChain(parent)
-	default:
+	}
+
+	if err != nil {
 		return nil, nil, err
 	}
 

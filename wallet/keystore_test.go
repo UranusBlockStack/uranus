@@ -14,40 +14,41 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
 
-package server
+package wallet
 
 import (
-	"encoding/json"
-	"time"
+	"io/ioutil"
+	"path/filepath"
+	"testing"
 
-	"github.com/UranusBlockStack/uranus/consensus/pow"
-	"github.com/UranusBlockStack/uranus/core/ledger"
-	"github.com/UranusBlockStack/uranus/core/txpool"
+	"github.com/UranusBlockStack/uranus/common/crypto"
+	"github.com/UranusBlockStack/uranus/common/utils"
 )
 
-// UranusConfig uranus config
-type UranusConfig struct {
-	// If nil, the default genesis block is used.
-	Genesis *ledger.Genesis
+func TestGetAndPutKey(t *testing.T) {
+	account, err := genNewAccount()
+	if err != nil {
+		t.Error(err)
+	}
 
-	DBHandles   int
-	DBCache     int
-	TrieCache   int
-	TrieTimeout time.Duration
+	dir, _ := ioutil.TempDir("", "")
 
-	StartMiner bool `mapstructure:"miner-start"`
+	ks := NewKeyStore(dir)
 
-	// Ledger config
-	LedgerConfig *ledger.Config
+	fileName := filepath.Join(dir, "keyfile")
 
-	// Transaction pool options
-	TxPoolConfig *txpool.Config
+	auth := "test"
 
-	// miner config
-	MinerConfig *pow.Config
-}
+	if err := ks.PutKey(account, fileName, auth); err != nil {
+		t.Error(err)
+	}
 
-func (c UranusConfig) String() string {
-	cfgJSON, _ := json.Marshal(c)
-	return string(cfgJSON)
+	newAccount, err := ks.GetKey(account.Address, fileName, auth)
+	if err != nil {
+		t.Error(err)
+	}
+
+	utils.AssertEquals(t, crypto.ByteFromECDSA(account.PrivateKey), crypto.ByteFromECDSA(newAccount.PrivateKey))
+	utils.AssertEquals(t, account.Address, newAccount.Address)
+
 }

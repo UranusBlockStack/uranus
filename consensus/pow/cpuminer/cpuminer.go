@@ -2,6 +2,7 @@ package cpuminer
 
 import (
 	"math/big"
+	"runtime"
 	"sync"
 
 	"github.com/UranusBlockStack/uranus/common/log"
@@ -30,8 +31,7 @@ func (cm *CpuMiner) Mine(block *types.Block, stop <-chan struct{}, threads int, 
 	found := make(chan *types.Block)
 
 	if threads == 0 {
-		// threads = runtime.NumCPU()
-		threads = 1
+		threads = runtime.NumCPU()
 	}
 	if threads < 0 {
 		threads = 0 // Allows disabling local mining without extra logic around local/remote
@@ -60,7 +60,7 @@ func (cm *CpuMiner) Mine(block *types.Block, stop <-chan struct{}, threads int, 
 		close(abort)
 	case result = <-found:
 		// One of the threads found a block, abort all others
-		log.Infof("miner block[%+v] finish", result.Height().Int64())
+		log.Infof("miner block[%+v] finish", result.Height().Uint64())
 		close(abort)
 	}
 	// Wait for all miners to terminate and return the block
@@ -74,7 +74,7 @@ func (cm *CpuMiner) MineBlock(block *types.Block, id int, seed uint64, max uint6
 	var hashInt big.Int
 	var caltimes = uint64(0)
 	var header = block.BlockHeader()
-	target := GetMiningTarget(block.BlockHeader().Difficulty)
+	target := GetMiningTarget(header.Difficulty)
 miner:
 	for {
 		select {
