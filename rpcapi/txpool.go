@@ -17,40 +17,23 @@
 package rpcapi
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/UranusBlockStack/uranus/common/crypto"
-	"github.com/UranusBlockStack/uranus/common/log"
-	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
-	"github.com/UranusBlockStack/uranus/core/types"
 )
 
-// PublicTransactionPoolAPI exposes methods for the RPC interface
-type PublicTransactionPoolAPI struct {
+// TransactionPoolAPI exposes methods for the RPC interface
+type TransactionPoolAPI struct {
 	b Backend
 }
 
-// SendTxArgs represents the arguments to sumbit a new transaction into the transaction pool.
-type SendTxArgs struct {
-	From     utils.Address  `json:"from"`
-	To       *utils.Address `json:"to"`
-	Gas      *utils.Uint64  `json:"gas"`
-	GasPrice *utils.Big     `json:"gasPrice"`
-	Value    *utils.Big     `json:"value"`
-	Nonce    *utils.Uint64  `json:"nonce"`
-	Data     *utils.Bytes   `json:"data"`
-	Input    *utils.Bytes   `json:"input"`
-}
-
-// NewPublicTransactionPoolAPI creates a new RPC service with methods specific for the transaction pool.
-func NewPublicTransactionPoolAPI(b Backend) *PublicTransactionPoolAPI {
-	return &PublicTransactionPoolAPI{b}
+// NewTransactionPoolAPI creates a new RPC service with methods specific for the transaction pool.
+func NewTransactionPoolAPI(b Backend) *TransactionPoolAPI {
+	return &TransactionPoolAPI{b}
 }
 
 // Content returns the transactions contained within the transaction pool.
-func (s *PublicTransactionPoolAPI) Content(ignore string, reply *map[string]map[string]map[string]*RPCTransaction) error {
+func (s *TransactionPoolAPI) Content(ignore string, reply *map[string]map[string]map[string]*RPCTransaction) error {
 	content := map[string]map[string]map[string]*RPCTransaction{
 		"pending": make(map[string]map[string]*RPCTransaction),
 		"queued":  make(map[string]map[string]*RPCTransaction),
@@ -79,44 +62,11 @@ func (s *PublicTransactionPoolAPI) Content(ignore string, reply *map[string]map[
 }
 
 // Status returns the number of pending and queued transaction in the pool.
-func (s *PublicTransactionPoolAPI) Status(ignore string, reply *map[string]utils.Uint) error {
+func (s *TransactionPoolAPI) Status(ignore string, reply *map[string]utils.Uint) error {
 	pending, queue := s.b.TxPoolStats()
 	*reply = map[string]utils.Uint{
 		"pending": utils.Uint(pending),
 		"queued":  utils.Uint(queue),
 	}
 	return nil
-}
-
-// SendRawTransaction will add the signed transaction to the transaction pool.
-func (s *PublicTransactionPoolAPI) SendRawTransaction(encodedTx utils.Bytes, reply *utils.Hash) error {
-	tx := new(types.Transaction)
-	if err := rlp.DecodeBytes(encodedTx, tx); err != nil {
-		return err
-	}
-	hash, err := submitTransaction(context.Background(), s.b, tx)
-	if err != nil {
-		return nil
-	}
-
-	*reply = hash
-	return nil
-}
-
-// submitTransaction is a helper function that submits tx to txPool and logs a message.
-func submitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (utils.Hash, error) {
-	if err := b.SendTx(ctx, tx); err != nil {
-		return utils.Hash{}, err
-	}
-	if tx.To() == nil {
-		from, err := tx.Sender(types.Signer{})
-		if err != nil {
-			return utils.Hash{}, err
-		}
-		addr := crypto.CreateAddress(from, tx.Nonce())
-		log.Infof("Submitted contract creation hash: %v ,contract address: %v", tx.Hash(), addr)
-	} else {
-		log.Infof("Submitted transaction hash: %v,recipient address: %v", tx.Hash(), tx.To())
-	}
-	return tx.Hash(), nil
 }

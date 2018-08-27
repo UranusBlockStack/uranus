@@ -18,22 +18,26 @@ package server
 
 import (
 	"context"
+	"errors"
 	"math/big"
 
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/core"
 	"github.com/UranusBlockStack/uranus/core/types"
-	"github.com/UranusBlockStack/uranus/params"
 	"github.com/UranusBlockStack/uranus/rpcapi"
+	"github.com/UranusBlockStack/uranus/server/forecast"
+	"github.com/UranusBlockStack/uranus/wallet"
 )
 
-// API implements node all apis.
+// APIBackend implements node all apis.
 type APIBackend struct {
-	u *Uranus
+	u  *Uranus
+	gp *forecast.Forecast
 }
 
-// ChainConfig returns the active chain configuration.
-func (api *APIBackend) ChainConfig() *params.ChainConfig {
-	return api.u.chainConfig
+// BlockChain return core blockchian.
+func (api *APIBackend) BlockChain() *core.BlockChain {
+	return api.u.BlockChain()
 }
 
 // CurrentBlock returns blockchain current block.
@@ -45,6 +49,11 @@ func (api *APIBackend) CurrentBlock() *types.Block {
 func (api *APIBackend) BlockByHeight(ctx context.Context, height rpcapi.BlockHeight) (*types.Block, error) {
 	// Pending block is only known by the miner
 	if height == rpcapi.PendingBlockHeight {
+		block := api.u.miner.PendingBlock()
+		if block == nil {
+
+		}
+		return nil, errors.New("Miner no have pending block")
 	}
 	// Otherwise resolve and return the block
 	if height == rpcapi.LatestBlockHeight {
@@ -127,4 +136,39 @@ func (api *APIBackend) TxPoolStats() (pending int, queued int) {
 // TxPoolContent get transaction pool content.
 func (api *APIBackend) TxPoolContent() (map[utils.Address]types.Transactions, map[utils.Address]types.Transactions) {
 	return api.u.txPool.Content()
+}
+
+// NewAccount creates a new account
+func (api *APIBackend) NewAccount(passphrase string) (*wallet.Account, error) {
+	return api.u.wallet.NewAccount(passphrase)
+}
+
+// Delete removes the speciified account
+func (api *APIBackend) Delete(address utils.Address, passphrase string) error {
+	return api.u.wallet.Delete(address, passphrase)
+}
+
+// Update update the specified account
+func (api *APIBackend) Update(address utils.Address, passphrase, newPassphrase string) error {
+	return api.u.wallet.Update(address, passphrase, newPassphrase)
+}
+
+// SignTx sign the specified transaction
+func (api *APIBackend) SignTx(addr utils.Address, tx *types.Transaction, passphrase string) (*types.Transaction, error) {
+	return api.u.wallet.SignTx(addr, tx, passphrase)
+}
+
+// Accounts list all wallet accounts.
+func (api *APIBackend) Accounts() ([]utils.Address, error) {
+	return api.u.wallet.Accounts()
+}
+
+// ImportRawKey import raw key intfo wallet.
+func (api *APIBackend) ImportRawKey(privkey string, passphrase string) (utils.Address, error) {
+	return api.u.wallet.ImportRawKey(privkey, passphrase)
+}
+
+// SuggestGasPrice suggest gas price
+func (api *APIBackend) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
+	return api.gp.SuggestPrice(ctx)
 }

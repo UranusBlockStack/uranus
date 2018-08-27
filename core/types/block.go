@@ -43,6 +43,16 @@ func (n MinerNonce) Uint64() uint64 {
 	return binary.BigEndian.Uint64(n[:])
 }
 
+// MarshalText encodes n as a hex string with 0x prefix.
+func (n MinerNonce) MarshalText() ([]byte, error) {
+	return utils.Bytes(n[:]).MarshalText()
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (n *MinerNonce) UnmarshalText(input []byte) error {
+	return utils.UnmarshalFixedText("BlockNonce", input, n[:])
+}
+
 // BlockHeader represents a block header in blockchain.
 type BlockHeader struct {
 	PreviousHash     utils.Hash    `json:"previousHash"       gencodec:"required"`
@@ -57,7 +67,6 @@ type BlockHeader struct {
 	GasUsed          uint64        `json:"gasUsed"          gencodec:"required"`
 	TimeStamp        *big.Int      `json:"timestamp"        gencodec:"required"`
 	ExtraData        []byte        `json:"extraData"        gencodec:"required"`
-	MixHash          utils.Hash    `json:"mixHash"          gencodec:"required"`
 	Nonce            MinerNonce    `json:"nonce"            gencodec:"required"`
 }
 
@@ -182,7 +191,6 @@ func (b *Block) GasLimit() uint64             { return b.header.GasLimit }
 func (b *Block) GasUsed() uint64              { return b.header.GasUsed }
 func (b *Block) Difficulty() *big.Int         { return new(big.Int).Set(b.header.Difficulty) }
 func (b *Block) Time() *big.Int               { return new(big.Int).Set(b.header.TimeStamp) }
-func (b *Block) MixHash() utils.Hash          { return b.header.MixHash }
 func (b *Block) Nonce() uint64                { return binary.BigEndian.Uint64(b.header.Nonce[:]) }
 func (b *Block) Bloom() bloom.Bloom           { return b.header.LogsBloom }
 func (b *Block) Miner() utils.Address         { return b.header.Miner }

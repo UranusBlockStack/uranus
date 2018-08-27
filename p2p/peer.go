@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/p2p/discover"
 )
 
@@ -110,7 +111,7 @@ func NewPeer(conn *conn, protocols []*Protocol) *Peer {
 	return p
 }
 
-func (p *Peer) loop() {
+func (p *Peer) pingloop() {
 	pingTimer := time.NewTimer(keepAliveInterval)
 	defer p.wg.Done()
 	defer pingTimer.Stop()
@@ -124,17 +125,25 @@ func (p *Peer) loop() {
 			pingTimer.Reset(keepAliveInterval)
 		case <-p.closed:
 			return
-		default:
-			msg, err := p.rw.ReadMsg()
-			if err != nil {
-				p.runningErr <- err
-				return
-			}
-			msg.ReceivedAt = time.Now()
-			if err = p.handle(msg); err != nil {
-				p.runningErr <- err
-				return
-			}
+		}
+	}
+}
+
+func (p *Peer) loop() {
+	defer p.wg.Done()
+	for {
+		msg, err := p.rw.ReadMsg()
+		if opErr, ok := err.(*net.OpError); ok && (opErr.Timeout() || opErr.Temporary()) {
+			continue
+		}
+		if err != nil {
+			p.runningErr <- err
+			return
+		}
+		msg.ReceivedAt = time.Now()
+		if err = p.handle(msg); err != nil {
+			p.runningErr <- err
+			return
 		}
 	}
 }
@@ -155,7 +164,8 @@ func (p *Peer) startProtocols() {
 }
 
 func (p *Peer) run() (err error) {
-	p.wg.Add(1)
+	p.wg.Add(2)
+	go p.pingloop()
 	go p.loop()
 	p.wg.Add(len(p.running))
 	p.startProtocols()
@@ -164,8 +174,10 @@ running:
 	for {
 		select {
 		case err = <-p.runningErr:
+			log.Errorf("peer %v close --- %v", p.ID().String(), err)
 			break running
 		case str := <-p.quit:
+			log.Errorf("peer %v close --- %v", p.ID().String(), err)
 			err = errors.New(str)
 			break running
 		}
@@ -183,6 +195,7 @@ func (p *Peer) handle(msg *Message) error {
 		if err := SendMessage(p.rw, pongMsg, nil); err != nil {
 			return err
 		}
+	case msg.Code == pongMsg:
 	case msg.Code == quitMsg:
 		var reason string
 		msg.EncodePayload(&reason)

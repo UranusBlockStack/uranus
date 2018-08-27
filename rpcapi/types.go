@@ -107,12 +107,11 @@ func newRPCTransactionFromBlockHash(b *types.Block, hash utils.Hash) *RPCTransac
 func RPCMarshalBlock(b *types.Block, inclTx bool, fullTx bool) (map[string]interface{}, error) {
 	head := b.BlockHeader() // copies the header once
 	fields := map[string]interface{}{
-		"Height":           (*utils.Big)(head.Height),
-		"hash":             b.Hash(),
-		"parentHash":       head.PreviousHash,
-		"nonce":            head.Nonce,
-		"mixHash":          head.MixHash,
-		"logsBloom":        head.LogsBloom,
+		"Height":     (*utils.Big)(head.Height),
+		"hash":       b.Hash(),
+		"parentHash": head.PreviousHash,
+		"nonce":      head.Nonce,
+		// "logsBloom":        head.LogsBloom,
 		"stateRoot":        head.StateRoot,
 		"miner":            head.Miner,
 		"difficulty":       (*utils.Big)(head.Difficulty),

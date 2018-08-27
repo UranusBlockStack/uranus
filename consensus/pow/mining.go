@@ -12,6 +12,8 @@ import (
 	"github.com/UranusBlockStack/uranus/consensus"
 	"github.com/UranusBlockStack/uranus/consensus/pow/cpuminer"
 	"github.com/UranusBlockStack/uranus/core/types"
+	"github.com/UranusBlockStack/uranus/feed"
+	"github.com/UranusBlockStack/uranus/node/protocols"
 	"github.com/UranusBlockStack/uranus/params"
 )
 
@@ -27,6 +29,11 @@ const (
 	hpsUpdateSecs  = 10
 	hashUpdateSecs = 15
 )
+
+type Result struct {
+	work  *Work
+	block *types.Block
+}
 
 type UMiner struct {
 	mu               sync.Mutex
@@ -48,11 +55,14 @@ type UMiner struct {
 	currentWork *Work
 	engine      *cpuminer.CpuMiner
 	config      *params.ChainConfig
+
+	mux *feed.TypeMux
 }
 
-func NewUranusMiner(config *params.ChainConfig, minerCfg *Config, uranus consensus.IUranus) *UMiner {
+func NewUranusMiner(mux *feed.TypeMux, config *params.ChainConfig, minerCfg *Config, uranus consensus.IUranus) *UMiner {
 	coinbase := utils.HexToAddress(minerCfg.CoinBaseAddr)
-	return &UMiner{
+	uminer := &UMiner{
+		mux:              mux,
 		config:           config,
 		uranus:           uranus,
 		mining:           0,
@@ -67,9 +77,40 @@ func NewUranusMiner(config *params.ChainConfig, minerCfg *Config, uranus consens
 		coinbase:         &coinbase,
 		engine:           cpuminer.NewCpuMiner(),
 	}
+	go uminer.loop()
+	return uminer
+}
+
+func (m *UMiner) loop() {
+	events := m.mux.Subscribe(protocols.StartEvent{}, protocols.DoneEvent{}, protocols.FailedEvent{})
+	minning := int32(0)
+out:
+	for ev := range events.Chan() {
+		switch ev.Data.(type) {
+		case protocols.StartEvent:
+			minning = atomic.LoadInt32(&m.mining)
+			if minning == 1 {
+				log.Warnf("Mining operation maybe aborted due to sync operation")
+				m.Stop()
+			}
+		case protocols.DoneEvent, protocols.FailedEvent:
+			if minning == 1 {
+				log.Warnf("Mining operation maybe start due to sync done or sync failed")
+				if err := m.Start(); err != nil {
+					log.Errorf("Mining operation start failed --- %v", err)
+				}
+			}
+			events.Unsubscribe()
+			break out
+		}
+	}
 }
 
 func (m *UMiner) Start() error {
+	m.stopCh = make(chan struct{})
+	m.speedMonitorQuit = make(chan struct{})
+	m.workCh = make(chan *Work)
+	m.recvCh = make(chan *Result)
 	if atomic.LoadInt32(&m.mining) == 1 {
 		log.Info("Miner is running")
 		return fmt.Errorf("miner is running")
@@ -127,7 +168,7 @@ out:
 	for {
 		select {
 		case result, ok := <-m.recvCh:
-			if !ok && result == nil {
+			if !ok || result == nil {
 				continue
 			}
 			_, err := m.uranus.WriteBlockWithState(result.block, result.work.receipts, result.work.state)
@@ -135,6 +176,9 @@ out:
 				log.Errorf("failed to write the block and state, for %s", err.Error())
 				break
 			}
+			m.mux.Post(feed.NewMinedBlockEvent{
+				Block: result.block,
+			})
 			if needPrepareNewBlock {
 				if err := m.prepareNewBlock(); err != nil {
 					log.Warnf("prepareNewBlock err: %v", err)
@@ -172,14 +216,18 @@ out:
 }
 
 func (m *UMiner) GenerateBlocks(work *Work, quit <-chan struct{}) {
+	// block reward
+	work.state.AddBalance(work.Block.Miner(), params.BlockReward)
+
 	work.Block.WithStateRoot(work.state.IntermediateRoot(true))
 	header := m.currentWork.Block.BlockHeader()
 	header.ExtraData = m.extraData
+
 	block := types.NewBlock(header, work.txs, work.receipts)
 	work.Block = block
 
 	if result, err := m.engine.Mine(work.Block, quit, int(m.threads), m.updateHashes); result != nil {
-		log.Infof("Successfully sealed new block number: %v, hash: %v", result.Height(), result.Hash())
+		log.Infof("Successfully sealed new block number: %v, hash: %v, diff: %v", result.Height(), result.Hash(), result.Difficulty())
 		m.recvCh <- &Result{work, result}
 	} else {
 		if err != nil {
@@ -214,6 +262,7 @@ func (m *UMiner) prepareNewBlock() error {
 		Miner:        *m.coinbase,
 		Height:       height.Add(height, big.NewInt(1)),
 		TimeStamp:    big.NewInt(timestamp),
+		GasLimit:     calcGasLimit(parent),
 		Difficulty:   difficult,
 	}
 
@@ -298,7 +347,29 @@ func (m *UMiner) SetThreads(cnt int32) {
 	m.prepareNewBlock()
 }
 
-type Result struct {
-	work  *Work
-	block *types.Block
+func (m *UMiner) PendingBlock() *types.Block {
+	if m.currentWork == nil {
+		return nil
+	}
+	return m.currentWork.Block
+}
+
+func calcGasLimit(parent *types.Block) uint64 {
+	// contrib = (parentGasUsed * 3 / 2) / 1024
+	contrib := (parent.GasUsed() + parent.GasUsed()/2) / params.GasLimitBoundDivisor
+	// decay = parentGasLimit / 1024 -1
+	decay := parent.GasLimit()/params.GasLimitBoundDivisor - 1
+	limit := parent.GasLimit() - decay + contrib
+	if limit < params.MinGasLimit {
+		limit = params.MinGasLimit
+	}
+	// however, if we're now below the target (TargetGasLimit) we increase the
+	// limit as much as we can (parentGasLimit / 1024 -1)
+	if limit < params.GenesisGasLimit {
+		limit = parent.GasLimit() + decay
+		if limit > params.GenesisGasLimit {
+			limit = params.GenesisGasLimit
+		}
+	}
+	return limit
 }

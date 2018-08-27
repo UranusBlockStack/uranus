@@ -70,6 +70,7 @@ type blockRetrievalFn func(utils.Hash) *types.Block
 type headRetrievalFn func() *types.Block
 type chainInsertFn func(types.Blocks) (int, error)
 type peerDropFn func(id string)
+type getTdFn func(utils.Hash) *big.Int
 
 type blockPack struct {
 	peerID string
@@ -106,6 +107,7 @@ type Downloader struct {
 	headBlock   headRetrievalFn
 	insertChain chainInsertFn
 	dropPeer    peerDropFn
+	gettd       getTdFn
 
 	synchronising int32
 	processing    int32
@@ -125,7 +127,7 @@ type Block struct {
 	OriginPeer string
 }
 
-func NewDownloader(mux *feed.TypeMux, hasBlock hashCheckFn, getBlock blockRetrievalFn, headBlock headRetrievalFn, insertChain chainInsertFn, dropPeer peerDropFn) *Downloader {
+func NewDownloader(mux *feed.TypeMux, hasBlock hashCheckFn, getBlock blockRetrievalFn, headBlock headRetrievalFn, gettd getTdFn, insertChain chainInsertFn, dropPeer peerDropFn) *Downloader {
 	downloader := &Downloader{
 		mux:         mux,
 		queue:       newQueue(),
@@ -133,6 +135,7 @@ func NewDownloader(mux *feed.TypeMux, hasBlock hashCheckFn, getBlock blockRetrie
 		hasBlock:    hasBlock,
 		getBlock:    getBlock,
 		headBlock:   headBlock,
+		gettd:       gettd,
 		insertChain: insertChain,
 		dropPeer:    dropPeer,
 		newPeerCh:   make(chan *peer, 1),
@@ -197,17 +200,17 @@ func (d *Downloader) Synchronise(id string, head utils.Hash, td *big.Int) {
 		log.Infof("Synchronisation completed")
 
 	case errBusy:
-		log.Infof("Synchronisation already in progress")
+		log.Errorf("Synchronisation already in progress")
 
 	case errTimeout, errBadPeer, errStallingPeer, errBannedHead, errEmptyHashSet, errPeersUnavailable, errInvalidChain, errCrossCheckFailed:
-		log.Infof("Removing peer %v: %v", id, err)
+		log.Errorf("Removing peer %v: %v", id, err)
 		d.dropPeer(id)
 
 	case errPendingQueue:
-		log.Info("Synchronisation aborted:", err)
+		log.Errorf("Synchronisation aborted: %v", err)
 
 	default:
-		log.Infof("Synchronisation failed: %v", err)
+		log.Errorf("Synchronisation failed: %v", err)
 	}
 }
 
@@ -249,6 +252,7 @@ func (d *Downloader) syncWithPeer(p *peer, hash utils.Hash, td *big.Int) (err er
 	d.mux.Post(StartEvent{})
 	defer func() {
 		if err != nil {
+			log.Errorf("downloading canceled: findAncestor %v", err)
 			d.cancel()
 			d.mux.Post(FailedEvent{err})
 		} else {
@@ -265,6 +269,7 @@ func (d *Downloader) syncWithPeer(p *peer, hash utils.Hash, td *big.Int) (err er
 	go func() { errc <- d.fetchBlocks(number + 1) }()
 
 	if err := <-errc; err != nil {
+		log.Errorf("downloading canceled: fetchBlocks or fetchHashes %v", err)
 		d.cancel()
 		<-errc
 		return err
@@ -420,7 +425,7 @@ func (d *Downloader) fetchHashes(p *peer, td *big.Int, from uint64) error {
 				case <-d.cancelCh:
 				}
 
-				if !gotHashes && td.Cmp(d.headBlock().BlockHeader().Difficulty) > 0 {
+				if !gotHashes && td.Cmp(d.gettd(d.headBlock().Hash())) > 0 {
 					return errStallingPeer
 				}
 				return nil
@@ -454,7 +459,7 @@ func (d *Downloader) fetchHashes(p *peer, td *big.Int, from uint64) error {
 
 func (d *Downloader) fetchBlocks(from uint64) error {
 	log.Infof("Downloading blocks from #%d", from)
-	defer log.Infof("Block download terminated")
+	defer log.Infof("Block download terminated from #%d", from)
 
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
@@ -659,7 +664,7 @@ func (d *Downloader) process() {
 		d.importDone = 0
 		d.importLock.Unlock()
 
-		log.Infof("Inserting chain with %d blocks (#%v - #%v)\n", len(blocks), blocks[0].RawBlock.Height(), blocks[len(blocks)-1].RawBlock.Height())
+		log.Infof("Inserting chain with %d blocks (#%v - #%v)", len(blocks), blocks[0].RawBlock.Height(), blocks[len(blocks)-1].RawBlock.Height())
 		for len(blocks) != 0 {
 			if atomic.LoadInt32(&d.interrupt) == 1 {
 				return
@@ -672,6 +677,7 @@ func (d *Downloader) process() {
 			index, err := d.insertChain(raw)
 			if err != nil {
 				d.dropPeer(blocks[index].OriginPeer)
+				log.Errorf("downloading canceled: insertChain  %v", err)
 				d.cancel()
 				return
 			}

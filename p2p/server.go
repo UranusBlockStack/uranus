@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -267,6 +268,25 @@ func (srv *Server) run(dialstate dialer) {
 			queuedTasks = append(queuedTasks, startTasks(nt)...)
 		}
 	}
+
+	go func() {
+		ticker := time.NewTicker(time.Second * 30)
+		for {
+			select {
+			case <-srv.quit:
+				return
+			case <-ticker.C:
+				srv.peerOp <- func(peers map[discover.NodeID]*Peer) {
+					ns := []string{}
+					for _, p := range peers {
+						ns = append(ns, p.Name())
+					}
+					log.Infof("Peers %v [%v]", len(peers), strings.Join(ns, ","))
+				}
+				<-srv.peerOpDone
+			}
+		}
+	}()
 
 running:
 	for {

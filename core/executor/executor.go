@@ -64,6 +64,8 @@ func (e *Executor) ExecBlock(block *types.Block, statedb *state.StateDB, cfg vm.
 		allLogs = append(allLogs, receipt.Logs...)
 	}
 
+	statedb.AddBalance(block.Miner(), params.BlockReward)
+
 	return receipts, allLogs, *usedGas, nil
 }
 

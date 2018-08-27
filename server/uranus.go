@@ -19,6 +19,8 @@ package server
 import (
 	"sync"
 
+	"github.com/UranusBlockStack/uranus/server/forecast"
+
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/consensus"
@@ -87,14 +89,16 @@ func New(ctx *node.Context, config *UranusConfig) (*Uranus, error) {
 	// txpool
 	uranus.txPool = txpool.New(config.TxPoolConfig, uranus.chainConfig, uranus.blockchain)
 
+	mux := &feed.TypeMux{}
 	// miner
-	uranus.miner = pow.NewUranusMiner(uranus.chainConfig, checkMinerConfig(uranus.config.MinerConfig, uranus.wallet), &MinerBakend{u: uranus})
+	uranus.miner = pow.NewUranusMiner(mux, uranus.chainConfig, checkMinerConfig(uranus.config.MinerConfig, uranus.wallet), &MinerBakend{u: uranus})
 
 	// api
 	uranus.uranusAPI = &APIBackend{u: uranus}
+	uranus.uranusAPI.gp = forecast.NewForecast(uranus.uranusAPI.BlockByHeight, forecast.DefaultConfig)
 
 	var miner consensus.Engine
-	uranus.protocolManager, _ = node.NewProtocolManager(&feed.TypeMux{}, uranus.chainConfig, uranus.txPool, uranus.blockchain, uranus.chainDb, miner)
+	uranus.protocolManager, _ = node.NewProtocolManager(mux, uranus.chainConfig, uranus.txPool, uranus.blockchain, uranus.chainDb, miner)
 
 	return uranus, nil
 }
@@ -108,14 +112,24 @@ func (u *Uranus) Protocols() []*p2p.Protocol {
 func (u *Uranus) APIs() []rpc.API {
 	return []rpc.API{
 		{
-			Namespace: "txpool",
-			Version:   "0.1",
-			Service:   rpcapi.NewPublicTransactionPoolAPI(u.uranusAPI),
+			Namespace: "Uranus",
+			Version:   "0.0.1",
+			Service:   rpcapi.NewUranusAPI(u.uranusAPI),
 		},
 		{
-			Namespace: "blockchain",
-			Version:   "0.1",
-			Service:   rpcapi.NewPublicBlockChainAPI(u.uranusAPI),
+			Namespace: "Wallet",
+			Version:   "0.0.1",
+			Service:   rpcapi.NewWalletAPI(u.uranusAPI),
+		},
+		{
+			Namespace: "TxPool",
+			Version:   "0.0.1",
+			Service:   rpcapi.NewTransactionPoolAPI(u.uranusAPI),
+		},
+		{
+			Namespace: "BlockChain",
+			Version:   "0.0.1",
+			Service:   rpcapi.NewBlockChainAPI(u.uranusAPI),
 		},
 	}
 }
@@ -141,3 +155,6 @@ func (u *Uranus) Stop() error {
 	close(u.shutdownChan)
 	return nil
 }
+
+// BlockChain returns blcokchain.
+func (u *Uranus) BlockChain() *core.BlockChain { return u.blockchain }

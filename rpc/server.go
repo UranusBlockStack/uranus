@@ -429,6 +429,7 @@ func (server *Server) ServeRequest(codec ServerCodec) error {
 	service, mtype, req, argv, replyv, keepReading, err := server.readRequest(codec)
 	if err != nil {
 		if !keepReading {
+			log.Errorf("RPC serve request faild: %v", err)
 			return err
 		}
 		// send a response if we actually managed to read a header.
@@ -569,7 +570,7 @@ func (server *Server) Accept(lis net.Listener) {
 	for {
 		conn, err := lis.Accept()
 		if err != nil {
-			log.Error("rpc.Serve: accept: ", err.Error())
+			log.Errorf("rpc.Serve: accept: %v", err.Error())
 			return
 		}
 		go server.ServeConn(conn)

@@ -21,12 +21,15 @@ import (
 	"math/big"
 
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/core"
 	"github.com/UranusBlockStack/uranus/core/types"
-	"github.com/UranusBlockStack/uranus/params"
+	"github.com/UranusBlockStack/uranus/wallet"
 )
 
+// Backend for rpc api
 type Backend interface {
-	ChainConfig() *params.ChainConfig
+	// blockchain backend
+	BlockChain() *core.BlockChain
 	CurrentBlock() *types.Block
 	BlockByHeight(ctx context.Context, height BlockHeight) (*types.Block, error)
 	BlockByHash(ctx context.Context, blockHash utils.Hash) (*types.Block, error)
@@ -34,11 +37,21 @@ type Backend interface {
 	GetReceipt(ctx context.Context, txHash utils.Hash) (*types.Receipt, error)
 	GetLogs(ctx context.Context, blockHash utils.Hash) ([][]*types.Log, error)
 	GetTd(blockHash utils.Hash) *big.Int
+	GetTransaction(txHash utils.Hash) *types.StorageTx
+	// txpool backend
 	SendTx(ctx context.Context, signedTx *types.Transaction) error
 	GetPoolTransactions() (types.Transactions, error)
 	GetPoolTransaction(txHash utils.Hash) *types.Transaction
 	GetPoolNonce(ctx context.Context, addr utils.Address) (uint64, error)
 	TxPoolStats() (pending int, queued int)
 	TxPoolContent() (map[utils.Address]types.Transactions, map[utils.Address]types.Transactions)
-	GetTransaction(txHash utils.Hash) *types.StorageTx
+	// wallet backend
+	NewAccount(passphrase string) (*wallet.Account, error)
+	Delete(address utils.Address, passphrase string) error
+	Update(address utils.Address, passphrase, newPassphrase string) error
+	SignTx(addr utils.Address, tx *types.Transaction, passphrase string) (*types.Transaction, error)
+	Accounts() ([]utils.Address, error)
+	ImportRawKey(privkey string, passphrase string) (utils.Address, error)
+	// forecast backend
+	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 }

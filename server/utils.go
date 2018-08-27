@@ -52,16 +52,24 @@ func checkMinerConfig(cfg *pow.Config, wallet *wallet.Wallet) *pow.Config {
 	}
 
 	// coinbase
-
-	if !utils.IsHexAddr(cfg.CoinBaseAddr) || (utils.HexToAddress(cfg.CoinBaseAddr) == (utils.Address{})) {
-		account, err := wallet.NewAccount("conbase")
+	accounts, err := wallet.Accounts()
+	if len(accounts) == 0 {
 		if err != nil {
-			log.Warn("generate conbase account failed: %v", err)
-			return cfg
+			log.Error(err)
 		}
-		log.Warn("CoinBase automatically configured address: %v, passphrase: %v", account.Address, "conbase")
-		cfg.CoinBaseAddr = account.Address.Hex()
+		if !utils.IsHexAddr(cfg.CoinBaseAddr) || (utils.HexToAddress(cfg.CoinBaseAddr) == (utils.Address{})) {
+			account, err := wallet.NewAccount("coinbase")
+			if err != nil {
+				log.Warnf("generate conbase account failed: %v", err)
+				return cfg
+			}
+			log.Warnf("CoinBase automatically configured address: %v, passphrase: %v", account.Address, "coinbase")
+			cfg.CoinBaseAddr = account.Address.Hex()
+		}
+		return cfg
 	}
 
+	cfg.CoinBaseAddr = accounts[0].Hex()
+	log.Infof("Coinbase addr: %v", cfg.CoinBaseAddr)
 	return cfg
 }

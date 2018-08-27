@@ -17,18 +17,22 @@
 package wallet
 
 import (
-	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	lockcache "github.com/UranusBlockStack/uranus/common/cache"
+	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
 )
 
-const defaultAccountCacheLimit = 1000
-
-const suffix = `: no such file or directory`
+const (
+	defaultAccountCacheLimit = 1000
+	// errSuffix                = `: no such file or directory`
+	keyFileSuffix = `.json`
+)
 
 type Wallet struct {
 	ks           *KeyStore
@@ -42,8 +46,50 @@ func NewWallet(ksdir string) *Wallet {
 		ks:           NewKeyStore(ksdir),
 		accountCache: accountCache,
 	}
-
 	return wallet
+}
+
+// Accounts list all account.
+func (w *Wallet) Accounts() ([]utils.Address, error) {
+	accounts := []utils.Address{}
+	rd, err := ioutil.ReadDir(w.ks.keyStoreDir)
+	if err != nil {
+		return nil, err
+	}
+	for _, fi := range rd {
+		if fi.IsDir() {
+			continue
+		} else {
+			addrHex := strings.TrimSuffix(fi.Name(), keyFileSuffix)
+			accounts = append(accounts, utils.HexToAddress(addrHex))
+		}
+	}
+	return accounts, nil
+}
+
+// ImportRawKey import key in to key store.
+func (w *Wallet) ImportRawKey(privkey string, passphrase string) (utils.Address, error) {
+	key, err := crypto.HexToECDSA(privkey)
+	if err != nil {
+		return utils.Address{}, err
+	}
+	addr := crypto.PubkeyToAddress(key.PublicKey)
+
+	// check if key exist
+	fileName := filepath.Join(w.ks.keyStoreDir, addr.Hex()+keyFileSuffix)
+	if utils.FileExists(fileName) {
+		return addr, nil
+	}
+	account := &Account{
+		Address:    addr,
+		PrivateKey: key,
+	}
+	if err := w.ks.PutKey(account, fileName, passphrase); err != nil {
+		return utils.Address{}, err
+	}
+
+	w.accountCache.Add(account.Address, &lockAccount{passphrase: passphrase, account: account})
+	return account.Address, nil
 }
 
 // NewAccount creates a new account
@@ -53,7 +99,7 @@ func (w *Wallet) NewAccount(passphrase string) (*Account, error) {
 		return nil, err
 	}
 
-	fileName := filepath.Join(w.ks.keyStoreDir, account.Address.Hex()+".json")
+	fileName := filepath.Join(w.ks.keyStoreDir, account.Address.Hex()+keyFileSuffix)
 	if err := w.ks.PutKey(account, fileName, passphrase); err != nil {
 		return nil, err
 	}
@@ -63,17 +109,25 @@ func (w *Wallet) NewAccount(passphrase string) (*Account, error) {
 
 // Delete removes the speciified account
 func (w *Wallet) Delete(address utils.Address, passphrase string) error {
-	fileName := filepath.Join(w.ks.keyStoreDir, address.Hex()+".json")
+	fileName := filepath.Join(w.ks.keyStoreDir, address.Hex()+keyFileSuffix)
 	if !utils.FileExists(fileName) {
 		return nil
 	}
+	_, err := w.ks.GetKey(address, fileName, passphrase)
+	if err != nil {
+		return err
+	}
+
 	w.accountCache.Remove(address)
 	return os.Remove(fileName)
 }
 
 // Update update the specified account
 func (w *Wallet) Update(address utils.Address, passphrase, newPassphrase string) error {
-	fileName := filepath.Join(w.ks.keyStoreDir, address.Hex()+".json")
+	fileName := filepath.Join(w.ks.keyStoreDir, address.Hex()+keyFileSuffix)
+	if !utils.FileExists(fileName) {
+		return ErrNoMatch
+	}
 	account, err := w.ks.GetKey(address, fileName, passphrase)
 	if err != nil {
 		return err
@@ -91,10 +145,10 @@ func (w *Wallet) SignTx(addr utils.Address, tx *types.Transaction, passphrase st
 			}
 			return tx, nil
 		}
-		return nil, fmt.Errorf("Error passphrase: %s", passphrase)
+		return nil, ErrDecrypt
 	}
 
-	fileName := filepath.Join(w.ks.keyStoreDir, addr.Hex()+".json")
+	fileName := filepath.Join(w.ks.keyStoreDir, addr.Hex()+keyFileSuffix)
 	account, err := w.ks.GetKey(addr, fileName, passphrase)
 	if err != nil {
 		return nil, err

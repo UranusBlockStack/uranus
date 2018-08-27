@@ -23,32 +23,31 @@ import (
 	"github.com/UranusBlockStack/uranus/core/types"
 )
 
-// PublicBlockChainAPI exposes methods for the RPC interface
-type PublicBlockChainAPI struct {
+// BlockChainAPI exposes methods for the RPC interface
+type BlockChainAPI struct {
 	b Backend
 }
 
-// NewPublicBlockChainAPI creates a new RPC service with methods specific for the blockchain.
-func NewPublicBlockChainAPI(b Backend) *PublicBlockChainAPI {
-	return &PublicBlockChainAPI{}
+// NewBlockChainAPI creates a new RPC service with methods specific for the blockchain.
+func NewBlockChainAPI(b Backend) *BlockChainAPI {
+	return &BlockChainAPI{b}
 }
 
 type GetBlockByHeightArgs struct {
-	BlockNr BlockHeight
-	FullTx  bool
+	BlockHeight BlockHeight
+	FullTx      bool
 }
 
 // GetBlockByHeight returns the requested block.
-func (s *PublicBlockChainAPI) GetBlockByHeight(args *GetBlockByHeightArgs, reply *map[string]interface{}) error {
-	block, err := s.b.BlockByHeight(context.Background(), args.BlockNr)
+func (s *BlockChainAPI) GetBlockByHeight(args GetBlockByHeightArgs, reply *map[string]interface{}) error {
+	block, err := s.b.BlockByHeight(context.Background(), args.BlockHeight)
 	if block != nil {
 		response, err := s.rpcOutputBlock(block, true, args.FullTx)
-		if err == nil && args.BlockNr == PendingBlockHeight {
+		if err == nil && args.BlockHeight == PendingBlockHeight {
 			for _, field := range []string{"hash", "nonce", "miner"} {
 				response[field] = nil
 			}
 		}
-
 		*reply = response
 		return err
 	}
@@ -61,7 +60,7 @@ type GetBlockByHashArgs struct {
 }
 
 // GetBlockByHash returns the requested block.
-func (s *PublicBlockChainAPI) GetBlockByHash(args *GetBlockByHashArgs, reply *map[string]interface{}) error {
+func (s *BlockChainAPI) GetBlockByHash(args GetBlockByHashArgs, reply *map[string]interface{}) error {
 	block, err := s.b.BlockByHash(context.Background(), args.BlockHash)
 	if block != nil {
 		response, err := s.rpcOutputBlock(block, true, args.FullTx)
@@ -75,21 +74,21 @@ func (s *PublicBlockChainAPI) GetBlockByHash(args *GetBlockByHashArgs, reply *ma
 }
 
 // GetTransactionByHash returns the transaction for the given hash
-func (s *PublicBlockChainAPI) GetTransactionByHash(Hash utils.Hash, reply *RPCTransaction) error {
+func (s *BlockChainAPI) GetTransactionByHash(Hash utils.Hash, reply *RPCTransaction) error {
 	if stx := s.b.GetTransaction(Hash); stx != nil {
-		reply = newRPCTransaction(stx.Tx, stx.BlockHash, stx.BlockHeight, stx.TxIndex)
+		*reply = *newRPCTransaction(stx.Tx, stx.BlockHash, stx.BlockHeight, stx.TxIndex)
 		return nil
 
 	}
 	if tx := s.b.GetPoolTransaction(Hash); tx != nil {
-		reply = newRPCPendingTransaction(tx)
+		*reply = *newRPCPendingTransaction(tx)
 		return nil
 	}
 	return nil
 }
 
 // GetTransactionReceipt returns the transaction receipt for the given transaction hash.
-func (s *PublicBlockChainAPI) GetTransactionReceipt(Hash utils.Hash, reply *map[string]interface{}) error {
+func (s *BlockChainAPI) GetTransactionReceipt(Hash utils.Hash, reply *map[string]interface{}) error {
 	stx := s.b.GetTransaction(Hash)
 	if stx == nil {
 		return nil
@@ -110,7 +109,7 @@ func (s *PublicBlockChainAPI) GetTransactionReceipt(Hash utils.Hash, reply *map[
 		"cumulativeGasUsed": utils.Uint64(receipt.CumulativeGasUsed),
 		"contractAddress":   nil,
 		"logs":              receipt.Logs,
-		"logsBloom":         receipt.LogsBloom,
+		// 	"logsBloom":         receipt.LogsBloom,
 	}
 	// Assign receipt status or post state.
 	if len(receipt.State) > 0 {
@@ -129,7 +128,7 @@ func (s *PublicBlockChainAPI) GetTransactionReceipt(Hash utils.Hash, reply *map[
 	return nil
 }
 
-func (s *PublicBlockChainAPI) rpcOutputBlock(b *types.Block, inclTx bool, fullTx bool) (map[string]interface{}, error) {
+func (s *BlockChainAPI) rpcOutputBlock(b *types.Block, inclTx bool, fullTx bool) (map[string]interface{}, error) {
 	fields, err := RPCMarshalBlock(b, inclTx, fullTx)
 	if err != nil {
 		return nil, err

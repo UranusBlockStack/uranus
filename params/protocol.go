@@ -16,13 +16,21 @@
 
 package params
 
+import "math/big"
+
+// BlockReward
+var BlockReward *big.Int = big.NewInt(3e+18)
+
 const (
+
 	//MaxExtraDataSize Maximum size extra data may be after Genesis.
 	MaxExtraDataSize uint64 = 32
 	//GasLimitBoundDivisor The bound divisor of the gas limit, used in update calculations.
 	GasLimitBoundDivisor uint64 = 1024
-	//MinGasLimit Minimum the gas limit may ever be.
-	MinGasLimit uint64 = 5000
+
+	MinGasLimit uint64 = 1000000
+	//GenesisGasLimit Gas limit of the Genesis block.
+	GenesisGasLimit uint64 = 5000000
 	// TxGas Per transaction not creating a contract. NOTE: Not payable on data of calls between transactions.
 	TxGas uint64 = 21000
 	// TxGasContractCreation Per transaction that creates a contract. NOTE: Not payable on data of calls between transactions.

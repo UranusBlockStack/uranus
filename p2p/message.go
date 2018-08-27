@@ -60,6 +60,9 @@ func SendMessage(w MsgWriter, code uint64, data interface{}) error {
 
 // EncodePayload set the RLP content of a message
 func (msg *Message) EncodePayload(val interface{}) error {
+	if val == nil {
+		return nil
+	}
 	payload, err := rlp.EncodeToBytes(val)
 	if err != nil {
 		return fmt.Errorf("message rlp %#v error --- %s", val, err)

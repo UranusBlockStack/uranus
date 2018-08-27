@@ -144,12 +144,18 @@ func (n *Node) Start() error {
 			} else {
 				p2pServer.PrivateKey = key
 			}
+		} else if file = filepath.Join(n.config.DataDir, "nodekey"); utils.FileExists(file) {
+			if key, err := crypto.LoadECDSA(file); err != nil {
+				log.Fatalf("failed to open %s: %v", file, err)
+			} else {
+				p2pServer.PrivateKey = key
+			}
 		} else {
 			nodeKey, err := crypto.GenerateKey()
 			if err != nil {
 				log.Fatalf("could not generate key: %v", err)
 			}
-			if err = crypto.SaveECDSA("nodekey", nodeKey); err != nil {
+			if err = crypto.SaveECDSA(file, nodeKey); err != nil {
 				log.Fatalf("%v", err)
 			}
 			p2pServer.PrivateKey = nodeKey
@@ -205,7 +211,7 @@ func (n *Node) startRPC(apis []rpc.API) error {
 		return err
 	}
 	n.rpc.listener = listener
-	log.Infof("RPC and HTTP endpoint opened,url: %v", n.rpc.endpoint)
+	log.Infof("RPC and HTTP endpoint opened: %v", n.rpc.endpoint)
 	return nil
 }
 

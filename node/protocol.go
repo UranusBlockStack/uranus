@@ -49,15 +49,15 @@ var baseProtocolVersion uint = 1
 var maxMsgSize = 10 * 1024 * 1024
 
 const (
-	StatusMsg = iota + 1000
-	NewBlockHashesMsg
-	TxMsg
-	GetBlockHashesMsg
-	BlockHashesMsg
-	GetBlocksMsg
-	BlocksMsg
-	NewBlockMsg
-	GetBlockHashesFromNumberMsg
+	StatusMsg                   = iota + 1000 //1000
+	NewBlockHashesMsg                         //1001
+	TxMsg                                     //1002
+	GetBlockHashesMsg                         //1003
+	BlockHashesMsg                            //1004
+	GetBlocksMsg                              //1005
+	BlocksMsg                                 //1006
+	NewBlockMsg                               //1007
+	GetBlockHashesFromNumberMsg               //1008
 )
 
 type statusData struct {
@@ -157,7 +157,8 @@ func NewProtocolManager(mux *feed.TypeMux, config *params.ChainConfig, txpool *t
 	inserter := func(blocks types.Blocks) (int, error) {
 		return manager.blockchain.InsertChain(blocks)
 	}
-	manager.downloader = protocols.NewDownloader(manager.eventMux, manager.blockchain.HasBlock, manager.blockchain.GetBlockByHash, manager.blockchain.CurrentBlock, inserter, manager.removePeer)
+
+	manager.downloader = protocols.NewDownloader(manager.eventMux, manager.blockchain.HasBlock, manager.blockchain.GetBlockByHash, manager.blockchain.CurrentBlock, manager.blockchain.GetTd, inserter, manager.removePeer)
 	manager.fetcher = protocols.NewFetcher(manager.blockchain.GetBlockByHash, validator, manager.BroadcastBlock, heighter, inserter, manager.removePeer)
 	return manager, nil
 }
@@ -242,7 +243,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 
 	for {
 		if err := pm.handleMsg(p); err != nil {
-			log.Debugf("uranus message handling failed --- %v", err)
+			log.Errorf("uranus message handling failed --- %v", err)
 			return err
 		}
 	}
@@ -418,7 +419,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		request.Block.ReceivedAt = msg.ReceivedAt
 
 		p.MarkBlock(request.Block.Hash())
-		p.SetHead(request.Block.Hash(), request.Block.Difficulty())
+		p.head = request.Block.Hash()
 
 		pm.fetcher.Enqueue(p.id, request.Block)
 

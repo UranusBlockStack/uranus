@@ -17,6 +17,7 @@
 package wallet
 
 import (
+	"fmt"
 	"io/ioutil"
 	"math/big"
 	"path/filepath"
@@ -26,6 +27,49 @@ import (
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
 )
+
+func TestAccounts(t *testing.T) {
+	dir, _ := ioutil.TempDir("", "test_keystoredir")
+	w := NewWallet(dir)
+	account1, err := w.NewAccount("test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	account2, err := w.NewAccount("test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addresses := []utils.Address{account1.Address, account2.Address}
+
+	taddresses, err := w.Accounts()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_ = taddresses
+	_ = addresses
+	// todo sort
+	// utils.AssertEquals(t, addresses, taddresses)
+}
+
+func TestImportRawKey(t *testing.T) {
+	dir, _ := ioutil.TempDir("", "test_keystoredir")
+	w := NewWallet(dir)
+	account, err := genNewAccount()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(utils.BytesToHex(crypto.ByteFromECDSA(account.PrivateKey)))
+
+	addr, err := w.ImportRawKey(utils.BytesToHex(crypto.ByteFromECDSA(account.PrivateKey)), "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	utils.AssertEquals(t, account.Address, addr)
+}
 
 func TestNewAccount(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "test_keystoredir")

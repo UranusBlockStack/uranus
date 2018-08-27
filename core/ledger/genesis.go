@@ -35,7 +35,6 @@ type Genesis struct {
 	ExtraData    []byte              `json:"extraData"`
 	GasLimit     uint64              `json:"gasLimit"   `
 	Difficulty   *big.Int            `json:"difficulty" `
-	Mixhash      utils.Hash          `json:"mixHash"`
 	Miner        utils.Address       `json:"miner"`
 	Height       uint64              `json:"height"`
 	GasUsed      uint64              `json:"gasUsed"`
@@ -49,8 +48,8 @@ func DefaultGenesis() *Genesis {
 		Config:     params.DefaultChainConfig,
 		Nonce:      1,
 		ExtraData:  extraData,
-		GasLimit:   5000,
-		Difficulty: big.NewInt(100000),
+		GasLimit:   params.GenesisGasLimit,
+		Difficulty: big.NewInt(1000000),
 	}
 }
 
@@ -107,11 +106,11 @@ func (g *Genesis) ToBlock(chain *Chain) *types.Block {
 		GasLimit:     g.GasLimit,
 		GasUsed:      g.GasUsed,
 		Difficulty:   g.Difficulty,
-		MixHash:      g.Mixhash,
 		Miner:        g.Miner,
 		StateRoot:    root,
 	}
 	statedb.Commit(false)
+
 	statedb.Database().TrieDB().Commit(root, true)
 	return types.NewBlock(head, nil, nil)
 }

@@ -14,28 +14,33 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
 
-package rpc
+package forecast
 
-import (
-	"net"
-)
+import "math/big"
 
-// StartRPCAndHTTP start RPC and HTTP service
-func StartRPCAndHTTP(endpoint string, apis []API, cors []string) (net.Listener, *Server, error) {
-	var (
-		listener net.Listener
-		err      error
-		server   = NewServer()
-	)
-	for _, api := range apis {
-		if err := server.RegisterName(api.Namespace, api.Service); err != nil {
-			return nil, nil, err
-		}
+type Config struct {
+	BlockNum int // the number of block
+	Percent  int
+	GasPrice *big.Int
+}
+
+var DefaultConfig = &Config{
+	BlockNum: 20,
+	Percent:  260,
+	GasPrice: big.NewInt(18 * 1e9),
+}
+
+func (c *Config) check() *Config {
+	// check BlockNum
+	if c.BlockNum < 1 {
+		c.BlockNum = 1
 	}
-	if listener, err = net.Listen("tcp", endpoint); err != nil {
-		return nil, nil, err
+	// check Percent
+	if c.Percent < 0 {
+		c.Percent = 0
 	}
-	go NewHTTPServer(server, cors).Serve(listener)
-
-	return listener, server, nil
+	if c.Percent > 100 {
+		c.Percent = 100
+	}
+	return c
 }

@@ -220,7 +220,7 @@ func (bc *BlockChain) insertChain(block *types.Block) (interface{}, []*types.Log
 		log.Debugf("Inserted forked block number: %v,hash: %v,diff: %v,txsLen: %v,gas: %v.", block.Height(), block.Hash(), block.Difficulty(), len(block.Transactions()), block.GasUsed())
 		return feed.ForkBlockEvent{Block: block}, logs, nil
 	}
-	log.Debugf("Inserted new block number: %v,hash: %v,txsLen: %v,gas: %v", block.Height(), block.Hash(), len(block.Transactions()), block.GasUsed())
+	log.Debugf("Inserted new block number: %v,hash: %v,txsLen: %v,gas: %v, diff: %v", block.Height(), block.Hash(), len(block.Transactions()), block.GasUsed(), block.Difficulty())
 	return feed.BlockAndLogsEvent{Block: block, Logs: logs}, logs, nil
 }
 

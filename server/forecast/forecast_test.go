@@ -14,28 +14,4 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
 
-package rpc
-
-import (
-	"net"
-)
-
-// StartRPCAndHTTP start RPC and HTTP service
-func StartRPCAndHTTP(endpoint string, apis []API, cors []string) (net.Listener, *Server, error) {
-	var (
-		listener net.Listener
-		err      error
-		server   = NewServer()
-	)
-	for _, api := range apis {
-		if err := server.RegisterName(api.Namespace, api.Service); err != nil {
-			return nil, nil, err
-		}
-	}
-	if listener, err = net.Listen("tcp", endpoint); err != nil {
-		return nil, nil, err
-	}
-	go NewHTTPServer(server, cors).Serve(listener)
-
-	return listener, server, nil
-}
+package forecast
