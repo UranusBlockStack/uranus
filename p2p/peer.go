@@ -174,10 +174,10 @@ running:
 	for {
 		select {
 		case err = <-p.runningErr:
-			log.Errorf("peer %v close --- %v", p.ID().String(), err)
+			log.Warnf("peer %v close --- %v", p.ID().String(), err)
 			break running
 		case str := <-p.quit:
-			log.Errorf("peer %v close --- %v", p.ID().String(), err)
+			log.Warnf("peer %v close --- %v", p.ID().String(), err)
 			err = errors.New(str)
 			break running
 		}

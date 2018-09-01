@@ -243,7 +243,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 
 	for {
 		if err := pm.handleMsg(p); err != nil {
-			log.Errorf("uranus message handling failed --- %v", err)
+			log.Warnf("uranus message handling failed --- %v", err)
 			return err
 		}
 	}
@@ -424,7 +424,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		pm.fetcher.Enqueue(p.id, request.Block)
 
 		if request.TD.Cmp(p.td) > 0 {
-			p.td = request.TD
+			p.SetHead(request.Block.Hash(), request.TD)
 			go pm.synchronise(p)
 		}
 

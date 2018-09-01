@@ -95,8 +95,8 @@ func (l *Ledger) RewindChain(height uint64) {
 }
 
 // WriteLegitimateHashAndHeadBlockHash
-func (l *Ledger) WriteLegitimateHashAndHeadBlockHash(number uint64, hash utils.Hash) {
-	l.chain.putLegitimateHash(number, hash)
+func (l *Ledger) WriteLegitimateHashAndHeadBlockHash(height uint64, hash utils.Hash) {
+	l.chain.putLegitimateHash(height, hash)
 	l.chain.putHeadBlockHash(hash)
 }
 
@@ -109,6 +109,11 @@ func (l *Ledger) WriteBlockAndReceipts(block *types.Block, receipts types.Receip
 func (l *Ledger) WriteBlockAndTd(block *types.Block, td *big.Int) {
 	l.chain.putBlock(block)
 	l.chain.putTd(block.Hash(), td)
+}
+
+func (l *Ledger) DeleteBlock(blockHash utils.Hash) {
+	l.cache.blockCache.Remove(blockHash)
+	l.chain.deleteBlock(blockHash)
 }
 
 // GetReceipts return Receipts by block hash.

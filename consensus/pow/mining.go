@@ -256,7 +256,7 @@ func (m *UMiner) prepareNewBlock() error {
 
 	height := parent.BlockHeader().Height
 	difficult := cpuminer.GetDifficult(uint64(timestamp), parent.BlockHeader())
-	log.Debugf("block_height: %+v, difficult: %+v", parent.Height().Uint64(), difficult.Uint64())
+	log.Debugf("block_height: %+v, difficult: %+v, hash: %v", parent.Height().Uint64(), difficult.Uint64(), parent.Hash())
 	header := &types.BlockHeader{
 		PreviousHash: parent.Hash(),
 		Miner:        *m.coinbase,

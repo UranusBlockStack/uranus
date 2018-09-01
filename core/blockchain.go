@@ -21,6 +21,7 @@ import (
 	"math/big"
 	"math/rand"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -31,7 +32,6 @@ import (
 	exec "github.com/UranusBlockStack/uranus/core/executor"
 	"github.com/UranusBlockStack/uranus/core/ledger"
 	"github.com/UranusBlockStack/uranus/core/state"
-	"github.com/UranusBlockStack/uranus/core/txpool"
 	"github.com/UranusBlockStack/uranus/core/types"
 	blockValidator "github.com/UranusBlockStack/uranus/core/validator"
 	"github.com/UranusBlockStack/uranus/core/vm"
@@ -62,7 +62,9 @@ type BlockChain struct {
 
 	executor *exec.Executor
 	engine   consensus.Engine
-	quit     chan struct{} // blockchain quit channel
+
+	chainmu sync.RWMutex
+	quit    chan struct{} // blockchain quit channel
 }
 
 // NewBlockChain returns a fully initialised block chain using information available in the database.
@@ -154,6 +156,15 @@ func (bc *BlockChain) postEvent(events interface{}, logs []*types.Log) {
 }
 
 func (bc *BlockChain) InsertChain(blocks types.Blocks) (int, error) {
+	for i := 1; i < len(blocks); i++ {
+		if blocks[i].Height().Uint64() != blocks[i-1].Height().Uint64()+1 || blocks[i].PreviousHash() != blocks[i-1].Hash() {
+			log.Error("Non contiguous block insert", "height", blocks[i].Height(), "hash", blocks[i].Hash(),
+				"parent", blocks[i].PreviousHash(), "prevheight", blocks[i-1].Height(), "prevhash", blocks[i-1].Hash())
+			return 0, fmt.Errorf("non contiguous insert: item %d is #%d [%x…], item %d is #%d [%x…] (parent [%x…])", i-1, blocks[i-1].Height().Uint64(),
+				blocks[i-1].Hash().Bytes()[:4], i, blocks[i].Height().Uint64(), blocks[i].Hash().Bytes()[:4], blocks[i].PreviousHash().Bytes()[:4])
+		}
+	}
+
 	n := 0
 	for _, blk := range blocks {
 		if bc.HasBlock(blk.Hash()) {
@@ -253,6 +264,8 @@ func (bc *BlockChain) ExecTransaction(author *utils.Address,
 
 //WriteBlockWithState write the block to the chain and get the status.
 func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts types.Receipts, state *state.StateDB) (bool, error) {
+	bc.chainmu.Lock()
+	defer bc.chainmu.Unlock()
 	// get the total difficulty of the block
 	ptd := bc.GetTd(block.PreviousHash())
 	if ptd == nil {
@@ -289,17 +302,19 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts types.Rec
 			if err := bc.reorg(currentBlock, block); err != nil {
 				return false, err
 			}
+			status = true
 		}
-		status = true
+
 	}
 
 	bc.WriteBlockAndReceipts(block, receipts)
 
-	// Set new head.
-	if status == true {
+	if !status && reorg {
+		// Set new head.
 		bc.WriteLegitimateHashAndHeadBlockHash(block.Height().Uint64(), block.Hash())
 		bc.currentBlock.Store(block)
 	}
+
 	bc.RemoveFutureBlock(block.Hash())
 	return status, nil
 }
@@ -316,8 +331,6 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		newChain    types.Blocks
 		oldChain    types.Blocks
 		commonBlock *types.Block
-		deletedTxs  types.Transactions
-		// deletedLogs []*types.Log
 	)
 
 	// first reduce whoever is higher bound
@@ -325,7 +338,6 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		// reduce old chain
 		for ; oldBlock != nil && oldBlock.Height().Uint64() != newBlock.Height().Uint64(); oldBlock = bc.GetBlock(oldBlock.PreviousHash()) {
 			oldChain = append(oldChain, oldBlock)
-			deletedTxs = append(deletedTxs, oldBlock.Transactions()...)
 
 		}
 	} else {
@@ -349,7 +361,6 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 
 		oldChain = append(oldChain, oldBlock)
 		newChain = append(newChain, newBlock)
-		deletedTxs = append(deletedTxs, oldBlock.Transactions()...)
 
 		oldBlock, newBlock = bc.GetBlock(oldBlock.PreviousHash()), bc.GetBlock(newBlock.PreviousHash())
 		if oldBlock == nil {
@@ -361,36 +372,19 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 	}
 	// Ensure the user sees large reorgs
 	if len(oldChain) > 0 && len(newChain) > 0 {
-		logFn := log.Debug
+		logFn := log.Debugf
 		if len(oldChain) > 63 {
-			logFn = log.Warn
+			logFn = log.Warnf
 		}
-		logFn("Chain split detected", "number", commonBlock.Height(), "hash", commonBlock.Hash(),
-			"drop", len(oldChain), "dropfrom", oldChain[0].Hash(), "add", len(newChain), "addfrom", newChain[0].Hash())
+		logFn("Chain split detected height: %v, hash: %v, drop: %v, dropfrom: %v, add: %v, addfrom: %v", commonBlock.Height().Uint64(), commonBlock.Hash(), len(oldChain), oldChain[0].Hash(), len(newChain), newChain[0].Hash())
 	} else {
-		log.Error("Impossible reorg, please file an issue", "oldnum", oldBlock.Height(), "oldhash", oldBlock.Hash(), "newnum", newBlock.Height(), "newhash", newBlock.Hash())
+		log.Errorf("Impossible reorg, please file an issue oldnum: %v, oldhash: %v, newheight: %v, newhash: %v", oldBlock.Height(), oldBlock.Hash(), newBlock.Height(), newBlock.Hash())
 	}
+
 	// Insert the new chain, taking care of the proper incremental order
-	var addedTxs types.Transactions
 	for i := len(newChain) - 1; i >= 0; i-- {
 		bc.WriteLegitimateHashAndHeadBlockHash(newChain[i].Height().Uint64(), newChain[i].Hash())
-		addedTxs = append(addedTxs, newChain[i].Transactions()...)
-	}
-	// calculate the difference between deleted and added transactions
-	diff := txpool.TxDifference(deletedTxs, addedTxs)
-
-	// todo remove diff
-	_ = diff
-	// for _, tx := range diff {
-	// 	rawdb.DeleteTxLookupEntry(bc.db, tx.Hash())
-	// }
-
-	if len(oldChain) > 0 {
-		go func() {
-			// for _, _ := range oldChain {
-			// 	// 	bc.chainSideFeed.Send(feed.ForkBlockEvent{Block: block})
-			// }
-		}()
+		bc.currentBlock.Store(newChain[i])
 	}
 
 	return nil
@@ -408,6 +402,8 @@ func (bc *BlockChain) State() (*state.StateDB, error) {
 
 // GetCurrentInfo return current info
 func (bc *BlockChain) GetCurrentInfo() (*types.Block, *state.StateDB, error) {
+	bc.chainmu.Lock()
+	defer bc.chainmu.Unlock()
 	currentBlock := bc.currentBlock.Load().(*types.Block)
 	state, err := bc.StateAt(currentBlock.StateRoot())
 	return currentBlock, state, err

@@ -35,6 +35,7 @@ type Genesis struct {
 	ExtraData    []byte              `json:"extraData"`
 	GasLimit     uint64              `json:"gasLimit"   `
 	Difficulty   *big.Int            `json:"difficulty" `
+	Mixhash      utils.Hash          `json:"mixHash"`
 	Miner        utils.Address       `json:"miner"`
 	Height       uint64              `json:"height"`
 	GasUsed      uint64              `json:"gasUsed"`
