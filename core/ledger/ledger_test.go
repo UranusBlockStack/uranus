@@ -15,3 +15,27 @@
 // along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
 
 package ledger
+
+import (
+	"testing"
+
+	"github.com/UranusBlockStack/uranus/common/db"
+	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/core/state"
+)
+
+func TestRewindChain(t *testing.T) {
+	stateCache := state.NewDatabase(db.NewMemDatabase())
+	ledger := New(&Config{}, db.NewMemDatabase(), func(hash utils.Hash) bool {
+		_, err := stateCache.OpenTrie(hash)
+		return err == nil
+	})
+	genesisBlock := DefaultGenesis().ToBlock(ledger.chain)
+	DefaultGenesis().Commit(ledger.chain)
+
+	ledger.CheckLastBlock(genesisBlock)
+
+	block := ledger.GetBlockByHeight(0)
+
+	utils.AssertEquals(t, block.Hash(), genesisBlock.Hash())
+}

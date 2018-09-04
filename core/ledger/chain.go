@@ -381,20 +381,6 @@ func (c *Chain) getHeaderHeight(blockHash utils.Hash) *uint64 {
 	return &height
 }
 
-func (c *Chain) getHeadHeaderHash() utils.Hash {
-	data, _ := c.db.Get(keyLastHeader)
-	if len(data) == 0 {
-		return utils.Hash{}
-	}
-	return utils.BytesToHash(data)
-}
-
-func (c *Chain) putHeadHeaderHash(blockHash utils.Hash) {
-	if err := c.db.Put(keyLastHeader, blockHash.Bytes()); err != nil {
-		log.Fatalf("Failed to store last header's hash err: %v", err)
-	}
-}
-
 func (c *Chain) getHeadBlockHash() utils.Hash {
 	data, _ := c.db.Get(keyLastBlock)
 	if len(data) == 0 {
@@ -406,20 +392,6 @@ func (c *Chain) getHeadBlockHash() utils.Hash {
 func (c *Chain) putHeadBlockHash(blockHash utils.Hash) {
 	if err := c.db.Put(keyLastBlock, blockHash.Bytes()); err != nil {
 		log.Fatalf("Failed to store last block's hash err: %v", err)
-	}
-}
-
-func (c *Chain) getHeadFastBlockHash() utils.Hash {
-	data, _ := c.db.Get(keyLastFastBlock)
-	if len(data) == 0 {
-		return utils.Hash{}
-	}
-	return utils.BytesToHash(data)
-}
-
-func (c *Chain) putHeadFastBlockHash(hash utils.Hash) {
-	if err := c.db.Put(keyLastFastBlock, hash.Bytes()); err != nil {
-		log.Fatal("Failed to store last fast block's hash", "err", err)
 	}
 }
 

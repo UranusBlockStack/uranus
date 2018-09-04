@@ -88,7 +88,6 @@ func (g *Genesis) Commit(chain *Chain) (*types.Block, error) {
 	chain.putReceipts(block.Hash(), nil)
 	chain.putLegitimateHash(block.Height().Uint64(), block.Hash())
 	chain.putHeadBlockHash(block.Hash())
-	chain.putHeadHeaderHash(block.Hash())
 	chain.putChainConfig(block.Hash(), g.Config)
 
 	return block, nil

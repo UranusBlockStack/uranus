@@ -51,51 +51,12 @@ func TestTransactionAndReceiptsStorage(t *testing.T) {
 
 	chain := NewChain(db)
 
-	tx1 := types.NewTransaction(1, utils.BytesToAddress([]byte{0x11}), big.NewInt(111), 1111, big.NewInt(11111), []byte{0x11, 0x11, 0x11})
-	tx2 := types.NewTransaction(2, utils.BytesToAddress([]byte{0x22}), big.NewInt(222), 2222, big.NewInt(22222), []byte{0x22, 0x22, 0x22})
-	tx3 := types.NewTransaction(3, utils.BytesToAddress([]byte{0x33}), big.NewInt(333), 3333, big.NewInt(33333), []byte{0x33, 0x33, 0x33})
-	txs := []*types.Transaction{tx1, tx2, tx3}
+	receipts := testReceipt()
 
-	receipt1 := &types.Receipt{
-		Status:            types.ReceiptStatusFailed,
-		CumulativeGasUsed: 1,
-		Logs: []*types.Log{
-			{Address: utils.BytesToAddress([]byte{0x11})},
-			{Address: utils.BytesToAddress([]byte{0x01, 0x11})},
-		},
-		TransactionHash: utils.BytesToHash([]byte{0x11, 0x11}),
-		ContractAddress: utils.BytesToAddress([]byte{0x01, 0x11, 0x11}),
-		GasUsed:         111111,
-	}
-	receipt2 := &types.Receipt{
-		State:             utils.Hash{2}.Bytes(),
-		CumulativeGasUsed: 2,
-		Logs: []*types.Log{
-			{Address: utils.BytesToAddress([]byte{0x22})},
-			{Address: utils.BytesToAddress([]byte{0x02, 0x22})},
-		},
-		TransactionHash: utils.BytesToHash([]byte{0x22, 0x22}),
-		ContractAddress: utils.BytesToAddress([]byte{0x02, 0x22, 0x22}),
-		GasUsed:         222222,
-	}
-
-	receipt3 := &types.Receipt{
-		State:             utils.Hash{2}.Bytes(),
-		CumulativeGasUsed: 3,
-		Logs: []*types.Log{
-			{Address: utils.BytesToAddress([]byte{0x33})},
-			{Address: utils.BytesToAddress([]byte{0x03, 0x33})},
-		},
-		TransactionHash: utils.BytesToHash([]byte{0x33, 0x33}),
-		ContractAddress: utils.BytesToAddress([]byte{0x03, 0x33, 0x33}),
-		GasUsed:         333333,
-	}
-	receipts := []*types.Receipt{receipt1, receipt2, receipt3}
-
-	block := types.NewBlock(&types.BlockHeader{Height: big.NewInt(314)}, txs, nil)
+	block := testBlock()
 
 	// Check that no transactions entries are in a pristine database
-	for i, tx := range txs {
+	for i, tx := range block.Transactions() {
 		if txn := chain.getTransaction(tx.Hash()); txn != nil {
 			t.Fatalf("tx #%d [%x]: non existent transaction returned: %v", i, tx.Hash(), txn)
 		}
@@ -103,7 +64,7 @@ func TestTransactionAndReceiptsStorage(t *testing.T) {
 	// Insert all the transactions into the database, and verify contents
 	chain.putBlock(block)
 
-	for i, tx := range txs {
+	for i, tx := range block.Transactions() {
 		if txn := chain.getTransaction(tx.Hash()); txn == nil {
 			t.Fatalf("tx #%d [%x]: transaction not found", i, tx.Hash())
 		} else {
@@ -134,7 +95,7 @@ func TestTransactionAndReceiptsStorage(t *testing.T) {
 	}
 
 	// Delete the transactions and check purge
-	for i, tx := range txs {
+	for i, tx := range block.Transactions() {
 		chain.deleteTransaction(tx.Hash())
 		if txn := chain.getTransaction(tx.Hash()); txn != nil {
 			t.Fatalf("tx #%d [%x]: deleted transaction returned: %v", i, tx.Hash(), txn)
@@ -327,33 +288,17 @@ func TestHeadStorage(t *testing.T) {
 	defer db.Close()
 	chain := NewChain(db)
 
-	blockHead := types.NewBlockWithBlockHeader(&types.BlockHeader{ExtraData: []byte("test block header")})
 	blockFull := types.NewBlockWithBlockHeader(&types.BlockHeader{ExtraData: []byte("test block full")})
-	blockFast := types.NewBlockWithBlockHeader(&types.BlockHeader{ExtraData: []byte("test block fast")})
 
-	// Check that no head entries are in a pristine database
-	if entry := chain.getHeadHeaderHash(); entry != (utils.Hash{}) {
-		t.Fatalf("Non head header entry returned: %v", entry)
-	}
 	if entry := chain.getHeadBlockHash(); entry != (utils.Hash{}) {
 		t.Fatalf("Non head block entry returned: %v", entry)
 	}
-	if entry := chain.getHeadFastBlockHash(); entry != (utils.Hash{}) {
-		t.Fatalf("Non fast head block entry returned: %v", entry)
-	}
-	// Assign separate entries for the head header and block
-	chain.putHeadHeaderHash(blockHead.Hash())
-	chain.putHeadBlockHash(blockFull.Hash())
-	chain.putHeadFastBlockHash(blockFast.Hash())
 
-	// Check that both heads are present, and different (i.e. two heads maintained)
-	if entry := chain.getHeadHeaderHash(); entry != blockHead.Hash() {
-		t.Fatalf("Head header hash mismatch: have %v, want %v", entry, blockHead.Hash())
-	}
+	// Assign separate entries for the head header and block
+	chain.putHeadBlockHash(blockFull.Hash())
+
 	if entry := chain.getHeadBlockHash(); entry != blockFull.Hash() {
 		t.Fatalf("Head block hash mismatch: have %v, want %v", entry, blockFull.Hash())
 	}
-	if entry := chain.getHeadFastBlockHash(); entry != blockFast.Hash() {
-		t.Fatalf("Fast head block hash mismatch: have %v, want %v", entry, blockFast.Hash())
-	}
+
 }

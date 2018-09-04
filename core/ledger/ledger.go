@@ -56,7 +56,7 @@ func (l *Ledger) CheckLastBlock(genesis *types.Block) *types.Block {
 	// Restore the last known head block
 	head := l.chain.getHeadBlockHash()
 	if head == (utils.Hash{}) {
-		log.Warn("Empty database, resetting chain")
+		log.Warn("Empty database, reseting chain")
 		l.ResetChain(genesis)
 		return genesis
 	}
@@ -77,15 +77,13 @@ func (l *Ledger) ResetChain(genesis *types.Block) {
 	// clear cache
 	l.cache.cleanAll()
 	l.chain.putHeadBlockHash(genesis.Hash())
-	l.chain.putHeadFastBlockHash(genesis.Hash())
-	l.chain.putHeadHeaderHash(genesis.Hash())
 	return
 }
 
 // RewindChain rewind the chain, deleting all block
 func (l *Ledger) RewindChain(height uint64) {
-	log.Warn("Rewinding chain", "target", height)
-	hash := l.chain.getHeadHeaderHash()
+	log.Warnf("Rewinding chain target: %v", height)
+	hash := l.chain.getHeadBlockHash()
 	block := l.chain.getBlock(hash)
 	if block.Height().Uint64() >= height {
 		l.chain.deleteBlock(block.Hash())
