@@ -21,9 +21,13 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/UranusBlockStack/uranus/common/math"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core"
+	"github.com/UranusBlockStack/uranus/core/executor"
+	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
+	"github.com/UranusBlockStack/uranus/core/vm"
 	"github.com/UranusBlockStack/uranus/rpcapi"
 	"github.com/UranusBlockStack/uranus/server/forecast"
 	"github.com/UranusBlockStack/uranus/wallet"
@@ -50,8 +54,8 @@ func (api *APIBackend) BlockByHeight(ctx context.Context, height rpcapi.BlockHei
 	// Pending block is only known by the miner
 	if height == rpcapi.PendingBlockHeight {
 		block := api.u.miner.PendingBlock()
-		if block == nil {
-
+		if block != nil {
+			return block, nil
 		}
 		return nil, errors.New("Miner no have pending block")
 	}
@@ -171,4 +175,32 @@ func (api *APIBackend) ImportRawKey(privkey string, passphrase string) (utils.Ad
 // SuggestGasPrice suggest gas price
 func (api *APIBackend) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	return api.gp.SuggestPrice(ctx)
+}
+
+func (api *APIBackend) GetEVM(ctx context.Context, from utils.Address, tx *types.Transaction, state *state.StateDB, bheader *types.BlockHeader, vmCfg vm.Config) (*vm.EVM, func() error, error) {
+
+	state.SetBalance(from, math.MaxBig256)
+	vmError := func() error { return nil }
+
+	context := vm.Context{
+		CanTransfer: executor.CanTransfer,
+		Transfer:    executor.Transfer,
+		Origin:      from,
+		Coinbase:    utils.Address{},
+		BlockNumber: new(big.Int).Set(bheader.Height),
+		Time:        new(big.Int).Set(bheader.TimeStamp),
+		Difficulty:  new(big.Int).Set(bheader.Difficulty),
+		GasLimit:    bheader.GasLimit,
+		GasPrice:    new(big.Int).Set(tx.GasPrice()),
+	}
+	context.GetHash = func(n uint64) utils.Hash {
+		for header := api.u.BlockChain().Ledger.GetHeader(bheader.PreviousHash); header != nil; header = api.u.BlockChain().Ledger.GetHeader(header.PreviousHash) {
+			if n == header.Height.Uint64()-1 {
+				return header.PreviousHash
+			}
+		}
+		return utils.Hash{}
+	}
+
+	return vm.NewEVM(context, state, api.u.chainConfig, vmCfg), vmError, nil
 }

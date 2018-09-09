@@ -48,7 +48,19 @@ type StateTransition struct {
 // NewStateTransition initialises and returns a new state transition object.
 func NewStateTransition(evm *vm.EVM, tx *types.Transaction, gp *utils.GasPool) *StateTransition {
 	from, _ := tx.Sender(types.Signer{})
+	return &StateTransition{
+		gp:       gp,
+		evm:      evm,
+		from:     from,
+		tx:       tx,
+		gasPrice: tx.GasPrice(),
+		value:    tx.Value(),
+		data:     tx.Payload(),
+		state:    evm.StateDB,
+	}
+}
 
+func NewStateTransitionForApi(evm *vm.EVM, from utils.Address, tx *types.Transaction, gp *utils.GasPool) *StateTransition {
 	return &StateTransition{
 		gp:       gp,
 		evm:      evm,
@@ -137,7 +149,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		ret, st.gas, vmerr = evm.Call(sender, st.to(), st.data, st.gas, st.value)
 	}
 	if vmerr != nil {
-		log.Debug("VM returned with error", "err", vmerr)
+		log.Debugf("VM returned with err: %v ", vmerr)
 		if vmerr == vm.ErrInsufficientBalance {
 			return nil, 0, false, vmerr
 		}

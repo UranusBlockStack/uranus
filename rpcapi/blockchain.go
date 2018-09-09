@@ -100,7 +100,9 @@ func (s *BlockChainAPI) GetTransactionReceipt(Hash utils.Hash, reply *map[string
 	from, _ := stx.Tx.Sender(types.Signer{})
 	fields := map[string]interface{}{
 		"blockHash":         stx.BlockHash,
-		"blockNumber":       utils.Uint64(stx.BlockHeight),
+		"blockHeight":       utils.Uint64(stx.BlockHeight),
+		"root":              utils.Bytes(receipt.State),
+		"status":            utils.Uint(receipt.Status),
 		"transactionHash":   Hash,
 		"transactionIndex":  utils.Uint64(stx.TxIndex),
 		"from":              from,
@@ -111,12 +113,7 @@ func (s *BlockChainAPI) GetTransactionReceipt(Hash utils.Hash, reply *map[string
 		"logs":              receipt.Logs,
 		// 	"logsBloom":         receipt.LogsBloom,
 	}
-	// Assign receipt status or post state.
-	if len(receipt.State) > 0 {
-		fields["root"] = utils.Bytes(receipt.State)
-	} else {
-		fields["status"] = utils.Uint(receipt.Status)
-	}
+
 	if receipt.Logs == nil {
 		fields["logs"] = [][]*types.Log{}
 	}

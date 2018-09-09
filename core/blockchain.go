@@ -57,7 +57,7 @@ type BlockChain struct {
 	stateCache state.Database // State database to reuse between imports (contains state cache)
 	validator  *blockValidator.Validator
 
-	chainHeadFeed       feed.Feed
+	chainBlockFeed      feed.Feed
 	chainBlockscription feed.Subscription
 
 	executor *exec.Executor
@@ -145,14 +145,13 @@ func (bc *BlockChain) processBlocks() {
 			log.Errorf("inster chain err :%v", err)
 			continue
 		}
-		bc.chainHeadFeed.Send(event)
-
+		bc.chainBlockFeed.Send(event)
 	}
 
 }
 
-func (bc *BlockChain) postEvent(events interface{}, logs []*types.Log) {
-	// todo
+func (bc *BlockChain) PostEvent(event interface{}) {
+	bc.chainBlockFeed.Send(event)
 }
 
 func (bc *BlockChain) InsertChain(blocks types.Blocks) (int, error) {
@@ -170,11 +169,13 @@ func (bc *BlockChain) InsertChain(blocks types.Blocks) (int, error) {
 		if bc.HasBlock(blk.Hash()) {
 			continue
 		}
-		if _, _, err := bc.insertChain(blk); err == nil {
+		event, _, err := bc.insertChain(blk)
+		if err == nil {
 			n++
 		} else {
 			return n, err
 		}
+		bc.chainBlockFeed.Send(event)
 	}
 	return n, nil
 }
@@ -415,7 +416,7 @@ func (bc *BlockChain) StateAt(root utils.Hash) (*state.StateDB, error) {
 }
 
 // SubscribeChainBlockEvent registers a subscription of Blockfeed.
-func (bc *BlockChain) SubscribeChainBlockEvent(ch chan<- feed.BlockEvent) feed.Subscription {
-	bc.chainBlockscription = bc.chainHeadFeed.Subscribe(ch)
+func (bc *BlockChain) SubscribeChainBlockEvent(ch chan<- feed.BlockAndLogsEvent) feed.Subscription {
+	bc.chainBlockscription = bc.chainBlockFeed.Subscribe(ch)
 	return bc.chainBlockscription
 }

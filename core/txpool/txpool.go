@@ -41,7 +41,7 @@ type TxPool struct {
 	gasPrice      *big.Int
 	txFeed        feed.Feed
 	txScription   feed.Subscription
-	chainBlockCh  chan feed.BlockEvent
+	chainBlockCh  chan feed.BlockAndLogsEvent
 	chainBlockSub feed.Subscription
 	signer        types.Signer
 
@@ -81,7 +81,7 @@ func New(config *Config, chainconfig *params.ChainConfig, chain blockChainHelper
 	tp.queue = make(map[utils.Address]*txList)
 	tp.beats = make(map[utils.Address]time.Time)
 	tp.txs = newallTxs()
-	tp.chainBlockCh = make(chan feed.BlockEvent, 10)
+	tp.chainBlockCh = make(chan feed.BlockAndLogsEvent, 10)
 	tp.gasPrice = new(big.Int).SetUint64(config.PriceLimit)
 	tp.priceList = newpriceList(tp.txs)
 	tp.resetTxpoolState(nil, chain.CurrentBlock())

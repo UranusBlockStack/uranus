@@ -28,8 +28,6 @@ import (
 
 type NewTxsEvent struct{ Txs []*types.Transaction }
 
-type BlockEvent struct{ Block *types.Block }
-
 type ForkBlockEvent struct{ Block *types.Block }
 
 type NewMinedBlockEvent struct{ Block *types.Block }

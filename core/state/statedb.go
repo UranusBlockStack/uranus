@@ -187,7 +187,6 @@ func (self *StateDB) Empty(addr utils.Address) bool {
 	return so == nil || so.empty()
 }
 
-// Retrieve the balance from the given address or 0 if object not found
 func (self *StateDB) GetBalance(addr utils.Address) *big.Int {
 	stateObject := self.getStateObject(addr)
 	if stateObject != nil {

@@ -16,21 +16,36 @@
 
 package log
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
+)
 
 func formatArgs(args []interface{}) []interface{} {
 	results := make([]interface{}, len(args))
-	for k, v := range args {
-		var result interface{}
-		switch value := v.(type) {
+	f := func(value interface{}) (result interface{}) {
+		defer func() {
+			if err := recover(); err != nil {
+				if v := reflect.ValueOf(value); v.Kind() == reflect.Ptr && v.IsNil() {
+					result = "nil"
+				} else {
+					panic(err)
+				}
+			}
+		}()
+		switch v := value.(type) {
 		case error:
-			result = value.Error()
+			return v.Error()
+
 		case fmt.Stringer:
-			result = value.String()
+			return v.String()
 		default:
-			result = value
+			return v
 		}
-		results[k] = result
+	}
+
+	for k, v := range args {
+		results[k] = f(v)
 	}
 	return results
 }

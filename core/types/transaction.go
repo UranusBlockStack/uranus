@@ -42,7 +42,7 @@ type txdata struct {
 }
 
 // NewTransaction new transaction
-func NewTransaction(nonce uint64, to utils.Address, value *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *Transaction {
+func NewTransaction(nonce uint64, to *utils.Address, value *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *Transaction {
 	if len(data) > 0 {
 		data = utils.CopyBytes(data)
 	}
@@ -50,7 +50,7 @@ func NewTransaction(nonce uint64, to utils.Address, value *big.Int, gasLimit uin
 		Nonce:    nonce,
 		GasLimit: gasLimit,
 		GasPrice: new(big.Int),
-		To:       &to,
+		To:       to,
 		Value:    new(big.Int),
 		Payload:  data,
 	}

@@ -32,6 +32,10 @@ func (m *MinerBakend) Pending() (map[utils.Address]types.Transactions, error) {
 	return m.u.txPool.Pending()
 }
 
+func (m *MinerBakend) PostEvent(event interface{}) {
+	m.u.blockchain.PostEvent(event)
+}
+
 // GetCurrentInfo get blockchain current info
 func (m *MinerBakend) GetCurrentInfo() (*types.Block, *state.StateDB, error) {
 	return m.u.blockchain.GetCurrentInfo()

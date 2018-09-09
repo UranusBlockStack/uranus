@@ -29,5 +29,5 @@ type blockChainHelper interface {
 	CurrentBlock() *types.Block
 	GetBlock(hash utils.Hash) *types.Block
 	StateAt(root utils.Hash) (*state.StateDB, error)
-	SubscribeChainBlockEvent(ch chan<- feed.BlockEvent) feed.Subscription
+	SubscribeChainBlockEvent(ch chan<- feed.BlockAndLogsEvent) feed.Subscription
 }

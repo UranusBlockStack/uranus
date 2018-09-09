@@ -176,6 +176,8 @@ out:
 				log.Errorf("failed to write the block and state, for %s", err.Error())
 				break
 			}
+
+			m.uranus.PostEvent(feed.BlockAndLogsEvent{Block: result.block})
 			m.mux.Post(feed.NewMinedBlockEvent{
 				Block: result.block,
 			})

@@ -37,15 +37,6 @@ type PrecompiledContract interface {
 	Run(input []byte) ([]byte, error) // Run runs the precompiled contract
 }
 
-// PrecompiledContractsHomestead contains the default set of pre-compiled Ethereum
-// contracts used in the Frontier and Homestead releases.
-var PrecompiledContractsHomestead = map[utils.Address]PrecompiledContract{
-	utils.BytesToAddress([]byte{1}): &ecrecover{},
-	utils.BytesToAddress([]byte{2}): &sha256hash{},
-	utils.BytesToAddress([]byte{3}): &ripemd160hash{},
-	utils.BytesToAddress([]byte{4}): &dataCopy{},
-}
-
 // PrecompiledContractsByzantium contains the default set of pre-compiled Ethereum
 // contracts used in the Byzantium release.
 var PrecompiledContractsByzantium = map[utils.Address]PrecompiledContract{

@@ -19,12 +19,17 @@ package rpcapi
 import (
 	"context"
 	"errors"
+	"math"
 	"math/big"
+	"time"
 
+	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/core/executor"
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
+	"github.com/UranusBlockStack/uranus/core/vm"
 )
 
 // UranusAPI exposes methods for the RPC interface
@@ -136,6 +141,7 @@ func (args *SendTxArgs) check(ctx context.Context, b Backend) error {
 		if len(input) == 0 {
 			return errors.New(`contract creation without any data provided`)
 		}
+		args.Value = new(utils.Big)
 	}
 	return nil
 }
@@ -146,9 +152,9 @@ func (args *SendTxArgs) toTransaction() *types.Transaction {
 		input = *args.Data
 	}
 	if args.To == nil {
-		return types.NewTransaction(uint64(*args.Nonce), utils.Address{}, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+		return types.NewTransaction(uint64(*args.Nonce), nil, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
 	}
-	return types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+	return types.NewTransaction(uint64(*args.Nonce), args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
 }
 
 // SignAndSendTransaction sign and send transaction .
@@ -183,6 +189,88 @@ func (u *UranusAPI) SendRawTransaction(encodedTx utils.Bytes, reply *utils.Hash)
 	}
 	*reply = hash
 	return nil
+}
+
+// CallArgs represents the arguments for a call.
+type CallArgs struct {
+	From        utils.Address
+	To          *utils.Address
+	Gas         utils.Uint64
+	GasPrice    utils.Big
+	Value       utils.Big
+	Data        utils.Bytes
+	BlockHeight BlockHeight
+}
+
+// Call executes the given transaction on the state for the given block number.
+func (u *UranusAPI) Call(args CallArgs, reply *utils.Bytes) error {
+	timeout := 5 * time.Second
+	defer func(start time.Time) { log.Debugf("Executing EVM call finished runtime: %v", time.Since(start)) }(time.Now())
+
+	block, err := u.b.BlockByHeight(context.Background(), args.BlockHeight)
+	if err != nil {
+		return err
+	}
+	state, err := u.b.BlockChain().StateAt(block.StateRoot())
+	if err != nil {
+		return err
+	}
+
+	// Set default gas & gas price if none were set
+	gas, gasPrice := uint64(args.Gas), args.GasPrice.ToInt()
+	if gas == 0 {
+		gas = math.MaxUint64 / 2
+	}
+	if gasPrice.Sign() == 0 {
+		gasPrice = new(big.Int).SetUint64(1e9)
+	}
+
+	nonce, err := u.b.GetPoolNonce(context.Background(), args.From)
+	if err != nil {
+		return err
+	}
+
+	tx := types.NewTransaction(nonce, args.To, args.Value.ToInt(), gas, gasPrice, args.Data)
+
+	// Setup context so it may be cancelled the call has completed
+	// or, in case of unmetered gas, setup a context with a timeout.
+	var (
+		cancel context.CancelFunc
+		ctx    = context.Background()
+	)
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+	} else {
+		ctx, cancel = context.WithCancel(ctx)
+	}
+
+	// Make sure the context is cancelled when the call has completed
+	// this makes sure resources are cleaned up.
+	defer cancel()
+
+	// Get a new instance of the EVM.
+	evm, vmError, err := u.b.GetEVM(ctx, args.From, tx, state, block.BlockHeader(), vm.Config{})
+	if err != nil {
+		return err
+	}
+	// Wait for the context to be done and cancel the evm. Even if the
+	// EVM has finished, cancelling may be done (repeatedly)
+	go func() {
+		<-ctx.Done()
+		evm.Cancel()
+	}()
+
+	gp := new(utils.GasPool).AddGas(math.MaxUint64)
+
+	stx := executor.NewStateTransitionForApi(evm, args.From, tx, gp)
+
+	res, _, _, err := stx.TransitionDb()
+	if err := vmError(); err != nil {
+		return err
+	}
+
+	*reply = (utils.Bytes)(res)
+	return err
 }
 
 func (u *UranusAPI) getState(height BlockHeight) (*state.StateDB, error) {

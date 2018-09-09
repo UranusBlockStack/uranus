@@ -406,7 +406,8 @@ func opCaller(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *S
 }
 
 func opCallValue(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
-	stack.push(evm.interpreter.intPool.get().Set(contract.value))
+	value := evm.interpreter.intPool.get().Set(contract.value)
+	stack.push(value)
 	return nil, nil
 }
 
@@ -580,7 +581,6 @@ func opSstore(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *S
 	loc := utils.BigToHash(stack.pop())
 	val := stack.pop()
 	evm.StateDB.SetState(contract.Address(), loc, utils.BigToHash(val))
-
 	evm.interpreter.intPool.put(val)
 	return nil, nil
 }
@@ -639,9 +639,7 @@ func opCreate(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *S
 		input        = memory.Get(offset.Int64(), size.Int64())
 		gas          = contract.Gas
 	)
-	if params.IsEIP150(evm.BlockNumber) {
-		gas -= gas / 64
-	}
+	gas -= gas / 64
 
 	contract.UseGas(gas)
 	res, addr, returnGas, suberr := evm.Create(contract, input, gas, value)
@@ -649,9 +647,7 @@ func opCreate(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *S
 	// homestead we must check for CodeStoreOutOfGasError (homestead only
 	// rule) and treat as an error, if the ruleset is frontier we must
 	// ignore this error and pretend the operation was successful.
-	if params.IsHomestead(evm.BlockNumber) && suberr == ErrCodeStoreOutOfGas {
-		stack.push(evm.interpreter.intPool.getZero())
-	} else if suberr != nil && suberr != ErrCodeStoreOutOfGas {
+	if suberr != nil && suberr != ErrCodeStoreOutOfGas {
 		stack.push(evm.interpreter.intPool.getZero())
 	} else {
 		stack.push(addr.Big())
@@ -796,7 +792,6 @@ func opStop(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Sta
 func opSuicide(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 	balance := evm.StateDB.GetBalance(contract.Address())
 	evm.StateDB.AddBalance(utils.BigToAddress(stack.pop()), balance)
-
 	evm.StateDB.Suicide(contract.Address())
 	return nil, nil
 }

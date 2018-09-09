@@ -35,9 +35,9 @@ var amount uint64 = 1e18
 var testTxPoolConfig = &DefaultTxPoolConfig
 
 type testBlockChain struct {
-	statedb       *state.StateDB
-	gasLimit      uint64
-	chainHeadFeed *feed.Feed
+	statedb        *state.StateDB
+	gasLimit       uint64
+	chainBlockFeed *feed.Feed
 }
 
 func (bc *testBlockChain) CurrentBlock() *types.Block {
@@ -54,8 +54,8 @@ func (bc *testBlockChain) StateAt(utils.Hash) (*state.StateDB, error) {
 	return bc.statedb, nil
 }
 
-func (bc *testBlockChain) SubscribeChainBlockEvent(ch chan<- feed.BlockEvent) feed.Subscription {
-	return bc.chainHeadFeed.Subscribe(ch)
+func (bc *testBlockChain) SubscribeChainBlockEvent(ch chan<- feed.BlockAndLogsEvent) feed.Subscription {
+	return bc.chainBlockFeed.Subscribe(ch)
 }
 
 func transaction(nonce uint64, gaslimit uint64, key *ecdsa.PrivateKey) *types.Transaction {
@@ -63,7 +63,8 @@ func transaction(nonce uint64, gaslimit uint64, key *ecdsa.PrivateKey) *types.Tr
 }
 
 func pricedTransaction(nonce uint64, gaslimit uint64, gasprice *big.Int, key *ecdsa.PrivateKey) *types.Transaction {
-	tx := types.NewTransaction(nonce, utils.Address{}, big.NewInt(100), gaslimit, gasprice, nil)
+	add := utils.Address{}
+	tx := types.NewTransaction(nonce, &add, big.NewInt(100), gaslimit, gasprice, nil)
 	tx.SignTx(types.Signer{}, key)
 	return tx
 }
