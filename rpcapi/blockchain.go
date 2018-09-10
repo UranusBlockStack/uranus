@@ -34,16 +34,20 @@ func NewBlockChainAPI(b Backend) *BlockChainAPI {
 }
 
 type GetBlockByHeightArgs struct {
-	BlockHeight BlockHeight
+	BlockHeight *BlockHeight
 	FullTx      bool
 }
 
 // GetBlockByHeight returns the requested block.
 func (s *BlockChainAPI) GetBlockByHeight(args GetBlockByHeightArgs, reply *map[string]interface{}) error {
-	block, err := s.b.BlockByHeight(context.Background(), args.BlockHeight)
+	blockheight := LatestBlockHeight
+	if args.BlockHeight != nil {
+		blockheight = *args.BlockHeight
+	}
+	block, err := s.b.BlockByHeight(context.Background(), blockheight)
 	if block != nil {
 		response, err := s.rpcOutputBlock(block, true, args.FullTx)
-		if err == nil && args.BlockHeight == PendingBlockHeight {
+		if err == nil && blockheight == PendingBlockHeight {
 			for _, field := range []string{"hash", "nonce", "miner"} {
 				response[field] = nil
 			}

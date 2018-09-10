@@ -53,12 +53,20 @@ func (u *UranusAPI) SuggestGasPrice(ignore string, reply *big.Int) error {
 
 type GetBalanceArgs struct {
 	Address     utils.Address
-	BlockHeight BlockHeight
+	BlockHeight *BlockHeight
+}
+
+func (a GetBalanceArgs) getBlockHeight() BlockHeight {
+	blockheight := LatestBlockHeight
+	if a.BlockHeight != nil {
+		blockheight = *a.BlockHeight
+	}
+	return blockheight
 }
 
 // GetBalance returns the amount of wei for the given address in the state of the given block number
 func (u *UranusAPI) GetBalance(args GetBalanceArgs, reply *big.Int) error {
-	state, err := u.getState(args.BlockHeight)
+	state, err := u.getState(args.getBlockHeight())
 	if err != nil {
 		return err
 	}
@@ -72,7 +80,7 @@ type GetNonceArgs struct {
 
 // GetNonce returns nonce for the given address
 func (u *UranusAPI) GetNonce(args GetNonceArgs, reply *utils.Uint64) error {
-	state, err := u.getState(args.BlockHeight)
+	state, err := u.getState(args.getBlockHeight())
 	if err != nil {
 		return err
 	}
@@ -87,7 +95,7 @@ type GetCodeArgs struct {
 
 // GetCode returns code for the given address
 func (u *UranusAPI) GetCode(args GetCodeArgs, reply *utils.Bytes) error {
-	state, err := u.getState(args.BlockHeight)
+	state, err := u.getState(args.getBlockHeight())
 	if err != nil {
 		return err
 	}
@@ -199,15 +207,18 @@ type CallArgs struct {
 	GasPrice    utils.Big
 	Value       utils.Big
 	Data        utils.Bytes
-	BlockHeight BlockHeight
+	BlockHeight *BlockHeight
 }
 
 // Call executes the given transaction on the state for the given block number.
 func (u *UranusAPI) Call(args CallArgs, reply *utils.Bytes) error {
+	blockheight := LatestBlockHeight
+	if args.BlockHeight != nil {
+		blockheight = *args.BlockHeight
+	}
 	timeout := 5 * time.Second
 	defer func(start time.Time) { log.Debugf("Executing EVM call finished runtime: %v", time.Since(start)) }(time.Now())
-
-	block, err := u.b.BlockByHeight(context.Background(), args.BlockHeight)
+	block, err := u.b.BlockByHeight(context.Background(), blockheight)
 	if err != nil {
 		return err
 	}
