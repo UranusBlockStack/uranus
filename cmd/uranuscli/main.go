@@ -20,36 +20,33 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strings"
 
-	"github.com/UranusBlockStack/uranus/params"
 	"github.com/spf13/cobra"
 )
 
-// versionCmd represents the version command
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Show uranus current version",
-	Long:  `Show uranus current version`,
+// RootCmd represents the base command when called without any subcommands
+var RootCmd = &cobra.Command{
+	Use:   "uranuscli",
+	Short: "uranuscli is a commond line client for uranus.",
+	Long:  `uranuscli is a commond line client for uranus.`,
+	// Uncomment the following line if your bare application
+	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-		version()
+
 	},
 }
 
-func version() {
-	fmt.Println(strings.Title(params.Identifier))
-	fmt.Println("Version:", params.VersionFunc)
-	gitCommit := params.GitCommit()
-	if gitCommit != "" {
-		fmt.Println("Git Commit:", gitCommit)
+// Execute adds all child commands to the root command sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
+func Execute() {
+	AddCommands()
+	if err := RootCmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(-1)
 	}
-	fmt.Println("Architecture:", runtime.GOARCH)
-	fmt.Println("Go Version:", runtime.Version())
-	fmt.Println("Operating System:", runtime.GOOS)
-	fmt.Printf("GOPATH=%s\n", os.Getenv("GOPATH"))
-	fmt.Printf("GOROOT=%s\n", runtime.GOROOT())
 }
 
-func init() {
-	RootCmd.AddCommand(versionCmd)
+func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	Execute()
 }

@@ -16,33 +16,8 @@
 
 package main
 
-import (
-	"os"
-	"os/user"
-	"path/filepath"
-	"runtime"
-)
-
-func defaultDataDir() string {
-	home := homeDir()
-	if home != "" {
-		if runtime.GOOS == "darwin" {
-			return filepath.Join(home, "Library", "uranus_dir")
-		} else if runtime.GOOS == "windows" {
-			return filepath.Join(home, "AppData", "Roaming", "uranus_dir")
-		} else {
-			return filepath.Join(home, ".uranus_dir")
-		}
-	}
-	return ""
-}
-
-func homeDir() string {
-	if home := os.Getenv("HOME"); home != "" {
-		return home
-	}
-	if usr, err := user.Current(); err == nil {
-		return usr.HomeDir
-	}
-	return ""
+// AddCommands add uranus client command.
+func AddCommands() {
+	RootCmd.AddCommand(versionCmd)
+	RootCmd.AddCommand(listAccountsCmd)
 }

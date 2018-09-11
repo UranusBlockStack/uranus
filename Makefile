@@ -19,6 +19,10 @@ all:
 	@go install ./cmd/uranus
 	go build ./cmd/uranus
 	mv uranus ./build
+
+	@go install ./cmd/uranuscli
+	go build ./cmd/uranuscli
+	mv uranuscli ./build
 run:
 	@./build/uranus
 stop:

@@ -27,6 +27,7 @@ import (
 	"github.com/UranusBlockStack/uranus/core/txpool"
 	"github.com/UranusBlockStack/uranus/node"
 	"github.com/UranusBlockStack/uranus/p2p"
+	"github.com/UranusBlockStack/uranus/params"
 	"github.com/UranusBlockStack/uranus/server"
 )
 
@@ -57,7 +58,7 @@ func defaultMinerConifg() *pow.Config {
 	return &pow.Config{
 		CoinBaseAddr: utils.Address{}.Hex(),
 		MinerThreads: 1,
-		ExtraData:    VersionFunc,
+		ExtraData:    params.VersionFunc,
 	}
 }
 
@@ -75,7 +76,7 @@ func defaultTxPoolConfig() *txpool.Config {
 
 func defaultNodeConfig() *node.Config {
 	return &node.Config{
-		Name: Identifier,
+		Name: params.Identifier,
 		Host: "localhost",
 		Port: 8000,
 		Cors: []string{},

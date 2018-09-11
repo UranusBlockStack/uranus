@@ -21,3 +21,8 @@
 
 uranus
 !/cmd/uranus
+
+uranuscli
+!/cmd/uranuscli
+
+devenv/.vagrant

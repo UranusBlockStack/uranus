@@ -29,8 +29,8 @@ import (
 // versionCmd represents the version command
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Show uranus current version",
-	Long:  `Show uranus current version`,
+	Short: "Show uranuscli current version",
+	Long:  `Show uranuscli current version`,
 	Run: func(cmd *cobra.Command, args []string) {
 		version()
 	},
@@ -48,8 +48,4 @@ func version() {
 	fmt.Println("Operating System:", runtime.GOOS)
 	fmt.Printf("GOPATH=%s\n", os.Getenv("GOPATH"))
 	fmt.Printf("GOROOT=%s\n", runtime.GOROOT())
-}
-
-func init() {
-	RootCmd.AddCommand(versionCmd)
 }

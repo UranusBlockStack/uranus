@@ -17,39 +17,18 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"runtime"
-	"strings"
-
-	"github.com/UranusBlockStack/uranus/params"
+	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/spf13/cobra"
 )
 
-// versionCmd represents the version command
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Show uranus current version",
-	Long:  `Show uranus current version`,
+// listAccount represents the version command
+var listAccountsCmd = &cobra.Command{
+	Use:   "listAccounts",
+	Short: "List all exist accounts",
+	Long:  `List all exist accounts`,
 	Run: func(cmd *cobra.Command, args []string) {
-		version()
+		result := []utils.Address{}
+		ClientCall("Wallet.Accounts", nil, &result)
+		printJSONList(result)
 	},
-}
-
-func version() {
-	fmt.Println(strings.Title(params.Identifier))
-	fmt.Println("Version:", params.VersionFunc)
-	gitCommit := params.GitCommit()
-	if gitCommit != "" {
-		fmt.Println("Git Commit:", gitCommit)
-	}
-	fmt.Println("Architecture:", runtime.GOARCH)
-	fmt.Println("Go Version:", runtime.Version())
-	fmt.Println("Operating System:", runtime.GOOS)
-	fmt.Printf("GOPATH=%s\n", os.Getenv("GOPATH"))
-	fmt.Printf("GOROOT=%s\n", runtime.GOROOT())
-}
-
-func init() {
-	RootCmd.AddCommand(versionCmd)
 }
