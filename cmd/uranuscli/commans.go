@@ -18,6 +18,11 @@ package main
 
 // AddCommands add uranus client command.
 func AddCommands() {
+	// wallet command
 	RootCmd.AddCommand(versionCmd)
+	RootCmd.AddCommand(createAccountCmd)
+	RootCmd.AddCommand(deleteAccountCmd)
+	RootCmd.AddCommand(updateAccountCmd)
 	RootCmd.AddCommand(listAccountsCmd)
+	RootCmd.AddCommand(importRawKeyCmd)
 }
