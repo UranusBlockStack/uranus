@@ -25,6 +25,7 @@ import (
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
 	"github.com/UranusBlockStack/uranus/core/vm"
+	"github.com/UranusBlockStack/uranus/p2p"
 	"github.com/UranusBlockStack/uranus/wallet"
 )
 
@@ -58,4 +59,10 @@ type Backend interface {
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 	// evm
 	GetEVM(ctx context.Context, from utils.Address, tx *types.Transaction, state *state.StateDB, bheader *types.BlockHeader, vmCfg vm.Config) (*vm.EVM, func() error, error)
+
+	// p2p
+	AddPeer(url string) error
+	RemovePeer(url string) error
+	Peers() ([]*p2p.PeerInfo, error)
+	NodeInfo() (*p2p.NodeInfo, error)
 }

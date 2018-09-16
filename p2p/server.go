@@ -232,6 +232,8 @@ func (srv *Server) Self() *discover.Node {
 type dialer interface {
 	NewTasks(running int, peers map[discover.NodeID]*Peer) []Task
 	Done(Task, time.Time)
+	AddStatic(n *discover.Node)
+	RemoveStatic(n *discover.Node)
 }
 
 func (srv *Server) run(dialstate dialer) {
@@ -306,6 +308,15 @@ running:
 			case <-srv.quit:
 				break running
 			}
+		case n := <-srv.addnode:
+			log.Debugf("Adding static node %v", n.String())
+			dialstate.AddStatic(n)
+		case n := <-srv.removenode:
+			log.Debugf("Removing static node %v", n.String())
+			if p, ok := peers[n.ID]; ok {
+				p.Disconnect("remove")
+			}
+			dialstate.RemoveStatic(n)
 		case c := <-srv.addpeer:
 			err := srv.protoHandshakeChecks(peers, c)
 			if err == nil {

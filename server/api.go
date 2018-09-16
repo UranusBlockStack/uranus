@@ -19,6 +19,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/UranusBlockStack/uranus/common/math"
@@ -28,6 +29,8 @@ import (
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
 	"github.com/UranusBlockStack/uranus/core/vm"
+	"github.com/UranusBlockStack/uranus/p2p"
+	"github.com/UranusBlockStack/uranus/p2p/discover"
 	"github.com/UranusBlockStack/uranus/rpcapi"
 	"github.com/UranusBlockStack/uranus/server/forecast"
 	"github.com/UranusBlockStack/uranus/wallet"
@@ -35,8 +38,9 @@ import (
 
 // APIBackend implements node all apis.
 type APIBackend struct {
-	u  *Uranus
-	gp *forecast.Forecast
+	u   *Uranus
+	gp  *forecast.Forecast
+	srv *p2p.Server
 }
 
 // BlockChain return core blockchian.
@@ -203,4 +207,29 @@ func (api *APIBackend) GetEVM(ctx context.Context, from utils.Address, tx *types
 	}
 
 	return vm.NewEVM(context, state, api.u.chainConfig, vmCfg), vmError, nil
+}
+
+func (api *APIBackend) AddPeer(url string) error {
+	node, err := discover.ParseNode(url)
+	if err != nil {
+		return fmt.Errorf("invalid enode: %v", err)
+	}
+	api.srv.AddPeer(node)
+	return nil
+}
+func (api *APIBackend) RemovePeer(url string) error {
+	node, err := discover.ParseNode(url)
+	if err != nil {
+		return fmt.Errorf("invalid enode: %v", err)
+	}
+	api.srv.RemovePeer(node)
+	return nil
+}
+
+func (api *APIBackend) Peers() ([]*p2p.PeerInfo, error) {
+	return api.srv.PeersInfo(), nil
+}
+
+func (api *APIBackend) NodeInfo() (*p2p.NodeInfo, error) {
+	return api.srv.NodeInfo(), nil
 }

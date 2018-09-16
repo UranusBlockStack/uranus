@@ -19,8 +19,6 @@ package server
 import (
 	"sync"
 
-	"github.com/UranusBlockStack/uranus/server/forecast"
-
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/consensus"
@@ -35,6 +33,7 @@ import (
 	"github.com/UranusBlockStack/uranus/params"
 	"github.com/UranusBlockStack/uranus/rpc"
 	"github.com/UranusBlockStack/uranus/rpcapi"
+	"github.com/UranusBlockStack/uranus/server/forecast"
 	"github.com/UranusBlockStack/uranus/wallet"
 )
 
@@ -112,6 +111,11 @@ func (u *Uranus) Protocols() []*p2p.Protocol {
 func (u *Uranus) APIs() []rpc.API {
 	return []rpc.API{
 		{
+			Namespace: "Admin",
+			Version:   "0.0.1",
+			Service:   rpcapi.NewAdminAPI(u.uranusAPI),
+		},
+		{
 			Namespace: "Uranus",
 			Version:   "0.0.1",
 			Service:   rpcapi.NewUranusAPI(u.uranusAPI),
@@ -143,6 +147,7 @@ func (u *Uranus) Start(p2p *p2p.Server) error {
 	}
 	// start p2p
 	u.protocolManager.Start(p2p.MaxPeers)
+	u.uranusAPI.srv = p2p
 	return nil
 }
 

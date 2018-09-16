@@ -184,6 +184,17 @@ func (dm *DialerManager) Done(t Task, now time.Time) {
 	}
 }
 
+func (dm *DialerManager) AddStatic(n *discover.Node) {
+	if _, ok := dm.bootnodes[n.ID]; ok {
+		return
+	}
+	dm.bootnodes[n.ID] = n
+}
+
+func (dm *DialerManager) RemoveStatic(n *discover.Node) {
+	delete(dm.bootnodes, n.ID)
+}
+
 func (t *DialerTask) Do(srv *Server) error {
 	if t.dest.Incomplete() {
 		if srv.ntab == nil {
