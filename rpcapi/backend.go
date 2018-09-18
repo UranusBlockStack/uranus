@@ -65,4 +65,9 @@ type Backend interface {
 	RemovePeer(url string) error
 	Peers() ([]*p2p.PeerInfo, error)
 	NodeInfo() (*p2p.NodeInfo, error)
+
+	//miner
+	Start(int32) error
+	Stop() error
+	SetCoinbase(utils.Address) error
 }

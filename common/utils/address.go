@@ -50,7 +50,7 @@ func BytesToAddress(b []byte) Address {
 	return a
 }
 
-// IsHexAddr verifies whether a string can represent a valid hex-encodedaddress or not.
+// IsHexAddr verifies whether a string can represent a valid hex-encoded address or not.
 func IsHexAddr(s string) bool {
 	if hasHexPrefix(s) {
 		s = s[2:]

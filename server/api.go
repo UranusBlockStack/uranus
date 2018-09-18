@@ -233,3 +233,16 @@ func (api *APIBackend) Peers() ([]*p2p.PeerInfo, error) {
 func (api *APIBackend) NodeInfo() (*p2p.NodeInfo, error) {
 	return api.srv.NodeInfo(), nil
 }
+
+func (api *APIBackend) Start(threads int32) error {
+	//api.u.miner.SetThreads(threads)
+	return api.u.miner.Start()
+}
+func (api *APIBackend) Stop() error {
+	api.u.miner.Stop()
+	return nil
+}
+func (api *APIBackend) SetCoinbase(address utils.Address) error {
+	api.u.miner.SetCoinBase(&address)
+	return nil
+}

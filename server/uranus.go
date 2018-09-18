@@ -116,6 +116,11 @@ func (u *Uranus) APIs() []rpc.API {
 			Service:   rpcapi.NewAdminAPI(u.uranusAPI),
 		},
 		{
+			Namespace: "Miner",
+			Version:   "0.0.1",
+			Service:   rpcapi.NewMinerAPI(u.uranusAPI),
+		},
+		{
 			Namespace: "Uranus",
 			Version:   "0.0.1",
 			Service:   rpcapi.NewUranusAPI(u.uranusAPI),
