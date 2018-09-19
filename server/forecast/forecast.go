@@ -69,8 +69,17 @@ func NewForecast(f GetBlock, cfg *Config) *Forecast {
 
 // SuggestPrice returns the recommended gas price.
 func (gpf *Forecast) SuggestPrice(ctx context.Context) (*big.Int, error) {
-	lastBlockHash := gpf.lastBlockHash.Load().(utils.Hash)
-	lastPrice := gpf.lastPrice.Load().(*big.Int)
+
+	var (
+		lastBlockHash utils.Hash
+		lastPrice     *big.Int
+	)
+	if lbh, ok := gpf.lastBlockHash.Load().(utils.Hash); ok {
+		lastBlockHash = lbh
+	}
+	if lp, ok := gpf.lastPrice.Load().(*big.Int); ok {
+		lastPrice = lp
+	}
 
 	block, err := gpf.getBlockFunc(ctx, rpcapi.LatestBlockHeight)
 	if err != nil {
@@ -85,8 +94,12 @@ func (gpf *Forecast) SuggestPrice(ctx context.Context) (*big.Int, error) {
 	defer gpf.fetchLock.Unlock()
 
 	// try checking the cache again, maybe the last fetch fetched what we need
-	lastBlockHash = gpf.lastBlockHash.Load().(utils.Hash)
-	lastPrice = gpf.lastPrice.Load().(*big.Int)
+	if lbh, ok := gpf.lastBlockHash.Load().(utils.Hash); ok {
+		lastBlockHash = lbh
+	}
+	if lp, ok := gpf.lastPrice.Load().(*big.Int); ok {
+		lastPrice = lp
+	}
 	if blockHash == lastBlockHash {
 		return lastPrice, nil
 	}

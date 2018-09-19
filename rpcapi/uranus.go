@@ -42,12 +42,13 @@ func NewUranusAPI(b Backend) *UranusAPI {
 	return &UranusAPI{b}
 }
 
-//SuggestGasPrice Ssugget gas price.
-func (u *UranusAPI) SuggestGasPrice(ignore string, reply *big.Int) error {
-	reply, err := u.b.SuggestGasPrice(context.Background())
+// SuggestGasPrice return suggest gas price.
+func (u *UranusAPI) SuggestGasPrice(ignore string, reply *utils.Big) error {
+	gasprice, err := u.b.SuggestGasPrice(context.Background())
 	if err != nil {
 		return err
 	}
+	*reply = *(*utils.Big)(gasprice)
 	return nil
 }
 
@@ -65,12 +66,12 @@ func (a GetBalanceArgs) getBlockHeight() BlockHeight {
 }
 
 // GetBalance returns the amount of wei for the given address in the state of the given block number
-func (u *UranusAPI) GetBalance(args GetBalanceArgs, reply *big.Int) error {
+func (u *UranusAPI) GetBalance(args GetBalanceArgs, reply *utils.Big) error {
 	state, err := u.getState(args.getBlockHeight())
 	if err != nil {
 		return err
 	}
-	*reply = *state.GetBalance(args.Address)
+	*reply = *(*utils.Big)(state.GetBalance(args.Address))
 	return nil
 }
 

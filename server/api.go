@@ -67,6 +67,11 @@ func (api *APIBackend) BlockByHeight(ctx context.Context, height rpcapi.BlockHei
 	if height == rpcapi.LatestBlockHeight {
 		return api.u.blockchain.CurrentBlock(), nil
 	}
+
+	if height < -2 {
+		return nil, errors.New("block height must >= -2")
+	}
+
 	return api.u.blockchain.GetBlockByHeight(uint64(height)), nil
 }
 
