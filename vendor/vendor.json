@@ -21,22 +21,22 @@
 			"revisionTime": "2018-02-21T22:46:20Z"
 		},
 		{
-			"checksumSHA1": "Znv9iGcGyGdjX9tTG5VPC3K0JKg=",
+			"checksumSHA1": "H8uV6Utd4i6GoV/zgVlbGyoQDz0=",
 			"path": "github.com/ethereum/go-ethereum/crypto/bn256",
-			"revision": "35fcd2f42388d10c2c638dd3e2b4bd4306b07c19",
-			"revisionTime": "2018-08-03T10:26:39Z"
+			"revision": "736b45a87606e6cdfd5aecf38d259517b10e7f7e",
+			"revisionTime": "2018-09-19T12:08:42Z"
 		},
 		{
-			"checksumSHA1": "+c9pzVDj4bc2D/Q+7quvlkMPj8Y=",
+			"checksumSHA1": "aFyQMEKNzIyIRzEAdo8vGkOYqqc=",
 			"path": "github.com/ethereum/go-ethereum/crypto/bn256/cloudflare",
-			"revision": "35fcd2f42388d10c2c638dd3e2b4bd4306b07c19",
-			"revisionTime": "2018-08-03T10:26:39Z"
+			"revision": "736b45a87606e6cdfd5aecf38d259517b10e7f7e",
+			"revisionTime": "2018-09-19T12:08:42Z"
 		},
 		{
-			"checksumSHA1": "X0Pg6I9NK6GncAZ7f2lqkbYd0eU=",
+			"checksumSHA1": "Su8qqDZsl8ty3UJJMt/xY9ADa7A=",
 			"path": "github.com/ethereum/go-ethereum/crypto/bn256/google",
-			"revision": "35fcd2f42388d10c2c638dd3e2b4bd4306b07c19",
-			"revisionTime": "2018-08-03T10:26:39Z"
+			"revision": "736b45a87606e6cdfd5aecf38d259517b10e7f7e",
+			"revisionTime": "2018-09-19T12:08:42Z"
 		},
 		{
 			"checksumSHA1": "h1d2lPZf6j2dW/mIqVnd1RdykDo=",
@@ -325,6 +325,12 @@
 			"path": "golang.org/x/net/html/charset",
 			"revision": "ffcf1bedda3b04ebb15a168a59800a73d6dc0f4d",
 			"revisionTime": "2017-03-29T01:43:45Z"
+		},
+		{
+			"checksumSHA1": "REkmyB368pIiip76LiqMLspgCRk=",
+			"path": "golang.org/x/sys/cpu",
+			"revision": "ee1b12c67af419cf5a9be3bdbeea7fc1c5f32f11",
+			"revisionTime": "2018-09-18T09:30:11Z"
 		},
 		{
 			"checksumSHA1": "D5sLBEJArng5HCkJYSCtvD7xZNs=",
