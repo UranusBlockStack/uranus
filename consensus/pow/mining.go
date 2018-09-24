@@ -224,6 +224,7 @@ func (m *UMiner) GenerateBlocks(work *Work, quit <-chan struct{}) {
 	work.Block.WithStateRoot(work.state.IntermediateRoot(true))
 	header := m.currentWork.Block.BlockHeader()
 	header.ExtraData = m.extraData
+	header.GasUsed = *m.currentWork.gasUsed
 
 	block := types.NewBlock(header, work.txs, work.receipts)
 	work.Block = block
@@ -298,7 +299,7 @@ func (m *UMiner) SetCoinBase(addr *utils.Address) {
 	m.mu.Lock()
 	m.coinbase = addr
 	m.mu.Unlock()
-	m.prepareNewBlock()
+	//m.prepareNewBlock()
 }
 
 func (m *UMiner) GetCoinBase() *utils.Address {
@@ -346,7 +347,7 @@ func (m *UMiner) SetThreads(cnt int32) {
 	m.threads = cnt
 	m.mu.Unlock()
 
-	m.prepareNewBlock()
+	//m.prepareNewBlock()
 }
 
 func (m *UMiner) PendingBlock() *types.Block {

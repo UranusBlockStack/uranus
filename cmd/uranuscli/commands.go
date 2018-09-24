@@ -25,4 +25,34 @@ func AddCommands() {
 	RootCmd.AddCommand(updateAccountCmd)
 	RootCmd.AddCommand(listAccountsCmd)
 	RootCmd.AddCommand(importRawKeyCmd)
+
+	// admin command
+	RootCmd.AddCommand(listPeersCmd)
+	RootCmd.AddCommand(addPeerCmd)
+	RootCmd.AddCommand(removePeerCmd)
+	RootCmd.AddCommand(nodeInfoCmd)
+
+	// blockchain command
+	RootCmd.AddCommand(getBlockByHeightCmd)
+	RootCmd.AddCommand(getBlockByHashCmd)
+	RootCmd.AddCommand(getTransactionByHashCmd)
+	RootCmd.AddCommand(getTransactionReceiptCmd)
+
+	// txpool command
+	RootCmd.AddCommand(getContentCmd)
+	RootCmd.AddCommand(getStatusCmd)
+
+	// uranus command
+	RootCmd.AddCommand(suggestGasPriceCmd)
+	RootCmd.AddCommand(getBalanceCmd)
+	RootCmd.AddCommand(getNonceCmd)
+	RootCmd.AddCommand(getCodeCmd)
+	RootCmd.AddCommand(sendRawTransactionCmd)
+	RootCmd.AddCommand(signAndSendTransactionCmd)
+	RootCmd.AddCommand(callCmd)
+
+	// miner command
+	RootCmd.AddCommand(startMinerCmd)
+	RootCmd.AddCommand(stopMinerCmd)
+	RootCmd.AddCommand(setCoinbaseCmd)
 }

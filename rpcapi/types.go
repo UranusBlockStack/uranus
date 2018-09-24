@@ -17,11 +17,15 @@
 package rpcapi
 
 import (
+	"fmt"
+	"math"
 	"math/big"
+	"strings"
 
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 type BlockHeight int64
@@ -31,6 +35,40 @@ const (
 	LatestBlockHeight   = BlockHeight(-1)
 	EarliestBlockHeight = BlockHeight(0)
 )
+
+func (bn *BlockHeight) UnmarshalJSON(data []byte) error {
+	input := strings.TrimSpace(string(data))
+	if len(input) >= 2 && input[0] == '"' && input[len(input)-1] == '"' {
+		input = input[1 : len(input)-1]
+	}
+
+	switch input {
+	case "earliest":
+		*bn = EarliestBlockHeight
+		return nil
+	case "latest":
+		*bn = LatestBlockHeight
+		return nil
+	case "pending":
+		*bn = PendingBlockHeight
+		return nil
+	}
+
+	blckNum, err := hexutil.DecodeUint64(input)
+	if err != nil {
+		return err
+	}
+	if blckNum > math.MaxInt64 {
+		return fmt.Errorf("Blocknumber too high")
+	}
+
+	*bn = BlockHeight(blckNum)
+	return nil
+}
+
+func (bn BlockHeight) Int64() int64 {
+	return (int64)(bn)
+}
 
 type RPCTransaction struct {
 	BlockHash        utils.Hash     `json:"blockHash"`

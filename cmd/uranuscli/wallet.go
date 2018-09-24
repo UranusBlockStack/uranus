@@ -42,7 +42,7 @@ var deleteAccountCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		var result bool
 		ClientCall("Wallet.Delete", rpcapi.DeleteArgs{
-			Address:    utils.HexToAddress(args[0]),
+			Address:    utils.HexToAddress(isHexAddr(args[0])),
 			Passphrase: args[1]}, &result)
 		printJSON(result)
 	},
@@ -56,7 +56,7 @@ var updateAccountCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		var result bool
 		ClientCall("Wallet.Update", rpcapi.UpdateArgs{
-			Address:       utils.HexToAddress(args[0]),
+			Address:       utils.HexToAddress(isHexAddr(args[0])),
 			Passphrase:    args[1],
 			NewPassphrase: args[2]}, &result)
 		printJSON(result)

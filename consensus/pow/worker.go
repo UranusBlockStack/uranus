@@ -19,23 +19,26 @@ type Work struct {
 
 	txs      []*types.Transaction
 	receipts []*types.Receipt
+	gasUsed  *uint64
 	state    *state.StateDB
 	tcount   int // tx count in cycle
 }
 
 func NewWork(blk *types.Block, height uint64, state *state.StateDB) *Work {
 	return &Work{
-		Block:  blk,
-		Height: height,
-		state:  state,
-		signer: types.Signer{},
+		Block:   blk,
+		Height:  height,
+		state:   state,
+		gasUsed: new(uint64),
+		signer:  types.Signer{},
 	}
 }
 
 func (w *Work) applyTransactions(blockchain consensus.IBlockChain, txs *types.TransactionsByPriceAndNonce) error {
 	gp := new(utils.GasPool).AddGas(w.Block.BlockHeader().GasLimit)
-	var coalescedLogs []*types.Log
-
+	var (
+		coalescedLogs []*types.Log
+	)
 	for {
 		// If we don't have enough gas for any further transactions then we're done
 		if gp.Gas() < params.TxGas {
@@ -61,7 +64,7 @@ func (w *Work) applyTransactions(blockchain consensus.IBlockChain, txs *types.Tr
 		// Start executing the transaction
 		w.state.Prepare(tx.Hash(), utils.Hash{}, w.tcount)
 
-		err, logs := w.commitTransaction(tx, blockchain, gp)
+		err, logs := w.commitTransaction(tx, blockchain, w.gasUsed, gp)
 		switch err {
 		case utils.ErrGasLimitReached:
 			// Pop the current out-of-gas transaction without shifting in the next from the account
@@ -93,9 +96,9 @@ func (w *Work) applyTransactions(blockchain consensus.IBlockChain, txs *types.Tr
 	return nil
 }
 
-func (w *Work) commitTransaction(tx *types.Transaction, bc consensus.IBlockChain, gp *utils.GasPool) (error, []*types.Log) {
+func (w *Work) commitTransaction(tx *types.Transaction, bc consensus.IBlockChain, GasUsed *uint64, gp *utils.GasPool) (error, []*types.Log) {
 	snap := w.state.Snapshot()
-	receipt, _, err := bc.ExecTransaction(&w.Block.BlockHeader().Miner, gp, w.state, w.Block.BlockHeader(), tx, &w.Block.BlockHeader().GasUsed, vm.Config{})
+	receipt, _, err := bc.ExecTransaction(&w.Block.BlockHeader().Miner, gp, w.state, w.Block.BlockHeader(), tx, GasUsed, vm.Config{})
 	if err != nil {
 		w.state.RevertToSnapshot(snap)
 		return err, nil

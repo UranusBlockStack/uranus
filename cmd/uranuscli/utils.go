@@ -18,22 +18,25 @@ package main
 
 import (
 	"encoding/json"
+	"math/big"
 	"os"
 	"reflect"
+	"strconv"
 
 	"github.com/UranusBlockStack/uranus/common/utils"
 	urpc "github.com/UranusBlockStack/uranus/rpc"
+	"github.com/UranusBlockStack/uranus/rpcapi"
 	jww "github.com/spf13/jwalterweatherman"
 )
 
 var (
-	coreURL = utils.EnvString("Uranus_URL", "http://localhost:8000")
+	coreURL = utils.EnvString("URANUS_URL", "http://localhost:8000")
 )
 
 // MustRPCClient Wraper rpc's client
 func MustRPCClient() *urpc.Client {
 	utils.EnvParse()
-	client, err := urpc.DialHTTP("http://127.0.0.1:8000")
+	client, err := urpc.DialHTTP(*coreURL)
 	if err != nil {
 		jww.ERROR.Println(err)
 		os.Exit(1)
@@ -78,4 +81,47 @@ func printJSONList(data interface{}) {
 		}
 		jww.FEEDBACK.Println(string(rawData))
 	}
+}
+
+func isHexAddr(str string) string {
+	if !utils.IsHexAddr(str) {
+		jww.ERROR.Printf("Invalid hex value for address ")
+		os.Exit(1)
+	}
+	return str
+}
+
+func isHexHash(str string) string {
+	if !utils.IsHexHash(str) {
+		jww.ERROR.Printf("Invalid hex value for hash ")
+		os.Exit(1)
+	}
+	return str
+}
+
+func getBlockheight(arg string) *rpcapi.BlockHeight {
+	bh := new(rpcapi.BlockHeight)
+	if err := bh.UnmarshalJSON([]byte(arg)); err != nil {
+		jww.ERROR.Printf("Invalid fulltx value: %v err: %v", arg, err)
+		os.Exit(1)
+	}
+	return bh
+}
+
+func getUint64(arg string) uint64 {
+	num, err := strconv.ParseUint(arg, 10, 64)
+	if err != nil {
+		jww.ERROR.Printf("Invalid fulltx value: %v err: %v", arg, err)
+		os.Exit(1)
+	}
+	return num
+}
+
+func getbig(arg string) *big.Int {
+	num, err := strconv.ParseInt(arg, 10, 64)
+	if err != nil {
+		jww.ERROR.Printf("Invalid fulltx value: %v err: %v", arg, err)
+		os.Exit(1)
+	}
+	return big.NewInt(num)
 }
