@@ -25,7 +25,6 @@ import (
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 type BlockHeight int64
@@ -54,7 +53,7 @@ func (bn *BlockHeight) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	blckNum, err := hexutil.DecodeUint64(input)
+	blckNum, err := utils.DecodeUint64(input)
 	if err != nil {
 		return err
 	}
