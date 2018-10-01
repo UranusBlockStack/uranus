@@ -1,13 +1,32 @@
+// Copyright 2018 The uranus Authors
+// This file is part of the uranus library.
+//
+// The uranus library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The uranus library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
+
 package cpuminer
 
 import (
+	"errors"
 	"math/big"
 	"runtime"
 	"sync"
 
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/math"
+	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
+	"github.com/UranusBlockStack/uranus/params"
 )
 
 var (
@@ -147,4 +166,26 @@ func GetDifficult(time uint64, parentHeader *types.BlockHeader) *big.Int {
 	result.Mul(x, y)
 	result.Add(parentDifficult, result)
 	return result
+}
+
+// Author returning the header's miner as the proof-of-work verified author of the block.
+func (cm *CpuMiner) Author(header *types.BlockHeader) (utils.Address, error) {
+	return header.Miner, nil
+}
+
+// CalcDifficulty returns the difficulty that a new block should have when created at time
+// given the parent block's time and difficulty.
+func (cm *CpuMiner) CalcDifficulty(config *params.ChainConfig, time uint64, parent *types.BlockHeader) *big.Int {
+	return GetDifficult(time, parent)
+}
+
+// VerifySeal  checking whether the given block satisfies the PoW difficulty requirements.
+func (cm *CpuMiner) VerifySeal(header *types.BlockHeader) error {
+	var hashInt big.Int
+	hash := header.Hash()
+	hashInt.SetBytes(hash.Bytes())
+	if hashInt.Cmp(header.Difficulty) <= 0 {
+		return nil
+	}
+	return errors.New("invalid proof-of-work")
 }
