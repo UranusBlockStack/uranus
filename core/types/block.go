@@ -20,6 +20,7 @@ import (
 	"encoding/binary"
 	"io"
 	"math/big"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -122,6 +123,10 @@ type Block struct {
 	header       *BlockHeader
 	transactions []*Transaction
 
+	// caches
+	hash atomic.Value
+	size atomic.Value
+
 	// These fields are used to track inter-peer block relay.
 	ReceivedAt   time.Time
 	ReceivedFrom interface{}
@@ -170,10 +175,12 @@ func (b *Block) EncodeRLP(w io.Writer) error {
 // DecodeRLP implements rlp.Decoder
 func (b *Block) DecodeRLP(s *rlp.Stream) error {
 	rb := &rlpBlock{}
+	_, size, _ := s.Kind()
 	if err := s.Decode(rb); err != nil {
 		return err
 	}
 	b.header, b.transactions = rb.BlockHeader, rb.Txs
+	b.size.Store(utils.StorageSize(rlp.ListSize(size)))
 	return nil
 }
 
@@ -203,7 +210,12 @@ func (b *Block) BlockHeader() *BlockHeader    { return CopyBlockHeader(b.header)
 
 // Hash returns the keccak256 hash of b's header.
 func (b *Block) Hash() utils.Hash {
-	return b.header.Hash()
+	if hash := b.hash.Load(); hash != nil {
+		return hash.(utils.Hash)
+	}
+	hash := b.header.Hash()
+	b.hash.Store(hash)
+	return hash
 }
 
 func (b *Block) HashNoNonce() utils.Hash {
@@ -212,9 +224,14 @@ func (b *Block) HashNoNonce() utils.Hash {
 
 // Size returns the true RLP encoded storage size of the block
 func (b *Block) Size() utils.StorageSize {
+	if size := b.size.Load(); size != nil {
+		return size.(utils.StorageSize)
+	}
 	c := writeCounter(0)
 	rlp.Encode(&c, b)
-	return utils.StorageSize(c)
+	size := utils.StorageSize(c)
+	b.size.Store(size)
+	return size
 }
 
 // WithTxs  a block with the given txs data.
