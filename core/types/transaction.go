@@ -20,6 +20,7 @@ import (
 	"crypto/ecdsa"
 	"io"
 	"math/big"
+	"sync/atomic"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/rlp"
@@ -29,6 +30,11 @@ import (
 // Transaction transaction
 type Transaction struct {
 	data txdata
+
+	// caches
+	hash atomic.Value
+	size atomic.Value
+	from atomic.Value
 }
 
 type txdata struct {
@@ -91,21 +97,34 @@ func (tx *Transaction) EncodeRLP(w io.Writer) error {
 
 // DecodeRLP implements rlp.Decoder
 func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
+	_, size, _ := s.Kind()
 	err := s.Decode(&tx.data)
+	if err == nil {
+		tx.size.Store(utils.StorageSize(rlp.ListSize(size)))
+	}
 	return err
 }
 
 // Hash hashes the RLP encoding of tx. It uniquely identifies the transaction.
 func (tx *Transaction) Hash() utils.Hash {
-	return rlpHash(tx)
+	if hash := tx.hash.Load(); hash != nil {
+		return hash.(utils.Hash)
+	}
+	hash := rlpHash(tx)
+	tx.hash.Store(hash)
+	return hash
 }
 
 // Size returns the true RLP encoded storage size of the transaction
 func (tx *Transaction) Size() utils.StorageSize {
-
+	if size := tx.size.Load(); size != nil {
+		return size.(utils.StorageSize)
+	}
 	c := writeCounter(0)
 	rlp.Encode(&c, &tx.data)
-	return utils.StorageSize(c)
+	size := utils.StorageSize(c)
+	tx.size.Store(size)
+	return size
 }
 
 // WithSignature returns a new transaction with the given signature.
@@ -126,11 +145,19 @@ func (tx *Transaction) SignTx(s Signer, prv *ecdsa.PrivateKey) error {
 
 // Sender sender address of the transaction using the given signer
 func (tx *Transaction) Sender(signer Signer) (utils.Address, error) {
+	if sender := tx.from.Load(); sender != nil {
+		return sender.(utils.Address), nil
+	}
 	r, s, v, err := signer.SignatureValues(tx, tx.data.Signature)
 	if err != nil {
 		return utils.Address{}, err
 	}
-	return recoverPlain(signer.Hash(tx), r, s, v, false)
+	addr, err := recoverPlain(signer.Hash(tx), r, s, v, false)
+	if err != nil {
+		return utils.Address{}, err
+	}
+	tx.from.Store(addr)
+	return addr, nil
 }
 
 // ChainID returns which chain id this transaction was signed for (if at all)
