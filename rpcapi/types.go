@@ -17,6 +17,7 @@
 package rpcapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/big"
@@ -63,6 +64,20 @@ func (bn *BlockHeight) UnmarshalJSON(data []byte) error {
 
 	*bn = BlockHeight(blckNum)
 	return nil
+}
+
+func (bn *BlockHeight) MarshalJSON() (b []byte, err error) {
+	switch *bn {
+	case EarliestBlockHeight:
+		b, err = json.Marshal("earliest")
+	case LatestBlockHeight:
+		b, err = json.Marshal("latest")
+	case PendingBlockHeight:
+		b, err = json.Marshal("pending")
+	default:
+		b, err = json.Marshal(utils.EncodeUint64ToHex(uint64(*bn)))
+	}
+	return
 }
 
 func (bn BlockHeight) Int64() int64 {
