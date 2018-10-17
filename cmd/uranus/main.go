@@ -102,7 +102,7 @@ func init() {
 	falgs.StringArrayVar(&startConfig.NodeConfig.Cors, "node_rpccors", startConfig.NodeConfig.Cors, "HTTP and RPC accept cross origin requests")
 
 	// p2p
-	falgs.StringVar(&startConfig.NodeConfig.P2P.ListenAddr, "p2p_listenaddr", startConfig.NodeConfig.P2P.ListenAddr, "p2p listening port")
+	falgs.StringVar(&startConfig.NodeConfig.P2P.ListenAddr, "p2p_listenaddr", startConfig.NodeConfig.P2P.ListenAddr, "p2p listening url")
 	falgs.IntVar(&startConfig.NodeConfig.P2P.MaxPeers, "p2p_maxpeers", startConfig.NodeConfig.P2P.MaxPeers, "maximum number of network peers")
 	// falgs.StringArrayVar(&startConfig.NodeConfig.P2P.BootNodeStrs, "p2p_bootnodes", startConfig.NodeConfig.P2P.BootNodeStrs, "comma separated enode URLs for P2P discovery bootstrap")
 

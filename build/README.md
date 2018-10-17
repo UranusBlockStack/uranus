@@ -22,7 +22,7 @@ var BootNodes = []string{
 2. configuration
 - datadir: data dir
 - miner_start: start miner,default does not start mining 
-- p2p_listenaddr: p2p listen port, default`:7090`
+- p2p_listenaddr: p2p listen url, default`127.0.0.1:7090`
 - node_rpcport: rpc listen port, default`:8000`
 
 #### Local multi process node test

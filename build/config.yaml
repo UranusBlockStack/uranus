@@ -36,7 +36,7 @@ txpool-globalqueue: 1024
 txpool-timeout: 3h
 
 # Network listening port
-p2p-listenaddr: ":7090"
+p2p-listenaddr: "127.0.0.1:7090"
 
 # Maximum number of network peers
 p2p-maxpeers: 25
