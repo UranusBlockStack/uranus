@@ -70,9 +70,8 @@ func (c *httpClient) Write(d []byte) (n int, err error) {
 	c.req.Body = ioutil.NopCloser(bytes.NewReader(d))
 	resp, err := c.client.Do(c.req)
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
-
 	c.resp <- resp
 	return len(d), nil
 }
