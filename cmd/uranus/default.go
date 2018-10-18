@@ -58,7 +58,7 @@ func defaultMinerConifg() *pow.Config {
 	return &pow.Config{
 		CoinBaseAddr: utils.Address{}.Hex(),
 		MinerThreads: 1,
-		ExtraData:    params.VersionFunc,
+		ExtraData:    params.VersionWithCommit(params.GitCommit()),
 	}
 }
 
