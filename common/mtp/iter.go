@@ -466,6 +466,95 @@ func (it *differenceIterator) Error() error {
 	return it.b.Error()
 }
 
+type prefixIterator struct {
+	prefix       []byte
+	nodeIterator NodeIterator
+}
+
+// newPrefixIterator constructs a NodeIterator, iterates over elements in trie that
+// has utils prefix.
+func newPrefixIterator(trie *Trie, prefix []byte) NodeIterator {
+	if trie.Hash() == emptyState {
+		return new(prefixIterator)
+	}
+	// nodeIterator will convert prefix to hex
+	nodeIt := newNodeIterator(trie, prefix)
+	prefix = keybytesToHex(prefix)
+	return &prefixIterator{
+		nodeIterator: nodeIt,
+		prefix:       prefix[:len(prefix)-1], // remove the hex terminator
+	}
+}
+
+// hasPrefix return whether the nodeIterator has utils prefix
+func (it *prefixIterator) hasPrefix() bool {
+	return bytes.HasPrefix(it.nodeIterator.Path(), it.prefix)
+}
+
+func (it *prefixIterator) Hash() utils.Hash {
+	if it.hasPrefix() {
+		return it.nodeIterator.Hash()
+	}
+	return utils.Hash{}
+}
+
+func (it *prefixIterator) Parent() utils.Hash {
+	if it.hasPrefix() {
+		it.nodeIterator.Parent()
+	}
+	return utils.Hash{}
+}
+
+func (it *prefixIterator) Leaf() bool {
+	if it.hasPrefix() {
+		return it.nodeIterator.Leaf()
+	}
+	return false
+}
+
+func (it *prefixIterator) LeafBlob() []byte {
+	if it.hasPrefix() {
+		return it.nodeIterator.LeafBlob()
+	}
+	return nil
+}
+
+func (it *prefixIterator) LeafProof() [][]byte {
+	if it.hasPrefix() {
+		return it.nodeIterator.LeafProof()
+	}
+	return nil
+}
+
+func (it *prefixIterator) LeafKey() []byte {
+	if it.hasPrefix() {
+		return it.nodeIterator.LeafKey()
+	}
+	return nil
+}
+
+func (it *prefixIterator) Path() []byte {
+	if it.hasPrefix() {
+		return it.nodeIterator.Path()
+	}
+	return nil
+}
+
+// Next moves the iterator to the next node, returning whether there are any
+// further nodes which has utils prefix.
+func (it *prefixIterator) Next(descend bool) bool {
+	if it.nodeIterator.Next(descend) {
+		if it.hasPrefix() {
+			return true
+		}
+	}
+	return false
+}
+
+func (it *prefixIterator) Error() error {
+	return it.nodeIterator.Error()
+}
+
 type nodeIteratorHeap []NodeIterator
 
 func (h nodeIteratorHeap) Len() int            { return len(h) }
