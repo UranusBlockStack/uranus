@@ -38,8 +38,8 @@ var versionCmd = &cobra.Command{
 
 func version() {
 	fmt.Println(strings.Title(params.Identifier))
-	fmt.Println("Version:", params.VersionFunc)
 	gitCommit := params.GitCommit()
+	fmt.Println("Version:", params.VersionWithCommit(gitCommit))
 	if gitCommit != "" {
 		fmt.Println("Git Commit:", gitCommit)
 	}

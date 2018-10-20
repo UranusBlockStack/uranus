@@ -30,7 +30,6 @@ import (
 var (
 	// emptyRoot is the known root hash of an empty trie.
 	emptyRoot = utils.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
-
 	// emptyState is the known hash of an empty state trie entry.
 	emptyState = crypto.Keccak256Hash(nil)
 )

@@ -23,8 +23,8 @@ import (
 	"github.com/UranusBlockStack/uranus/common/utils"
 )
 
-func TestRLP(t *testing.T) {
-	receipt := &Receipt{
+var (
+	testReceipt = &Receipt{
 		Status:            ReceiptStatusSuccessful,
 		CumulativeGasUsed: 1,
 		Logs: []*Log{
@@ -35,7 +35,10 @@ func TestRLP(t *testing.T) {
 		ContractAddress: utils.BytesToAddress([]byte{0x01, 0x11, 0x11}),
 		GasUsed:         111111,
 	}
-	data, err := rlp.EncodeToBytes((*ReceiptForStorage)(receipt))
+)
+
+func TestRLP(t *testing.T) {
+	data, err := rlp.EncodeToBytes((*ReceiptForStorage)(testReceipt))
 	if err != nil {
 		t.Error(err)
 	}
@@ -55,7 +58,7 @@ func TestRLP(t *testing.T) {
 	// ReceiptForStorage
 	utils.AssertEquals(t, data, tmpdata)
 
-	data, err = rlp.EncodeToBytes(receipt)
+	data, err = rlp.EncodeToBytes(testReceipt)
 	if err != nil {
 		t.Error(err)
 	}

@@ -58,7 +58,7 @@ func defaultMinerConifg() *pow.Config {
 	return &pow.Config{
 		CoinBaseAddr: utils.Address{}.Hex(),
 		MinerThreads: 1,
-		ExtraData:    params.VersionFunc,
+		ExtraData:    params.VersionWithCommit(params.GitCommit()),
 	}
 }
 
@@ -87,7 +87,7 @@ func defaultNodeConfig() *node.Config {
 func defaultP2PConfig() *p2p.Config {
 	// todo add p2p config-
 	return &p2p.Config{
-		ListenAddr: ":7090",
+		ListenAddr: "127.0.0.1:7090",
 		MaxPeers:   25,
 	}
 }
