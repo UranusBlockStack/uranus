@@ -15,3 +15,36 @@
 // along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
 
 package types
+
+import (
+	"math/big"
+	"testing"
+
+	"github.com/UranusBlockStack/uranus/common/crypto"
+	"github.com/UranusBlockStack/uranus/common/utils"
+)
+
+var (
+	testPrivHex = "9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658"
+	testAddrHex = "0xC08B5542D177ac6686946920409741463a15dDdB"
+	testmsg     = rlpHash([]byte("test"))
+)
+
+func TestRecoverPlain(t *testing.T) {
+	key, _ := crypto.HexToECDSA(testPrivHex)
+	expAddr := utils.HexToAddress(testAddrHex)
+	signature, err := crypto.Sign(testmsg.Bytes(), key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := new(big.Int).SetBytes(signature[:32])
+	s := new(big.Int).SetBytes(signature[32:64])
+	v := new(big.Int).SetBytes([]byte{signature[64] + 27})
+
+	addr, err := recoverPlain(testmsg, r, s, v, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	utils.AssertEquals(t, addr, expAddr)
+
+}
