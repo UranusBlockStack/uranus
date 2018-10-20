@@ -17,6 +17,7 @@
 package wallet
 
 import (
+	"crypto/ecdsa"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -160,4 +161,17 @@ func (w *Wallet) SignTx(addr utils.Address, tx *types.Transaction, passphrase st
 
 	w.accountCache.Add(addr, &lockAccount{passphrase: passphrase, account: account})
 	return tx, nil
+}
+
+func (w *Wallet) SignHash(addr utils.Address, hash []byte) ([]byte, error) {
+	var prv *ecdsa.PrivateKey
+	passphrase := "coinbase"
+
+	fileName := filepath.Join(w.ks.keyStoreDir, addr.Hex()+keyFileSuffix)
+	account, err := w.ks.GetKey(addr, fileName, passphrase)
+	if err != nil {
+		return nil, err
+	}
+	prv = account.PrivateKey
+	return crypto.Sign(hash[:], prv)
 }

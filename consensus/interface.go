@@ -17,6 +17,7 @@
 package consensus
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/UranusBlockStack/uranus/common/utils"
@@ -30,7 +31,11 @@ import (
 type Engine interface {
 	Author(header *types.BlockHeader) (utils.Address, error) //Delete
 	CalcDifficulty(config *params.ChainConfig, time uint64, parent *types.BlockHeader) *big.Int
-	VerifySeal(header *types.BlockHeader) error
+
+	VerifySeal(chain IChainReader, header *types.BlockHeader) error
+	//VerifyHeader(chain IChainReader, header *types.BlockHeader) error
+
+	Seal(chain IChainReader, block *types.Block, stop <-chan struct{}, threads int, updateHashes chan uint64) (*types.Block, error)
 }
 
 type ITxPool interface {
@@ -44,7 +49,25 @@ type IBlockChain interface {
 	ExecTransaction(*utils.Address, *utils.GasPool, *state.StateDB, *types.BlockHeader, *types.Transaction, *uint64, vm.Config) (*types.Receipt, uint64, error)
 }
 
+type IChainReader interface {
+	Config() *params.ChainConfig
+	CurrentBlock() *types.Block
+	GetBlockByHeight(uint64) *types.Block
+	GetBlockByHash(utils.Hash) *types.Block
+}
+
 type IUranus interface {
 	ITxPool
 	IBlockChain
+	IChainReader
 }
+
+var (
+	ErrUnknownBlock = errors.New("unknown block")
+
+	ErrUnknownAncestor = errors.New("unknown ancestor")
+
+	ErrFutureBlock = errors.New("block in the future")
+
+	ErrInvalidNumber = errors.New("invalid block number")
+)

@@ -22,7 +22,7 @@ import (
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/utils"
-	"github.com/UranusBlockStack/uranus/consensus/pow"
+	"github.com/UranusBlockStack/uranus/consensus/miner"
 	"github.com/UranusBlockStack/uranus/node"
 	"github.com/UranusBlockStack/uranus/params"
 	"github.com/UranusBlockStack/uranus/wallet"
@@ -37,7 +37,7 @@ func CreateDB(ctx *node.Context, config *UranusConfig, name string) (db.Database
 	return db, nil
 }
 
-func checkMinerConfig(cfg *pow.Config, wallet *wallet.Wallet) *pow.Config {
+func checkMinerConfig(cfg *miner.Config, wallet *wallet.Wallet) *miner.Config {
 	// extra data
 	if uint64(len([]byte(cfg.ExtraData))) > params.MaxExtraDataSize {
 		log.Warnf("Miner extra data exceed limit extra: %v, limit:%v", cfg.ExtraData, params.MaxExtraDataSize)

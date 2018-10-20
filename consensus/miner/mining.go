@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
 
-package pow
+package miner
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ import (
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/consensus"
-	"github.com/UranusBlockStack/uranus/consensus/pow/cpuminer"
+	"github.com/UranusBlockStack/uranus/consensus/dpos"
 	"github.com/UranusBlockStack/uranus/core/types"
 	"github.com/UranusBlockStack/uranus/feed"
 	"github.com/UranusBlockStack/uranus/node/protocols"
@@ -69,13 +69,13 @@ type UMiner struct {
 	extraData   []byte
 	coinbase    *utils.Address
 	currentWork *Work
-	engine      *cpuminer.CpuMiner
+	engine      consensus.Engine
 	config      *params.ChainConfig
 
 	mux *feed.TypeMux
 }
 
-func NewUranusMiner(mux *feed.TypeMux, config *params.ChainConfig, minerCfg *Config, uranus consensus.IUranus) *UMiner {
+func NewUranusMiner(mux *feed.TypeMux, config *params.ChainConfig, minerCfg *Config, uranus consensus.IUranus, engine consensus.Engine) *UMiner {
 	coinbase := utils.HexToAddress(minerCfg.CoinBaseAddr)
 	uminer := &UMiner{
 		mux:              mux,
@@ -91,7 +91,7 @@ func NewUranusMiner(mux *feed.TypeMux, config *params.ChainConfig, minerCfg *Con
 		updateHashes:     make(chan uint64),
 		extraData:        []byte(minerCfg.ExtraData),
 		coinbase:         &coinbase,
-		engine:           cpuminer.NewCpuMiner(),
+		engine:           engine,
 	}
 	go uminer.loop()
 	return uminer
@@ -123,14 +123,14 @@ out:
 }
 
 func (m *UMiner) Start() error {
-	m.stopCh = make(chan struct{})
-	m.speedMonitorQuit = make(chan struct{})
-	m.workCh = make(chan *Work)
-	m.recvCh = make(chan *Result)
 	if atomic.LoadInt32(&m.mining) == 1 {
 		log.Info("Miner is running")
 		return fmt.Errorf("miner is running")
 	}
+	m.stopCh = make(chan struct{})
+	m.speedMonitorQuit = make(chan struct{})
+	m.workCh = make(chan *Work)
+	m.recvCh = make(chan *Result)
 
 	// if atomic.LoadInt32(&m.canStart) == 0 {
 	// 	log.Info("Can not start miner when syncing")
@@ -143,10 +143,11 @@ func (m *UMiner) Start() error {
 		return nil
 	}
 
-	m.wg.Add(3)
+	m.wg.Add(4)
 	go m.Wait()
 	go m.Update()
 	go m.SpeedMonitor()
+	go m.mintLoop()
 
 	if err := m.prepareNewBlock(); err != nil { // try to prepare the first block
 		log.Warnf("mining prepareNewBlock err: %v", err)
@@ -245,7 +246,7 @@ func (m *UMiner) GenerateBlocks(work *Work, quit <-chan struct{}) {
 	block := types.NewBlock(header, work.txs, work.receipts)
 	work.Block = block
 
-	if result, err := m.engine.Mine(work.Block, quit, int(m.threads), m.updateHashes); result != nil {
+	if result, err := m.engine.Seal(m.uranus, work.Block, quit, int(m.threads), m.updateHashes); result != nil {
 		log.Infof("Successfully sealed new block number: %v, hash: %v, diff: %v", result.Height(), result.Hash(), result.Difficulty())
 		m.recvCh <- &Result{work, result}
 	} else {
@@ -274,7 +275,7 @@ func (m *UMiner) prepareNewBlock() error {
 	}
 
 	height := parent.BlockHeader().Height
-	difficult := cpuminer.GetDifficult(uint64(timestamp), parent.BlockHeader())
+	difficult := m.engine.CalcDifficulty(m.uranus.Config(), uint64(timestamp), parent.BlockHeader())
 	log.Debugf("block_height: %+v, difficult: %+v, hash: %v", parent.Height().Uint64(), difficult.Uint64(), parent.Hash())
 	header := &types.BlockHeader{
 		PreviousHash: parent.Hash(),
@@ -391,4 +392,25 @@ func calcGasLimit(parent *types.Block) uint64 {
 		}
 	}
 	return limit
+}
+
+func (m *UMiner) mintLoop() {
+	dpos, ok := m.engine.(*dpos.Dpos)
+	if !ok {
+		log.Error("Only the dpos engine was allowed")
+		return
+	}
+	ticker := time.NewTicker(6 * time.Second).C
+	for {
+		select {
+		case now := <-ticker:
+			err := dpos.CheckValidator(m.uranus.CurrentBlock(), now.Unix())
+			if err != nil {
+				continue
+			}
+			m.prepareNewBlock()
+		case <-m.stopCh:
+			return
+		}
+	}
 }

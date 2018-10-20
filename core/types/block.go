@@ -242,9 +242,9 @@ func (b *Block) WithTxs(txs []*Transaction) *Block {
 
 // WithSeal returns a new block with the data from b but the header replaced with the sealed one.
 func (b *Block) WithSeal(header *BlockHeader) *Block {
-	cpy := *header
+	cpy := CopyBlockHeader(header)
 	return &Block{
-		header:       &cpy,
+		header:       cpy,
 		transactions: b.transactions,
 	}
 }

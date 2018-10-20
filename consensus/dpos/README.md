@@ -1,1 +1,1 @@
-＃ dpos
+# dpos  delegated-proof-of-stake

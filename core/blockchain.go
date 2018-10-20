@@ -181,7 +181,7 @@ func (bc *BlockChain) InsertChain(blocks types.Blocks) (int, error) {
 }
 
 func (bc *BlockChain) insertChain(block *types.Block) (interface{}, []*types.Log, error) {
-	err := bc.validator.ValidateHeader(block.BlockHeader(), bc.config, true)
+	err := bc.validator.ValidateHeader(bc, block.BlockHeader(), true)
 	if err == nil {
 		err = bc.validator.ValidateTxs(block)
 	}
@@ -419,4 +419,8 @@ func (bc *BlockChain) StateAt(root utils.Hash) (*state.StateDB, error) {
 func (bc *BlockChain) SubscribeChainBlockEvent(ch chan<- feed.BlockAndLogsEvent) feed.Subscription {
 	bc.chainBlockscription = bc.chainBlockFeed.Subscribe(ch)
 	return bc.chainBlockscription
+}
+
+func (bc *BlockChain) Config() *params.ChainConfig {
+	return bc.config
 }

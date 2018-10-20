@@ -39,7 +39,7 @@ func New(ledger *ledger.Ledger, engine consensus.Engine) *Validator {
 }
 
 // ValidateHeader verifies the the block header
-func (v *Validator) ValidateHeader(header *types.BlockHeader, config *params.ChainConfig, seal bool) error {
+func (v *Validator) ValidateHeader(chain consensus.IChainReader, header *types.BlockHeader, seal bool) error {
 	var parent *types.BlockHeader
 
 	if v.ledger.GetHeader(header.Hash()) == nil {
@@ -61,7 +61,7 @@ func (v *Validator) ValidateHeader(header *types.BlockHeader, config *params.Cha
 	}
 
 	// Verify the block's difficulty based in it's timestamp and parent's difficulty
-	expected := v.engine.CalcDifficulty(config, header.TimeStamp.Uint64(), parent)
+	expected := v.engine.CalcDifficulty(chain.Config(), header.TimeStamp.Uint64(), parent)
 	if expected.Cmp(header.Difficulty) != 0 {
 		return ErrDifficulty(header.Difficulty, expected)
 	}
@@ -92,7 +92,7 @@ func (v *Validator) ValidateHeader(header *types.BlockHeader, config *params.Cha
 	}
 	// Verify the engine specific seal securing the block
 	if seal {
-		if err := v.engine.VerifySeal(header); err != nil {
+		if err := v.engine.VerifySeal(chain, header); err != nil {
 			return err
 		}
 	}

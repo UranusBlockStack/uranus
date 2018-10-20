@@ -19,10 +19,13 @@ package server
 import (
 	"sync"
 
+	"github.com/UranusBlockStack/uranus/server/forecast"
+
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/log"
-	"github.com/UranusBlockStack/uranus/consensus"
-	"github.com/UranusBlockStack/uranus/consensus/pow"
+	"github.com/UranusBlockStack/uranus/consensus/dpos"
+	"github.com/UranusBlockStack/uranus/consensus/miner"
+	"github.com/UranusBlockStack/uranus/consensus/pow/cpuminer"
 	"github.com/UranusBlockStack/uranus/core"
 	"github.com/UranusBlockStack/uranus/core/ledger"
 	"github.com/UranusBlockStack/uranus/core/txpool"
@@ -33,7 +36,6 @@ import (
 	"github.com/UranusBlockStack/uranus/params"
 	"github.com/UranusBlockStack/uranus/rpc"
 	"github.com/UranusBlockStack/uranus/rpcapi"
-	"github.com/UranusBlockStack/uranus/server/forecast"
 	"github.com/UranusBlockStack/uranus/wallet"
 )
 
@@ -42,7 +44,7 @@ type Uranus struct {
 	config      *UranusConfig
 	chainConfig *params.ChainConfig
 
-	miner      *pow.UMiner
+	miner      *miner.UMiner
 	blockchain *core.BlockChain
 	txPool     *txpool.TxPool
 	chainDb    db.Database // Block chain database
@@ -89,15 +91,19 @@ func New(ctx *node.Context, config *UranusConfig) (*Uranus, error) {
 	uranus.txPool = txpool.New(config.TxPoolConfig, uranus.chainConfig, uranus.blockchain)
 
 	mux := &feed.TypeMux{}
+
+	engine := cpuminer.NewCpuMiner()
+	dpos := dpos.NewDpos(uranus.wallet.SignHash)
 	// miner
-	uranus.miner = pow.NewUranusMiner(mux, uranus.chainConfig, checkMinerConfig(uranus.config.MinerConfig, uranus.wallet), &MinerBakend{u: uranus})
+	uranus.miner = miner.NewUranusMiner(mux, uranus.chainConfig, checkMinerConfig(uranus.config.MinerConfig, uranus.wallet), &MinerBakend{u: uranus}, dpos)
+	_ = dpos
+	//dpos.MintLoop(uranus.miner, uranus.blockchain)
 
 	// api
 	uranus.uranusAPI = &APIBackend{u: uranus}
 	uranus.uranusAPI.gp = forecast.NewForecast(uranus.uranusAPI.BlockByHeight, forecast.DefaultConfig)
 
-	var miner consensus.Engine
-	uranus.protocolManager, _ = node.NewProtocolManager(mux, uranus.chainConfig, uranus.txPool, uranus.blockchain, uranus.chainDb, miner)
+	uranus.protocolManager, _ = node.NewProtocolManager(mux, uranus.chainConfig, uranus.txPool, uranus.blockchain, uranus.chainDb, engine)
 
 	return uranus, nil
 }
@@ -139,6 +145,11 @@ func (u *Uranus) APIs() []rpc.API {
 			Namespace: "BlockChain",
 			Version:   "0.0.1",
 			Service:   rpcapi.NewBlockChainAPI(u.uranusAPI),
+		},
+		{
+			Namespace: "dpos",
+			Version:   "0.0.1",
+			Service:   rpcapi.NewDposAPI(u.uranusAPI),
 		},
 	}
 }

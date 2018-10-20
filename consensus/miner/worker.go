@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
 
-package pow
+package miner
 
 import (
 	"github.com/UranusBlockStack/uranus/common/log"
