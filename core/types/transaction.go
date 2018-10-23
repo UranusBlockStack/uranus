@@ -27,6 +27,17 @@ import (
 	"github.com/UranusBlockStack/uranus/common/utils"
 )
 
+// TxType transaction type
+type TxType uint8
+
+const (
+	Binary TxType = iota
+	LoginCandidate
+	LogoutCandidate
+	Delegate
+	UnDelegate
+)
+
 // Transaction transaction
 type Transaction struct {
 	data txdata

@@ -304,9 +304,6 @@ func (t *Trie) insert(n node, prefix, key []byte, value node) (bool, node, error
 
 // Delete removes any existing value for key from the trie.
 func (t *Trie) Delete(key []byte) {
-	if t.prefix != nil {
-		key = append(t.prefix, key...)
-	}
 	if err := t.TryDelete(key); err != nil {
 		log.Error(fmt.Sprintf("Unhandled trie error: %v", err))
 	}
@@ -315,6 +312,9 @@ func (t *Trie) Delete(key []byte) {
 // TryDelete removes any existing value for key from the trie.
 // If a node was not found in the database, a MissingNodeError is returned.
 func (t *Trie) TryDelete(key []byte) error {
+	if t.prefix != nil {
+		key = append(t.prefix, key...)
+	}
 	k := keybytesToHex(key)
 	_, n, err := t.delete(t.root, nil, k)
 	if err != nil {
@@ -481,6 +481,18 @@ func (t *Trie) Commit(onleaf LeafCallback) (root utils.Hash, err error) {
 	hash, cached, err := t.hashRoot(t.db, onleaf)
 	if err != nil {
 		return utils.Hash{}, err
+	}
+	t.root = cached
+	t.cachegen++
+	return utils.BytesToHash(hash.(hashNode)), nil
+}
+
+// CommitTo writes all nodes to the given database.
+// Nodes are stored with their sha3 hash as the key.
+func (t *Trie) CommitTo(db *Database) (root utils.Hash, err error) {
+	hash, cached, err := t.hashRoot(db, nil)
+	if err != nil {
+		return (utils.Hash{}), err
 	}
 	t.root = cached
 	t.cachegen++
