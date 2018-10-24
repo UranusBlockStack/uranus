@@ -19,11 +19,11 @@ package params
 import (
 	"testing"
 
-	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestVersionWithCommit(t *testing.T) {
 	gitComintStr := "4f70749fbc7b2f3576ef2c1a0e8888a4b1ef63ba"
 	exp := VersionFunc + "-" + gitComintStr[:8]
-	utils.AssertEquals(t, VersionWithCommit(gitComintStr), exp)
+	assert.Equal(t, exp, VersionWithCommit(gitComintStr))
 }

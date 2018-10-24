@@ -19,7 +19,7 @@ package mtp
 import (
 	"testing"
 
-	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHexCompact(t *testing.T) {
@@ -38,10 +38,10 @@ func TestHexCompact(t *testing.T) {
 	}
 	for _, test := range tests {
 		c := hexToCompact(test.hex)
-		utils.AssertEquals(t, c, test.compact)
+		assert.Equal(t, test.compact, c)
 
 		h := compactToHex(test.compact)
-		utils.AssertEquals(t, h, test.hex)
+		assert.Equal(t, test.hex, h)
 	}
 }
 
@@ -67,10 +67,10 @@ func TestHexKeybytes(t *testing.T) {
 	}
 	for _, test := range tests {
 		h := keybytesToHex(test.key)
-		utils.AssertEquals(t, h, test.hexOut)
+		assert.Equal(t, test.hexOut, h)
 
 		k := hexToKeybytes(test.hexIn)
-		utils.AssertEquals(t, k, test.key)
+		assert.Equal(t, test.key, k)
 	}
 }
 

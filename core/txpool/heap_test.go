@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNonceHeap(t *testing.T) {
@@ -30,7 +31,7 @@ func TestNonceHeap(t *testing.T) {
 		nh.Push(v)
 	}
 	for i := 0; i < 4; i++ {
-		utils.AssertEquals(t, array[3-i], nh.Pop().(uint64))
+		assert.Equal(t, array[3-i], nh.Pop().(uint64))
 	}
 
 	//test sort
@@ -41,7 +42,7 @@ func TestNonceHeap(t *testing.T) {
 	}
 	sort.Sort(nh)
 	for i := 0; i < 4; i++ {
-		utils.AssertEquals(t, sortarray[i], nh.Pop().(uint64))
+		assert.Equal(t, sortarray[i], nh.Pop().(uint64))
 	}
 }
 
@@ -57,7 +58,7 @@ func TestPriceHeap(t *testing.T) {
 		ph.Push(v)
 	}
 	for i := 0; i < 4; i++ {
-		utils.AssertEquals(t, pns[3-i], ph.Pop().(*priceNonce))
+		assert.Equal(t, pns[3-i], ph.Pop().(*priceNonce))
 	}
 
 	//test sort,first sort by price,if the price is equal,sort by nonce,high nonce is worse.
@@ -74,8 +75,8 @@ func TestPriceHeap(t *testing.T) {
 	sort.Sort(ph)
 	for i := 0; i < 4; i++ {
 		pn := ph.Pop().(*priceNonce)
-		utils.AssertEquals(t, sortPns[i].nonce, pn.nonce)
-		utils.AssertEquals(t, sortPns[i].hash, pn.hash)
-		utils.AssertEquals(t, sortPns[i].price, pn.price)
+		assert.Equal(t, sortPns[i].nonce, pn.nonce)
+		assert.Equal(t, sortPns[i].hash, pn.hash)
+		assert.Equal(t, sortPns[i].price, pn.price)
 	}
 }

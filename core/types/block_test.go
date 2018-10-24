@@ -24,6 +24,7 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -54,20 +55,19 @@ func TestBlockEncodeAndDecode(t *testing.T) {
 		t.Fatalf("decode error: %v", err)
 	}
 
-	utils.AssertEquals(t, tmpBlock.PreviousHash(), testBlock.PreviousHash())
-	utils.AssertEquals(t, tmpBlock.Miner().Hex(), testBlock.Miner().Hex())
-	utils.AssertEquals(t, tmpBlock.StateRoot(), testBlock.StateRoot())
-	utils.AssertEquals(t, tmpBlock.TransactionsRoot(), testBlock.TransactionsRoot())
-	utils.AssertEquals(t, tmpBlock.ReceiptsRoot(), testBlock.ReceiptsRoot())
-	utils.AssertEquals(t, tmpBlock.Difficulty().Int64(), testBlock.Difficulty().Int64())
-	utils.AssertEquals(t, tmpBlock.Height().Int64(), testBlock.Height().Int64())
-	utils.AssertEquals(t, tmpBlock.GasLimit(), testBlock.GasLimit())
-	utils.AssertEquals(t, tmpBlock.GasUsed(), testBlock.GasUsed())
-	utils.AssertEquals(t, tmpBlock.Time().Int64(), testBlock.Time().Int64())
-	utils.AssertEquals(t, tmpBlock.ExtraData(), testBlock.ExtraData())
-	utils.AssertEquals(t, tmpBlock.Nonce(), testBlock.Nonce())
-
-	utils.AssertEquals(t, tmpBlock.Transactions()[0].Hash(), testBlock.Transactions()[0].Hash())
+	assert.Equal(t, testBlock.PreviousHash(), tmpBlock.PreviousHash())
+	assert.Equal(t, testBlock.Miner().Hex(), tmpBlock.Miner().Hex())
+	assert.Equal(t, testBlock.StateRoot(), tmpBlock.StateRoot())
+	assert.Equal(t, testBlock.TransactionsRoot(), tmpBlock.TransactionsRoot())
+	assert.Equal(t, testBlock.ReceiptsRoot(), tmpBlock.ReceiptsRoot())
+	assert.Equal(t, testBlock.Difficulty().Int64(), tmpBlock.Difficulty().Int64())
+	assert.Equal(t, testBlock.Height().Int64(), tmpBlock.Height().Int64())
+	assert.Equal(t, testBlock.GasLimit(), tmpBlock.GasLimit())
+	assert.Equal(t, testBlock.GasUsed(), tmpBlock.GasUsed())
+	assert.Equal(t, testBlock.Time().Int64(), tmpBlock.Time().Int64())
+	assert.Equal(t, testBlock.ExtraData(), tmpBlock.ExtraData())
+	assert.Equal(t, testBlock.Nonce(), tmpBlock.Nonce())
+	assert.Equal(t, testBlock.Transactions()[0].Hash(), tmpBlock.Transactions()[0].Hash())
 
 }
 

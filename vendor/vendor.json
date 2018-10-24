@@ -23,20 +23,20 @@
 		{
 			"checksumSHA1": "H8uV6Utd4i6GoV/zgVlbGyoQDz0=",
 			"path": "github.com/ethereum/go-ethereum/crypto/bn256",
-			"revision": "736b45a87606e6cdfd5aecf38d259517b10e7f7e",
-			"revisionTime": "2018-09-19T12:08:42Z"
+			"revision": "1f45ba9bb1c19489a6c8bf9caf100e56dcb79788",
+			"revisionTime": "2018-09-18T12:54:52Z"
 		},
 		{
 			"checksumSHA1": "aFyQMEKNzIyIRzEAdo8vGkOYqqc=",
 			"path": "github.com/ethereum/go-ethereum/crypto/bn256/cloudflare",
-			"revision": "736b45a87606e6cdfd5aecf38d259517b10e7f7e",
-			"revisionTime": "2018-09-19T12:08:42Z"
+			"revision": "1f45ba9bb1c19489a6c8bf9caf100e56dcb79788",
+			"revisionTime": "2018-09-18T12:54:52Z"
 		},
 		{
 			"checksumSHA1": "Su8qqDZsl8ty3UJJMt/xY9ADa7A=",
 			"path": "github.com/ethereum/go-ethereum/crypto/bn256/google",
-			"revision": "736b45a87606e6cdfd5aecf38d259517b10e7f7e",
-			"revisionTime": "2018-09-19T12:08:42Z"
+			"revision": "1f45ba9bb1c19489a6c8bf9caf100e56dcb79788",
+			"revisionTime": "2018-09-18T12:54:52Z"
 		},
 		{
 			"checksumSHA1": "h1d2lPZf6j2dW/mIqVnd1RdykDo=",
@@ -177,6 +177,12 @@
 			"revisionTime": "2018-07-24T18:49:33Z"
 		},
 		{
+			"checksumSHA1": "LuFv4/jlrmFNnDb/5SCSEPAM9vU=",
+			"path": "github.com/pmezard/go-difflib/difflib",
+			"revision": "792786c7400a136282c1664665ae0a8db921c6c2",
+			"revisionTime": "2016-01-10T10:55:54Z"
+		},
+		{
 			"checksumSHA1": "n+08dw+FoA63zptlPPfRf12TAdg=",
 			"path": "github.com/rs/cors",
 			"revision": "15587285ef6b6e7a3f657e2e00f9f271883bcf22",
@@ -211,6 +217,12 @@
 			"path": "github.com/spf13/viper",
 			"revision": "907c19d40d9a6c9bb55f040ff4ae45271a4754b9",
 			"revisionTime": "2018-06-28T09:55:33Z"
+		},
+		{
+			"checksumSHA1": "v3LEmqP4Cb6qGCIP7mJk7l2ZXw8=",
+			"path": "github.com/stretchr/testify/assert",
+			"revision": "04af85275a5c7ac09d16bb3b9b2e751ed45154e5",
+			"revisionTime": "2018-10-09T18:43:15Z"
 		},
 		{
 			"checksumSHA1": "k6zbR5hiI10hkWtiK91rIY5s5/E=",

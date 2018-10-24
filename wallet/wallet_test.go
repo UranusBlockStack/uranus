@@ -26,6 +26,7 @@ import (
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAccounts(t *testing.T) {
@@ -51,7 +52,7 @@ func TestAccounts(t *testing.T) {
 	_ = taddresses
 	_ = addresses
 	// todo sort
-	// utils.AssertEquals(t, addresses, taddresses)
+	// assert.Equal(t, addresses, taddresses)
 }
 
 func TestImportRawKey(t *testing.T) {
@@ -68,7 +69,7 @@ func TestImportRawKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	utils.AssertEquals(t, account.Address, addr)
+	assert.Equal(t, account.Address, addr)
 }
 
 func TestNewAccount(t *testing.T) {
@@ -86,8 +87,8 @@ func TestNewAccount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	utils.AssertEquals(t, account.Address, newAccount.Address)
-	utils.AssertEquals(t, crypto.ByteFromECDSA(account.PrivateKey), crypto.ByteFromECDSA(newAccount.PrivateKey))
+	assert.Equal(t, account.Address, newAccount.Address)
+	assert.Equal(t, crypto.ByteFromECDSA(account.PrivateKey), crypto.ByteFromECDSA(newAccount.PrivateKey))
 
 }
 
@@ -132,11 +133,11 @@ func TestUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	utils.AssertEquals(t, account.Address, newAccount.Address)
-	utils.AssertEquals(t, crypto.ByteFromECDSA(account.PrivateKey), crypto.ByteFromECDSA(newAccount.PrivateKey))
+	assert.Equal(t, account.Address, newAccount.Address)
+	assert.Equal(t, crypto.ByteFromECDSA(account.PrivateKey), crypto.ByteFromECDSA(newAccount.PrivateKey))
 
 	newAccount, err = ks.GetKey(account.Address, fileName, "test")
-	utils.AssertEquals(t, err, ErrDecrypt)
+	assert.Equal(t, err, ErrDecrypt)
 }
 
 func TestSignTx(t *testing.T) {
@@ -160,5 +161,5 @@ func TestSignTx(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	utils.AssertEquals(t, from, account.Address)
+	assert.Equal(t, from, account.Address)
 }

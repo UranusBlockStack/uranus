@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
-	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTxListAdd(t *testing.T) {
@@ -36,8 +36,8 @@ func TestTxListAdd(t *testing.T) {
 	for _, v := range rand.Perm(len(txs)) {
 		list.Add(txs[v], DefaultTxPoolConfig.PriceBump)
 	}
-	utils.AssertEquals(t, len(list.txs.items), len(txs))
+	assert.Equal(t, len(list.txs.items), len(txs))
 	for _, tx := range txs {
-		utils.AssertEquals(t, list.txs.items[tx.Nonce()], tx)
+		assert.Equal(t, list.txs.items[tx.Nonce()], tx)
 	}
 }

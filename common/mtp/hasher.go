@@ -20,10 +20,9 @@ import (
 	"bytes"
 	"hash"
 	"sync"
-
 	"github.com/UranusBlockStack/uranus/common/crypto/sha3"
-	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/common/rlp"
 )
 
 type hasher struct {

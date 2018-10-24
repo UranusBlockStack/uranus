@@ -23,11 +23,12 @@ import (
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/params"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultGenesis(t *testing.T) {
 	block := DefaultGenesis().ToBlock(NewChain(db.NewMemDatabase()))
-	utils.AssertEquals(t, block.Hash().Hex(), "0xd4e1dcfda3c2d0a54bea6905a149f6394ce34ba4bacafe4f29b94467f17e041c")
+	assert.Equal(t, "0xd4e1dcfda3c2d0a54bea6905a149f6394ce34ba4bacafe4f29b94467f17e041c", block.Hash().Hex())
 }
 
 func TestSetupGenesisBlock(t *testing.T) {
@@ -73,8 +74,8 @@ func TestSetupGenesisBlock(t *testing.T) {
 		Chaindb := NewChain(db)
 		config, hash, err := test.fn(Chaindb)
 
-		utils.AssertEquals(t, err, test.wantErr)
-		utils.AssertEquals(t, config, test.wantConfig)
+		assert.Equal(t, test.wantErr, err)
+		assert.Equal(t, test.wantConfig, config)
 		if hash != test.wantHash {
 			t.Errorf("%s: returned hash %s, want %s", test.name, hash.Hex(), test.wantHash.Hex())
 		} else if err == nil {

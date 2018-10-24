@@ -66,7 +66,7 @@ const (
 	SuicideRefundGas        uint64 = 24000  // Refunded following a suicide operation.
 	MemoryGas               uint64 = 3      // Times the address of the (highest referenced byte in memory + 1). NOTE: referencing happens on read, write and in instructions such as RETURN and CALL.
 	TxDataNonZeroGas        uint64 = 68     // Per byte of data attached to a transaction that is not equal to zero. NOTE: Not payable on data of calls between transactions.
-	MaxCodeSize                    = 24576  // Maximum bytecode to permit for a contract
+	MaxCodeSize             int    = 24576  // Maximum bytecode to permit for a contract
 	EcrecoverGas            uint64 = 3000   // Elliptic curve sender recovery gas price
 	Sha256BaseGas           uint64 = 60     // Base price for a SHA256 operation
 	Sha256PerWordGas        uint64 = 12     // Per-word price for a SHA256 operation

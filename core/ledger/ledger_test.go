@@ -22,6 +22,7 @@ import (
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/state"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRewindChain(t *testing.T) {
@@ -37,5 +38,5 @@ func TestRewindChain(t *testing.T) {
 
 	block := ledger.GetBlockByHeight(0)
 
-	utils.AssertEquals(t, block.Hash(), genesisBlock.Hash())
+	assert.Equal(t, genesisBlock.Hash(), block.Hash())
 }

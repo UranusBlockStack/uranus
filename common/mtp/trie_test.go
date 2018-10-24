@@ -21,6 +21,7 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestInsert(t *testing.T) {
@@ -32,7 +33,7 @@ func TestInsert(t *testing.T) {
 
 	exp := utils.HexToHash("0xf4308bfc802bcf37deca66392ce128d03455aff790312e9157801af6dc6e4ded")
 	root := trie.Hash()
-	utils.AssertEquals(t, root, exp)
+	assert.Equal(t, exp, root)
 
 	trie, _ = New(utils.Hash{}, NewDatabase(db.NewMemDatabase()))
 
@@ -43,7 +44,7 @@ func TestInsert(t *testing.T) {
 	if err != nil {
 		t.Fatalf("commit error: %v", err)
 	}
-	utils.AssertEquals(t, root, exp)
+	assert.Equal(t, exp, root)
 }
 
 func TestGet(t *testing.T) {
@@ -54,7 +55,7 @@ func TestGet(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		res := trie.Get([]byte("hello"))
-		utils.AssertEquals(t, res, []byte("world"))
+		assert.Equal(t, []byte("world"), res)
 
 		unknown := trie.Get([]byte("unknown"))
 		if unknown != nil {
@@ -87,5 +88,5 @@ func TestDelete(t *testing.T) {
 
 	hash := trie.Hash()
 	exp := utils.HexToHash("0x5eea7814396f5a29818fca46237889c0ae95ba6a8821594c1e8e5c83fdf20a9e")
-	utils.AssertEquals(t, hash, exp)
+	assert.Equal(t, exp, hash)
 }

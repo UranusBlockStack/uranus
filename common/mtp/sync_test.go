@@ -21,6 +21,7 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEmptySync(t *testing.T) {
@@ -298,7 +299,7 @@ func checkTrieContents(t *testing.T, db *Database, root []byte, content map[stri
 	}
 	for k, v := range content {
 		have := trie.Get([]byte(k))
-		utils.AssertEquals(t, have, v)
+		assert.Equal(t, v, have)
 	}
 }
 

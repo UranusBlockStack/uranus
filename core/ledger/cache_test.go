@@ -22,6 +22,7 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
+	"github.com/stretchr/testify/assert"
 )
 
 var testCache = newCache(&Config{})
@@ -38,7 +39,7 @@ func TestBlockCache(t *testing.T) {
 	block := createTestBlock("test block")
 	if testCache.blockAdd(block.Hash(), block) {
 		tmpBlock := testCache.getBlock(block.Hash())
-		utils.AssertEquals(t, block, tmpBlock)
+		assert.Equal(t, block, tmpBlock)
 	}
 
 }
@@ -46,14 +47,14 @@ func TestTxsCache(t *testing.T) {
 	block := createTestBlock("test block")
 	if testCache.txsAdd(block.Hash(), block.Transactions()) {
 		tmptxs := testCache.getTxs(block.Hash())
-		utils.AssertEquals(t, block.Transactions(), tmptxs)
+		assert.Equal(t, block.Transactions(), tmptxs)
 	}
 }
 func TestTdCache(t *testing.T) {
 	td := big.NewInt(1000)
 	if testCache.tdAdd(utils.BigToHash(td), td) {
 		tmptd := testCache.getTd(utils.BigToHash(td))
-		utils.AssertEquals(t, td, tmptd)
+		assert.Equal(t, td, tmptd)
 	}
 }
 
@@ -64,17 +65,17 @@ func TestFutureBlocks(t *testing.T) {
 	fbs = append(append(fbs, fblock1), fblock2)
 	if testCache.futureBlockAdd(fblock1.Hash(), fblock1) {
 		tmpBlock1 := testCache.getFutureBlock(fblock1.Hash())
-		utils.AssertEquals(t, fblock1, tmpBlock1)
+		assert.Equal(t, fblock1, tmpBlock1)
 	}
 	// test getAllFutureBlock
 	testCache.futureBlockAdd(fblock2.Hash(), fblock2)
 	tmpBlocks := testCache.getAllFutureBlock()
-	utils.AssertEquals(t, fbs, tmpBlocks)
+	assert.Equal(t, fbs, tmpBlocks)
 
 	// test clean all
 	testCache.cleanAll()
-	utils.AssertEquals(t, 0, testCache.blockCache.Len())
-	utils.AssertEquals(t, 0, testCache.txsCache.Len())
-	utils.AssertEquals(t, 0, testCache.tdCache.Len())
-	utils.AssertEquals(t, 0, testCache.futureBlocks.Len())
+	assert.Equal(t, 0, testCache.blockCache.Len())
+	assert.Equal(t, 0, testCache.txsCache.Len())
+	assert.Equal(t, 0, testCache.tdCache.Len())
+	assert.Equal(t, 0, testCache.futureBlocks.Len())
 }

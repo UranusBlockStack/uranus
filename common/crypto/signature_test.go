@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -44,13 +45,13 @@ func TestSignAndEcrecover(t *testing.T) {
 		t.Errorf("ECRecover error: %s", err)
 	}
 	pubKey := ByteToECDSAPub(recoveredPub)
-	utils.AssertEquals(t, PubkeyToAddress(*pubKey), addr)
+	assert.Equal(t, addr, PubkeyToAddress(*pubKey))
 
 	recoveredPub2, err := EcrecoverToPub(testmsg, sig)
 	if err != nil {
 		t.Errorf("ECRecover error: %s", err)
 	}
-	utils.AssertEquals(t, PubkeyToAddress(*recoveredPub2), addr)
+	assert.Equal(t, addr, PubkeyToAddress(*recoveredPub2))
 
 }
 

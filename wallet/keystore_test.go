@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
-	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetAndPutKey(t *testing.T) {
@@ -48,7 +48,7 @@ func TestGetAndPutKey(t *testing.T) {
 		t.Error(err)
 	}
 
-	utils.AssertEquals(t, crypto.ByteFromECDSA(account.PrivateKey), crypto.ByteFromECDSA(newAccount.PrivateKey))
-	utils.AssertEquals(t, account.Address, newAccount.Address)
+	assert.Equal(t, crypto.ByteFromECDSA(account.PrivateKey), crypto.ByteFromECDSA(newAccount.PrivateKey))
+	assert.Equal(t, account.Address, newAccount.Address)
 
 }

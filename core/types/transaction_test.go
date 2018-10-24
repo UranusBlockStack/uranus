@@ -23,6 +23,7 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -42,19 +43,19 @@ func TestTxEncodeAndDecode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("encode error: %v", err)
 	}
-	utils.AssertEquals(t, txb, utils.FromHex("dd03018207d094970e8128ab834e8eac17ab8e3812f010678cf7910a5580"))
+	assert.Equal(t, utils.FromHex("dd03018207d094970e8128ab834e8eac17ab8e3812f010678cf7910a5580"), txb)
 
 	tmpTx, err := decodeTx(txb)
 	if err != nil {
 		t.Fatalf("decode error: %v", err)
 	}
 
-	utils.AssertEquals(t, tmpTx.Nonce(), testTx.Nonce())
-	utils.AssertEquals(t, tmpTx.To().Hex(), testTx.To().Hex())
-	utils.AssertEquals(t, tmpTx.Value().Int64(), testTx.Value().Int64())
-	utils.AssertEquals(t, tmpTx.Gas(), testTx.Gas())
-	utils.AssertEquals(t, tmpTx.GasPrice().Int64(), testTx.GasPrice().Int64())
-	utils.AssertEquals(t, tmpTx.Payload(), testTx.Payload())
+	assert.Equal(t, testTx.Nonce(), tmpTx.Nonce())
+	assert.Equal(t, testTx.To().Hex(), tmpTx.To().Hex())
+	assert.Equal(t, testTx.Value().Int64(), tmpTx.Value().Int64())
+	assert.Equal(t, testTx.Gas(), tmpTx.Gas())
+	assert.Equal(t, testTx.GasPrice().Int64(), tmpTx.GasPrice().Int64())
+	assert.Equal(t, testTx.Payload(), tmpTx.Payload())
 
 }
 

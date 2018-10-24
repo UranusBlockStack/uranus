@@ -21,6 +21,7 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -56,7 +57,7 @@ func TestRLP(t *testing.T) {
 	}
 
 	// ReceiptForStorage
-	utils.AssertEquals(t, data, tmpdata)
+	assert.Equal(t, data, tmpdata)
 
 	data, err = rlp.EncodeToBytes(testReceipt)
 	if err != nil {
@@ -74,5 +75,5 @@ func TestRLP(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	utils.AssertEquals(t, data, tmpdata)
+	assert.Equal(t, data, tmpdata)
 }

@@ -18,61 +18,8 @@ package utils
 
 import (
 	"encoding/hex"
-	"fmt"
 	"math/big"
-	"reflect"
-	"runtime"
-	"testing"
 )
-
-func AssertSame(t testing.TB, actual interface{}, expected interface{}) {
-	if actual != expected {
-		t.Fatalf("Values actual=[%#v] and expected=[%#v] do not point to same object. %s", actual, expected, getCallerInfo())
-	}
-}
-
-func AssertEquals(t testing.TB, actual interface{}, expected interface{}) {
-	if expected == nil && isNil(actual) {
-		return
-	}
-	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("Values are not equal.\n Actual=[%#v], \n Expected=[%#v]\n %s", actual, expected, getCallerInfo())
-	}
-}
-
-func AssertNotEquals(t testing.TB, actual interface{}, expected interface{}) {
-	if reflect.DeepEqual(actual, expected) {
-		t.Fatalf("Values are not supposed to be equal. Actual=[%#v], Expected=[%#v]\n %s", actual, expected, getCallerInfo())
-	}
-}
-
-func isNil(in interface{}) bool {
-	return in == nil || reflect.ValueOf(in).IsNil() || (reflect.TypeOf(in).Kind() == reflect.Slice && reflect.ValueOf(in).Len() == 0)
-}
-
-func getCallerInfo() string {
-	_, file, line, ok := runtime.Caller(2)
-	if !ok {
-		return "Could not retrieve caller's info"
-	}
-	return fmt.Sprintf("CallerInfo = [%s:%d]", file, line)
-}
-
-func CheckError(t *testing.T, input string, got, want error) bool {
-	if got == nil {
-		if want != nil {
-			t.Errorf("input %s: got no error, want %q", input, want)
-			return false
-		}
-		return true
-	}
-	if want == nil {
-		t.Errorf("input %s: unexpected error %q", input, got)
-	} else if got.Error() != want.Error() {
-		t.Errorf("input %s: got error %q, want %q", input, got, want)
-	}
-	return false
-}
 
 func ReferenceBig(s string) *big.Int {
 	b, ok := new(big.Int).SetString(s, 16)

@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -36,7 +37,7 @@ func TestKeccak256(t *testing.T) {
 	exp, _ := hex.DecodeString("9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658")
 	hashFunc := func(in []byte) []byte { h := Keccak256Hash(in); return h[:] }
 	// test Sha3-256-array
-	utils.AssertEquals(t, hashFunc(msg), exp)
+	assert.Equal(t, exp, hashFunc(msg))
 }
 
 func TestCreateContractAddr(t *testing.T) {
@@ -45,15 +46,15 @@ func TestCreateContractAddr(t *testing.T) {
 	addr := utils.HexToAddress(testAddrHex)
 	genAddr := PubkeyToAddress(key.PublicKey)
 
-	utils.AssertEquals(t, genAddr, addr)
+	assert.Equal(t, addr, genAddr)
 
 	caddr0 := CreateAddress(addr, 0)
 	caddr1 := CreateAddress(addr, 1)
 	caddr2 := CreateAddress(addr, 2)
 
-	utils.AssertEquals(t, caddr0, utils.HexToAddress("0x85687286F24F7F85b01c9447AA87EbbD854E9a85"))
-	utils.AssertEquals(t, caddr1, utils.HexToAddress("0xCAbD645c6CB887D0CE10Ed1A21e806b54F2e7529"))
-	utils.AssertEquals(t, caddr2, utils.HexToAddress("0x5aCbe50B03022610a48d66F16bfB0a1A8F5e11e2"))
+	assert.Equal(t, utils.HexToAddress("0x85687286F24F7F85b01c9447AA87EbbD854E9a85"), caddr0)
+	assert.Equal(t, utils.HexToAddress("0xCAbD645c6CB887D0CE10Ed1A21e806b54F2e7529"), caddr1)
+	assert.Equal(t, utils.HexToAddress("0x5aCbe50B03022610a48d66F16bfB0a1A8F5e11e2"), caddr2)
 }
 
 func TestSaveECDSA(t *testing.T) {
@@ -68,7 +69,7 @@ func TestSaveECDSA(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	utils.AssertEquals(t, PubkeyToAddress(key1.PublicKey), utils.HexToAddress(testAddrHex))
+	assert.Equal(t, utils.HexToAddress(testAddrHex), PubkeyToAddress(key1.PublicKey))
 
 }
 func TestLoadECDSAFile(t *testing.T) {
@@ -79,7 +80,7 @@ func TestLoadECDSAFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	utils.AssertEquals(t, PubkeyToAddress(key.PublicKey), utils.HexToAddress(testAddrHex))
+	assert.Equal(t, utils.HexToAddress(testAddrHex), PubkeyToAddress(key.PublicKey))
 
 }
 

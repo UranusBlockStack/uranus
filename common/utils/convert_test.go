@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type marshalTest struct {
@@ -148,9 +150,12 @@ func TestEncode(t *testing.T) {
 func TestDecode(t *testing.T) {
 	for _, test := range decodeBytesTests {
 		dec, err := Decode(test.input)
-		if !CheckError(t, test.input, err, test.wantErr) {
-			continue
+		if test.wantErr != nil {
+			if assert.EqualErrorf(t, err, test.wantErr.Error(), test.input) {
+				continue
+			}
 		}
+
 		if !bytes.Equal(test.want.([]byte), dec) {
 			t.Errorf("input %s: value mismatch: got %x, want %x", test.input, dec, test.want)
 			continue
@@ -170,8 +175,10 @@ func TestEncodeBig(t *testing.T) {
 func TestDecodeBig(t *testing.T) {
 	for _, test := range decodeBigTests {
 		dec, err := DecodeBig(test.input)
-		if !CheckError(t, test.input, err, test.wantErr) {
-			continue
+		if test.wantErr != nil {
+			if assert.EqualErrorf(t, err, test.wantErr.Error(), test.input) {
+				continue
+			}
 		}
 		if dec.Cmp(test.want.(*big.Int)) != 0 {
 			t.Errorf("input %s: value mismatch: got %x, want %x", test.input, dec, test.want)
@@ -192,8 +199,10 @@ func TestEncodeUint64(t *testing.T) {
 func TestDecodeUint64(t *testing.T) {
 	for _, test := range decodeUint64Tests {
 		dec, err := DecodeUint64(test.input)
-		if !CheckError(t, test.input, err, test.wantErr) {
-			continue
+		if test.wantErr != nil {
+			if assert.EqualErrorf(t, err, test.wantErr.Error(), test.input) {
+				continue
+			}
 		}
 		if dec != test.want.(uint64) {
 			t.Errorf("input %s: value mismatch: got %x, want %x", test.input, dec, test.want)

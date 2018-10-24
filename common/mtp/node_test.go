@@ -19,7 +19,7 @@ package mtp
 import (
 	"testing"
 
-	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCanUnload(t *testing.T) {
@@ -56,6 +56,6 @@ func TestCanUnload(t *testing.T) {
 
 	for _, test := range tests {
 		got := test.flag.canUnload(test.gen, test.limit)
-		utils.AssertEquals(t, got, test.expected)
+		assert.Equal(t, test.expected, got)
 	}
 }

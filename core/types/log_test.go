@@ -21,6 +21,7 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLogDecodeAndEncode(t *testing.T) {
@@ -49,5 +50,5 @@ func TestLogDecodeAndEncode(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	utils.AssertEquals(t, log, tmpLog)
+	assert.Equal(t, log, tmpLog)
 }

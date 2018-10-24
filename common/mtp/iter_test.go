@@ -21,6 +21,7 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIter(t *testing.T) {
@@ -48,6 +49,6 @@ func TestIter(t *testing.T) {
 
 	for k, v := range all {
 		it.Next()
-		utils.AssertEquals(t, found[k], v)
+		assert.Equal(t, v, found[k])
 	}
 }

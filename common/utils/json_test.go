@@ -22,6 +22,8 @@ import (
 	"errors"
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var errJSONEOF = errors.New("unexpected end of JSON input")
@@ -52,8 +54,10 @@ func TestUnmarshalBytes(t *testing.T) {
 	for _, test := range unmarshalBytesTests {
 		var v Bytes
 		err := json.Unmarshal([]byte(test.input), &v)
-		if !CheckError(t, test.input, err, test.wantErr) {
-			continue
+		if test.wantErr != nil {
+			if assert.EqualErrorf(t, err, test.wantErr.Error(), test.input) {
+				continue
+			}
 		}
 		if !bytes.Equal(test.want.([]byte), []byte(v)) {
 			t.Errorf("input %s: value mismatch: got %x, want %x", test.input, &v, test.want)
@@ -133,8 +137,10 @@ func TestUnmarshalBig(t *testing.T) {
 	for _, test := range unmarshalBigTests {
 		var v Big
 		err := json.Unmarshal([]byte(test.input), &v)
-		if !CheckError(t, test.input, err, test.wantErr) {
-			continue
+		if test.wantErr != nil {
+			if assert.EqualErrorf(t, err, test.wantErr.Error(), test.input) {
+				continue
+			}
 		}
 		if test.want != nil && test.want.(*big.Int).Cmp((*big.Int)(&v)) != 0 {
 			t.Errorf("input %s: value mismatch: got %x, want %x", test.input, (*big.Int)(&v), test.want)
@@ -199,8 +205,10 @@ func TestUnmarshalUint64(t *testing.T) {
 	for _, test := range unmarshalUint64Tests {
 		var v Uint64
 		err := json.Unmarshal([]byte(test.input), &v)
-		if !CheckError(t, test.input, err, test.wantErr) {
-			continue
+		if test.wantErr != nil {
+			if assert.EqualErrorf(t, err, test.wantErr.Error(), test.input) {
+				continue
+			}
 		}
 		if uint64(v) != test.want.(uint64) {
 			t.Errorf("input %s: value mismatch: got %d, want %d", test.input, v, test.want)
@@ -292,11 +300,13 @@ func TestUnmarshalUint(t *testing.T) {
 		var v Uint
 		err := json.Unmarshal([]byte(test.input), &v)
 		if uintBits == 32 && test.wantErr32bit != nil {
-			CheckError(t, test.input, err, test.wantErr32bit)
+			assert.EqualErrorf(t, err, test.wantErr32bit.Error(), test.input)
 			continue
 		}
-		if !CheckError(t, test.input, err, test.wantErr) {
-			continue
+		if test.wantErr != nil {
+			if assert.EqualErrorf(t, err, test.wantErr.Error(), test.input) {
+				continue
+			}
 		}
 		if uint(v) != test.want.(uint) {
 			t.Errorf("input %s: value mismatch: got %d, want %d", test.input, v, test.want)

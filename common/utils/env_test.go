@@ -19,13 +19,15 @@ package utils
 import (
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestString(t *testing.T) {
 	result := EnvString("testString", "default")
 	EnvParse()
 
-	AssertEquals(t, "default", *result)
+	assert.Equal(t, "default", *result)
 
 	err := os.Setenv("newTestString", "newDefault")
 	if err != nil {
@@ -35,5 +37,5 @@ func TestString(t *testing.T) {
 	result = EnvString("newTestString", "default")
 	EnvParse()
 
-	AssertEquals(t, "newDefault", *result)
+	assert.Equal(t, "newDefault", *result)
 }

@@ -22,6 +22,7 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -45,6 +46,6 @@ func TestRecoverPlain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	utils.AssertEquals(t, addr, expAddr)
+	assert.Equal(t, expAddr, addr)
 
 }
