@@ -25,12 +25,12 @@ import (
 )
 
 func TestDposContextSnapshot(t *testing.T) {
-	db := db.NewMemDatabase()
+	dbMem := db.NewMemDatabase()
+	db := mtp.NewDatabase(dbMem)
 	dposContext, err := NewDposContext(db)
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	snapshot := dposContext.Snapshot()
 	utils.AssertEquals(t, dposContext.Root(), snapshot.Root())
 	utils.AssertNotEquals(t, dposContext, snapshot)
@@ -53,7 +53,8 @@ func TestDposContextBecomeCandidate(t *testing.T) {
 		utils.HexToAddress("0xa60a3886b552ff9992cfcd208ec1152079e046c2"),
 		utils.HexToAddress("0x4e080e49f62694554871e669aeb4ebe17c4a9670"),
 	}
-	db := db.NewMemDatabase()
+	dbMem := db.NewMemDatabase()
+	db := mtp.NewDatabase(dbMem)
 	dposContext, err := NewDposContext(db)
 	if err != nil {
 		t.Fatal(err)
@@ -82,7 +83,8 @@ func TestDposContextKickoutCandidate(t *testing.T) {
 		utils.HexToAddress("0xa60a3886b552ff9992cfcd208ec1152079e046c2"),
 		utils.HexToAddress("0x4e080e49f62694554871e669aeb4ebe17c4a9670"),
 	}
-	db := db.NewMemDatabase()
+	dbMem := db.NewMemDatabase()
+	db := mtp.NewDatabase(dbMem)
 	dposContext, err := NewDposContext(db)
 	if err != nil {
 		t.Fatal(err)
@@ -128,7 +130,8 @@ func TestDposContextDelegateAndUnDelegate(t *testing.T) {
 	candidate := utils.HexToAddress("0x44d1ce0b7cb3588bca96151fe1bc05af38f91b6e")
 	newCandidate := utils.HexToAddress("0xa60a3886b552ff9992cfcd208ec1152079e046c2")
 	delegator := utils.HexToAddress("0x4e080e49f62694554871e669aeb4ebe17c4a9670")
-	db := db.NewMemDatabase()
+	dbMem := db.NewMemDatabase()
+	db := mtp.NewDatabase(dbMem)
 	dposContext, err := NewDposContext(db)
 	if err != nil {
 		t.Fatal(err)
@@ -209,7 +212,8 @@ func TestDposContextValidators(t *testing.T) {
 		utils.HexToAddress("0x4e080e49f62694554871e669aeb4ebe17c4a9670"),
 	}
 
-	db := db.NewMemDatabase()
+	dbMem := db.NewMemDatabase()
+	db := mtp.NewDatabase(dbMem)
 	dposContext, err := NewDposContext(db)
 	if err != nil {
 		t.Fatal(err)

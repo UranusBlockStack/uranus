@@ -114,6 +114,7 @@ type SendTxArgs struct {
 	Value      *utils.Big
 	Nonce      *utils.Uint64
 	Data       *utils.Bytes
+	TxType     uint8
 	Passphrase string
 }
 
@@ -161,9 +162,9 @@ func (args *SendTxArgs) toTransaction() *types.Transaction {
 		input = *args.Data
 	}
 	if args.To == nil {
-		return types.NewTransaction(uint64(*args.Nonce), nil, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+		return types.NewTransaction(types.TxType(args.TxType), uint64(*args.Nonce), nil, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
 	}
-	return types.NewTransaction(uint64(*args.Nonce), args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+	return types.NewTransaction(types.TxType(args.TxType), uint64(*args.Nonce), args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
 }
 
 // SignAndSendTransaction sign and send transaction .
@@ -208,6 +209,7 @@ type CallArgs struct {
 	GasPrice    utils.Big
 	Value       utils.Big
 	Data        utils.Bytes
+	TxType      uint8
 	BlockHeight *BlockHeight
 }
 
@@ -242,7 +244,7 @@ func (u *UranusAPI) Call(args CallArgs, reply *utils.Bytes) error {
 		return err
 	}
 
-	tx := types.NewTransaction(nonce, args.To, args.Value.ToInt(), gas, gasPrice, args.Data)
+	tx := types.NewTransaction(types.TxType(args.TxType), nonce, args.To, args.Value.ToInt(), gas, gasPrice, args.Data)
 
 	// Setup context so it may be cancelled the call has completed
 	// or, in case of unmetered gas, setup a context with a timeout.

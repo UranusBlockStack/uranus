@@ -622,6 +622,5 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root utils.Hash, err error) {
 		}
 		return nil
 	})
-	// log.Debug("Trie cache stats after commit", "misses", mtp.CacheMisses(), "unloads", mtp.CacheUnloads())
 	return root, err
 }

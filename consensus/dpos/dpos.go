@@ -2,23 +2,24 @@ package dpos
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"math/big"
 	"time"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/crypto/sha3"
+	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/consensus"
+	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
 	"github.com/UranusBlockStack/uranus/params"
 )
 
 const (
-	extraVanity        = 32   // Fixed number of extra-data prefix bytes reserved for signer vanity
-	extraSeal          = 65   // Fixed number of extra-data suffix bytes reserved for signer seal
-	inmemorySignatures = 4096 // Number of recent block signatures to keep in memory
+	extraSeal = 65 // Fixed number of extra-data suffix bytes reserved for signer seal
 
 	blockInterval    = int64(10)
 	epochInterval    = int64(86400)
@@ -64,11 +65,13 @@ type DposConfig struct {
 
 type SignerFn func(utils.Address, []byte) ([]byte, error)
 type Dpos struct {
+	db     state.Database
 	signFn SignerFn
 }
 
-func NewDpos(signFn SignerFn) *Dpos {
+func NewDpos(db state.Database, signFn SignerFn) *Dpos {
 	d := &Dpos{
+		db:     db,
 		signFn: signFn,
 	}
 	return d
@@ -80,6 +83,37 @@ func prevSlot(now int64) int64 {
 
 func nextSlot(now int64) int64 {
 	return int64((now+blockInterval-1)/blockInterval) * blockInterval
+}
+
+// update counts in MintCntTrie for the miner of newBlock
+func updateMintCnt(parentBlockTime, currentBlockTime int64, validator utils.Address, dposContext *types.DposContext) {
+	currentMintCntTrie := dposContext.MintCntTrie()
+	currentEpoch := parentBlockTime / epochInterval
+	currentEpochBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(currentEpochBytes, uint64(currentEpoch))
+
+	cnt := int64(1)
+	newEpoch := currentBlockTime / epochInterval
+	// still during the currentEpochID
+	if currentEpoch == newEpoch {
+		iter := mtp.NewIterator(currentMintCntTrie.NodeIterator(currentEpochBytes))
+
+		// when current is not genesis, read last count from the MintCntTrie
+		if iter.Next() {
+			cntBytes := currentMintCntTrie.Get(append(currentEpochBytes, validator.Bytes()...))
+
+			// not the first time to mint
+			if cntBytes != nil {
+				cnt = int64(binary.BigEndian.Uint64(cntBytes)) + 1
+			}
+		}
+	}
+
+	newCntBytes := make([]byte, 8)
+	newEpochBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(newEpochBytes, uint64(newEpoch))
+	binary.BigEndian.PutUint64(newCntBytes, uint64(cnt))
+	dposContext.MintCntTrie().TryUpdate(append(newEpochBytes, validator.Bytes()...), newCntBytes)
 }
 
 func sigHash(header *types.BlockHeader) (hash utils.Hash) {
@@ -121,17 +155,11 @@ func ecrecover(header *types.BlockHeader) (utils.Address, error) {
 
 func (d *Dpos) Seal(chain consensus.IChainReader, block *types.Block, stop <-chan struct{}, threads int, updateHashes chan uint64) (*types.Block, error) {
 	header := block.BlockHeader()
-	header.ExtraData = append(header.ExtraData, make([]byte, extraSeal)...)
-	block = block.WithSeal(header)
-	// TODO
-	return d.mine(block, stop)
-}
-
-func (d *Dpos) mine(block *types.Block, stop <-chan struct{}) (*types.Block, error) {
-	header := block.BlockHeader()
 	if header == nil || header.Height == nil {
 		return nil, consensus.ErrUnknownBlock
 	}
+	header.ExtraData = append(header.ExtraData, make([]byte, extraSeal)...)
+	block = block.WithSeal(header)
 
 	now := time.Now().Unix()
 	delay := nextSlot(now) - now
@@ -214,13 +242,55 @@ func (d *Dpos) VerifySeal(chain consensus.IChainReader, header *types.BlockHeade
 		return ErrMismatchSignerAndValidator
 	}
 
-	//TODO
-	// if bytes.Compare(validator.Bytes(), header.Miner.Bytes()) != 0 {
-	// 	return ErrInvalidBlockValidator
-	// }
+	statedb, err := state.New(chain.CurrentBlock().StateRoot(), d.db)
+	if err != nil {
+		return err
+	}
+	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), parent.BlockHeader().DposContext)
+	if err != nil {
+		return err
+	}
+	epochContext := &EpochContext{DposContext: dposContext}
+	validator, err := epochContext.lookupValidator(header.TimeStamp.Int64())
+	if err != nil {
+		return err
+	}
+	if bytes.Compare(validator.Bytes(), header.Miner.Bytes()) != 0 {
+		return ErrInvalidBlockValidator
+	}
 	return nil
 }
 
-func (d *Dpos) CheckValidator(lastBlock *types.Block, now int64) error {
+func (d *Dpos) CheckValidator(lastBlock *types.Block, coinbase utils.Address, now int64) error {
+	prevSlot := prevSlot(now)
+	nextSlot := nextSlot(now)
+	if lastBlock.Time().Int64() >= nextSlot {
+		return ErrMintFutureBlock
+	}
+	if lastBlock.Height().Int64() > 0 && lastBlock.Time().Int64() != prevSlot {
+		return ErrWaitForPrevBlock
+	}
+
+	if now%blockInterval != 0 {
+		return ErrInvalidMintBlockTime
+	}
+
+	statedb, err := state.New(lastBlock.StateRoot(), d.db)
+	if err != nil {
+		return err
+	}
+
+	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), lastBlock.BlockHeader().DposContext)
+	if err != nil {
+		return err
+	}
+	epochContext := &EpochContext{DposContext: dposContext}
+	validator, err := epochContext.lookupValidator(now)
+	if err != nil {
+		return err
+	}
+	if (validator == utils.Address{}) || bytes.Compare(validator.Bytes(), coinbase.Bytes()) != 0 {
+		return ErrInvalidBlockValidator
+	}
 	return nil
 }

@@ -98,7 +98,6 @@ func (db *Database) DiskDB() DatabaseReader {
 func (db *Database) Insert(hash utils.Hash, blob []byte) {
 	db.lock.Lock()
 	defer db.lock.Unlock()
-
 	db.insert(hash, blob)
 }
 

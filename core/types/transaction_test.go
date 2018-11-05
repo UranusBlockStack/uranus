@@ -28,6 +28,7 @@ import (
 var (
 	to     = utils.HexToAddress("0x970e8128ab834e8eac17ab8e3812f010678cf791")
 	testTx = NewTransaction(
+		Binary,
 		3,
 		&to,
 		big.NewInt(10),
@@ -42,7 +43,7 @@ func TestTxEncodeAndDecode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("encode error: %v", err)
 	}
-	utils.AssertEquals(t, txb, utils.FromHex("dd03018207d094970e8128ab834e8eac17ab8e3812f010678cf7910a5580"))
+	utils.AssertEquals(t, txb, utils.FromHex("de8003018207d094970e8128ab834e8eac17ab8e3812f010678cf7910a5580"))
 
 	tmpTx, err := decodeTx(txb)
 	if err != nil {

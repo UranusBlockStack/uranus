@@ -248,6 +248,6 @@ func (api *APIBackend) Stop() error {
 	return nil
 }
 func (api *APIBackend) SetCoinbase(address utils.Address) error {
-	api.u.miner.SetCoinBase(&address)
+	api.u.miner.SetCoinBase(address)
 	return nil
 }

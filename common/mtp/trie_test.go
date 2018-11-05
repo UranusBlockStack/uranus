@@ -89,3 +89,14 @@ func TestDelete(t *testing.T) {
 	exp := utils.HexToHash("0x5eea7814396f5a29818fca46237889c0ae95ba6a8821594c1e8e5c83fdf20a9e")
 	utils.AssertEquals(t, hash, exp)
 }
+
+func TestMissingRoot(t *testing.T) {
+	db := db.NewMemDatabase()
+	trie, err := New(utils.HexToHash("0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"), NewDatabase(db))
+	if trie != nil {
+		t.Error("New returned non-nil trie for invalid root")
+	}
+	if _, ok := err.(*MissingNodeError); !ok {
+		t.Errorf("New returned wrong error: %v", err)
+	}
+}

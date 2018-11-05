@@ -23,20 +23,20 @@
 		{
 			"checksumSHA1": "H8uV6Utd4i6GoV/zgVlbGyoQDz0=",
 			"path": "github.com/ethereum/go-ethereum/crypto/bn256",
-			"revision": "736b45a87606e6cdfd5aecf38d259517b10e7f7e",
-			"revisionTime": "2018-09-19T12:08:42Z"
+			"revision": "1f45ba9bb1c19489a6c8bf9caf100e56dcb79788",
+			"revisionTime": "2018-09-18T12:54:52Z"
 		},
 		{
 			"checksumSHA1": "aFyQMEKNzIyIRzEAdo8vGkOYqqc=",
 			"path": "github.com/ethereum/go-ethereum/crypto/bn256/cloudflare",
-			"revision": "736b45a87606e6cdfd5aecf38d259517b10e7f7e",
-			"revisionTime": "2018-09-19T12:08:42Z"
+			"revision": "1f45ba9bb1c19489a6c8bf9caf100e56dcb79788",
+			"revisionTime": "2018-09-18T12:54:52Z"
 		},
 		{
 			"checksumSHA1": "Su8qqDZsl8ty3UJJMt/xY9ADa7A=",
 			"path": "github.com/ethereum/go-ethereum/crypto/bn256/google",
-			"revision": "736b45a87606e6cdfd5aecf38d259517b10e7f7e",
-			"revisionTime": "2018-09-19T12:08:42Z"
+			"revision": "1f45ba9bb1c19489a6c8bf9caf100e56dcb79788",
+			"revisionTime": "2018-09-18T12:54:52Z"
 		},
 		{
 			"checksumSHA1": "h1d2lPZf6j2dW/mIqVnd1RdykDo=",

@@ -23,6 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/consensus"
@@ -65,9 +66,10 @@ type UMiner struct {
 	recvCh       chan *Result
 	updateHashes chan uint64
 	uranus       consensus.IUranus
+	db           db.Database
 
 	extraData   []byte
-	coinbase    *utils.Address
+	coinbase    utils.Address
 	currentWork *Work
 	engine      consensus.Engine
 	config      *params.ChainConfig
@@ -75,14 +77,14 @@ type UMiner struct {
 	mux *feed.TypeMux
 }
 
-func NewUranusMiner(mux *feed.TypeMux, config *params.ChainConfig, minerCfg *Config, uranus consensus.IUranus, engine consensus.Engine) *UMiner {
+func NewUranusMiner(mux *feed.TypeMux, config *params.ChainConfig, minerCfg *Config, uranus consensus.IUranus, engine consensus.Engine, db db.Database) *UMiner {
 	coinbase := utils.HexToAddress(minerCfg.CoinBaseAddr)
 	uminer := &UMiner{
 		mux:              mux,
 		config:           config,
 		uranus:           uranus,
 		mining:           0,
-		canStart:         0,
+		canStart:         1,
 		threads:          int32(minerCfg.MinerThreads),
 		stopCh:           make(chan struct{}),
 		speedMonitorQuit: make(chan struct{}),
@@ -90,8 +92,9 @@ func NewUranusMiner(mux *feed.TypeMux, config *params.ChainConfig, minerCfg *Con
 		recvCh:           make(chan *Result),
 		updateHashes:     make(chan uint64),
 		extraData:        []byte(minerCfg.ExtraData),
-		coinbase:         &coinbase,
+		coinbase:         coinbase,
 		engine:           engine,
+		db:               db,
 	}
 	go uminer.loop()
 	return uminer
@@ -104,12 +107,14 @@ out:
 	for ev := range events.Chan() {
 		switch ev.Data.(type) {
 		case protocols.StartEvent:
+			atomic.StoreInt32(&m.canStart, 0)
 			minning = atomic.LoadInt32(&m.mining)
 			if minning == 1 {
 				log.Warnf("Mining operation maybe aborted due to sync operation")
 				m.Stop()
 			}
 		case protocols.DoneEvent, protocols.FailedEvent:
+			atomic.StoreInt32(&m.canStart, 1)
 			if minning == 1 {
 				log.Warnf("Mining operation maybe start due to sync done or sync failed")
 				if err := m.Start(); err != nil {
@@ -123,6 +128,10 @@ out:
 }
 
 func (m *UMiner) Start() error {
+	if atomic.LoadInt32(&m.canStart) == 0 {
+		log.Info("Can not start miner when syncing")
+		return fmt.Errorf("node is syncing now")
+	}
 	if atomic.LoadInt32(&m.mining) == 1 {
 		log.Info("Miner is running")
 		return fmt.Errorf("miner is running")
@@ -131,11 +140,6 @@ func (m *UMiner) Start() error {
 	m.speedMonitorQuit = make(chan struct{})
 	m.workCh = make(chan *Work)
 	m.recvCh = make(chan *Result)
-
-	// if atomic.LoadInt32(&m.canStart) == 0 {
-	// 	log.Info("Can not start miner when syncing")
-	// 	return fmt.Errorf("node is syncing now")
-	// }
 
 	// CAS to ensure only 1 mining goroutine.
 	if !atomic.CompareAndSwapInt32(&m.mining, 0, 1) {
@@ -149,11 +153,11 @@ func (m *UMiner) Start() error {
 	go m.SpeedMonitor()
 	go m.mintLoop()
 
-	if err := m.prepareNewBlock(); err != nil { // try to prepare the first block
-		log.Warnf("mining prepareNewBlock err: %v", err)
-		atomic.StoreInt32(&m.mining, 0)
-		return err
-	}
+	// if err := m.prepareNewBlock(); err != nil { // try to prepare the first block
+	// 	log.Warnf("mining prepareNewBlock err: %v", err)
+	// 	atomic.StoreInt32(&m.mining, 0)
+	// 	return err
+	// }
 
 	log.Info("Miner is started.")
 	return nil
@@ -180,7 +184,6 @@ func (m *UMiner) Stop() {
 }
 
 func (m *UMiner) Wait() {
-	needPrepareNewBlock := true
 out:
 	for {
 		select {
@@ -198,11 +201,6 @@ out:
 			m.mux.Post(feed.NewMinedBlockEvent{
 				Block: result.block,
 			})
-			if needPrepareNewBlock {
-				if err := m.prepareNewBlock(); err != nil {
-					log.Warnf("prepareNewBlock err: %v", err)
-				}
-			}
 		case <-m.stopCh:
 			break out
 		}
@@ -240,10 +238,19 @@ func (m *UMiner) GenerateBlocks(work *Work, quit <-chan struct{}) {
 
 	work.Block.WithStateRoot(work.state.IntermediateRoot(true))
 	header := m.currentWork.Block.BlockHeader()
-	header.ExtraData = m.extraData
+	//header.ExtraData = m.extraData
 	header.GasUsed = *m.currentWork.gasUsed
 
+	if _, ok := m.engine.(*dpos.Dpos); ok {
+		if err := dpos.TryElect(work.state, work.dposContext, header.TimeStamp.Int64(), header, m.uranus); err != nil {
+			log.Errorf("GenerateBlocks %v", err)
+			return
+		}
+		header.DposContext = work.dposContext.ToProto()
+	}
+
 	block := types.NewBlock(header, work.txs, work.receipts)
+	block.DposContext = work.dposContext
 	work.Block = block
 
 	if result, err := m.engine.Seal(m.uranus, work.Block, quit, int(m.threads), m.updateHashes); result != nil {
@@ -279,15 +286,20 @@ func (m *UMiner) prepareNewBlock() error {
 	log.Debugf("block_height: %+v, difficult: %+v, hash: %v", parent.Height().Uint64(), difficult.Uint64(), parent.Hash())
 	header := &types.BlockHeader{
 		PreviousHash: parent.Hash(),
-		Miner:        *m.coinbase,
+		Miner:        m.coinbase,
 		Height:       height.Add(height, big.NewInt(1)),
 		TimeStamp:    big.NewInt(timestamp),
 		GasLimit:     calcGasLimit(parent),
 		Difficulty:   difficult,
+		ExtraData:    m.extraData,
+	}
+	dposContext, err := types.NewDposContextFromProto(stateDB.Database().TrieDB(), parent.BlockHeader().DposContext)
+	if err != nil {
+		return err
 	}
 
 	log.Debugf("miner a block with coinbase %v", m.coinbase)
-	m.currentWork = NewWork(types.NewBlockWithBlockHeader(header), parent.Height().Uint64(), stateDB)
+	m.currentWork = NewWork(types.NewBlockWithBlockHeader(header), parent.Height().Uint64(), stateDB, dposContext)
 
 	pending, err := m.uranus.Pending()
 	if err != nil {
@@ -312,14 +324,14 @@ func (m *UMiner) PushWork(work *Work) {
 	}
 }
 
-func (m *UMiner) SetCoinBase(addr *utils.Address) {
+func (m *UMiner) SetCoinBase(addr utils.Address) {
 	m.mu.Lock()
 	m.coinbase = addr
 	m.mu.Unlock()
 	//m.prepareNewBlock()
 }
 
-func (m *UMiner) GetCoinBase() *utils.Address {
+func (m *UMiner) GetCoinBase() utils.Address {
 	return m.coinbase
 }
 
@@ -395,22 +407,42 @@ func calcGasLimit(parent *types.Block) uint64 {
 }
 
 func (m *UMiner) mintLoop() {
-	dpos, ok := m.engine.(*dpos.Dpos)
-	if !ok {
-		log.Error("Only the dpos engine was allowed")
-		return
+	ticker := time.NewTicker(time.Second)
+	sub := m.mux.Subscribe(feed.NewMinedBlockEvent{})
+	if _, ok := m.engine.(*dpos.Dpos); !ok {
+		ticker.Stop()
+		defer sub.Unsubscribe()
+	} else {
+		defer ticker.Stop()
+		sub.Unsubscribe()
 	}
-	ticker := time.NewTicker(6 * time.Second).C
+
 	for {
 		select {
-		case now := <-ticker:
-			err := dpos.CheckValidator(m.uranus.CurrentBlock(), now.Unix())
-			if err != nil {
+		case now := <-ticker.C:
+			if err := m.engine.(*dpos.Dpos).CheckValidator(m.uranus.CurrentBlock(), m.coinbase, now.Unix()); err != nil {
+				switch err {
+				case dpos.ErrWaitForPrevBlock,
+					dpos.ErrMintFutureBlock,
+					dpos.ErrInvalidMintBlockTime:
+					log.Debugf("Failed to mint the block, while %v", err)
+				case dpos.ErrInvalidBlockValidator:
+					log.Warnf("Failed to mint the block, while %v", err)
+				default:
+					log.Errorf("Failed to mint the block, err %v", err)
+				}
 				continue
 			}
-			m.prepareNewBlock()
+			if err := m.prepareNewBlock(); err != nil {
+				log.Warnf("prepareNewBlock err: %v", err)
+			}
+		case <-sub.Chan():
+			if err := m.prepareNewBlock(); err != nil {
+				log.Warnf("prepareNewBlock err: %v", err)
+			}
 		case <-m.stopCh:
 			return
+
 		}
 	}
 }

@@ -67,7 +67,7 @@ func New(ctx *node.Context, config *UranusConfig) (*Uranus, error) {
 	}
 
 	// Setup genesis block
-	chainCfg, _, err := ledger.SetupGenesis(config.Genesis, ledger.NewChain(chainDb))
+	chainCfg, statedb, _, err := ledger.SetupGenesis(config.Genesis, ledger.NewChain(chainDb))
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func New(ctx *node.Context, config *UranusConfig) (*Uranus, error) {
 
 	// blockchain
 	log.Debugf("Initialised chain configuration: %v", chainCfg)
-	uranus.blockchain, err = core.NewBlockChain(config.LedgerConfig, uranus.chainConfig, chainDb, nil, &vm.Config{})
+	uranus.blockchain, err = core.NewBlockChain(config.LedgerConfig, uranus.chainConfig, statedb, chainDb, nil, &vm.Config{})
 	if err != nil {
 		return nil, err
 	}
@@ -93,9 +93,9 @@ func New(ctx *node.Context, config *UranusConfig) (*Uranus, error) {
 	mux := &feed.TypeMux{}
 
 	engine := cpuminer.NewCpuMiner()
-	dpos := dpos.NewDpos(uranus.wallet.SignHash)
+	dpos := dpos.NewDpos(statedb, uranus.wallet.SignHash)
 	// miner
-	uranus.miner = miner.NewUranusMiner(mux, uranus.chainConfig, checkMinerConfig(uranus.config.MinerConfig, uranus.wallet), &MinerBakend{u: uranus}, dpos)
+	uranus.miner = miner.NewUranusMiner(mux, uranus.chainConfig, checkMinerConfig(uranus.config.MinerConfig, uranus.wallet), &MinerBakend{u: uranus}, dpos, uranus.chainDb)
 	_ = dpos
 	//dpos.MintLoop(uranus.miner, uranus.blockchain)
 

@@ -56,7 +56,7 @@ func (e *Executor) ExecBlock(block *types.Block, statedb *state.StateDB, cfg vm.
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions() {
 		statedb.Prepare(tx.Hash(), block.Hash(), i)
-		receipt, _, err := e.ExecTransaction(nil, gp, statedb, header, tx, usedGas, cfg)
+		receipt, _, err := e.ExecTransaction(nil, block.DposCtx(), gp, statedb, header, tx, usedGas, cfg)
 		if err != nil {
 			return nil, nil, 0, err
 		}
@@ -65,12 +65,12 @@ func (e *Executor) ExecBlock(block *types.Block, statedb *state.StateDB, cfg vm.
 	}
 
 	statedb.AddBalance(block.Miner(), params.BlockReward)
-
 	return receipts, allLogs, *usedGas, nil
 }
 
 // ExecTransaction attempts to execute a transaction to the given state database and uses the input parameters for its environment.
 func (e *Executor) ExecTransaction(author *utils.Address,
+	dposContext *types.DposContext,
 	gp *utils.GasPool, statedb *state.StateDB, header *types.BlockHeader,
 	tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
 
@@ -82,6 +82,12 @@ func (e *Executor) ExecTransaction(author *utils.Address,
 	_, gas, failed, err := ExecStateTransition(vmenv, tx, gp)
 	if err != nil {
 		return nil, 0, err
+	}
+
+	if tx.Type() != types.Binary {
+		if err = applyDposMessage(dposContext, tx); err != nil {
+			return nil, 0, err
+		}
 	}
 
 	root := statedb.IntermediateRoot(true).Bytes()
@@ -98,4 +104,21 @@ func (e *Executor) ExecTransaction(author *utils.Address,
 	receipt.Logs = statedb.GetLogs(tx.Hash())
 	receipt.LogsBloom = types.CreateBloom(types.Receipts{receipt})
 	return receipt, gas, err
+}
+
+func applyDposMessage(dposContext *types.DposContext, tx *types.Transaction) error {
+	from, _ := tx.Sender(types.Signer{})
+	switch tx.Type() {
+	case types.LoginCandidate:
+		dposContext.BecomeCandidate(from)
+	case types.LogoutCandidate:
+		dposContext.KickoutCandidate(from)
+	case types.Delegate:
+		dposContext.Delegate(from, *(tx.To()))
+	case types.UnDelegate:
+		dposContext.UnDelegate(from, *(tx.To()))
+	default:
+		return types.ErrInvalidType
+	}
+	return nil
 }

@@ -22,7 +22,7 @@ import (
 )
 
 type ChainConfig struct {
-	ChainID *big.Int
+	ChainID *big.Int `json:"chainId"`
 }
 
 // String implements fmt.Stringer.
@@ -31,5 +31,5 @@ func (c ChainConfig) String() string {
 	return string(cfgJSON)
 }
 
-var TestChainConfig = &ChainConfig{ChainID: big.NewInt(0)}
-var DefaultChainConfig = &ChainConfig{ChainID: big.NewInt(1)}
+var TestChainConfig = &ChainConfig{big.NewInt(0)}
+var DefaultChainConfig = &ChainConfig{big.NewInt(1)}

@@ -56,19 +56,20 @@ func (n *MinerNonce) UnmarshalText(input []byte) error {
 
 // BlockHeader represents a block header in blockchain.
 type BlockHeader struct {
-	PreviousHash     utils.Hash    `json:"previousHash"       gencodec:"required"`
-	Miner            utils.Address `json:"miner"            gencodec:"required"`
-	StateRoot        utils.Hash    `json:"stateRoot"        gencodec:"required"`
-	TransactionsRoot utils.Hash    `json:"transactionsRoot" gencodec:"required"`
-	ReceiptsRoot     utils.Hash    `json:"receiptsRoot"     gencodec:"required"`
-	LogsBloom        bloom.Bloom   `json:"logsBloom"        gencodec:"required"`
-	Difficulty       *big.Int      `json:"difficulty"       gencodec:"required"`
-	Height           *big.Int      `json:"height"           gencodec:"required"`
-	GasLimit         uint64        `json:"gasLimit"         gencodec:"required"`
-	GasUsed          uint64        `json:"gasUsed"          gencodec:"required"`
-	TimeStamp        *big.Int      `json:"timestamp"        gencodec:"required"`
-	ExtraData        []byte        `json:"extraData"        gencodec:"required"`
-	Nonce            MinerNonce    `json:"nonce"            gencodec:"required"`
+	PreviousHash     utils.Hash        `json:"previousHash"`
+	Miner            utils.Address     `json:"miner"`
+	StateRoot        utils.Hash        `json:"stateRoot"`
+	TransactionsRoot utils.Hash        `json:"transactionsRoot"`
+	ReceiptsRoot     utils.Hash        `json:"receiptsRoot"`
+	DposContext      *DposContextProto `json:"dposContext" rlp:"nil"`
+	LogsBloom        bloom.Bloom       `json:"logsBloom"`
+	Difficulty       *big.Int          `json:"difficulty"`
+	Height           *big.Int          `json:"height"`
+	GasLimit         uint64            `json:"gasLimit"`
+	GasUsed          uint64            `json:"gasUsed" `
+	TimeStamp        *big.Int          `json:"timestamp"`
+	ExtraData        []byte            `json:"extraData"`
+	Nonce            MinerNonce        `json:"nonce"`
 }
 
 // Hash returns the block hash of the header
@@ -115,6 +116,11 @@ func CopyBlockHeader(h *BlockHeader) *BlockHeader {
 		cpy.ExtraData = make([]byte, len(h.ExtraData))
 		copy(cpy.ExtraData, h.ExtraData)
 	}
+	// add dposContextProto to header
+	cpy.DposContext = &DposContextProto{}
+	if h.DposContext != nil {
+		cpy.DposContext = h.DposContext
+	}
 	return &cpy
 }
 
@@ -130,6 +136,7 @@ type Block struct {
 	// These fields are used to track inter-peer block relay.
 	ReceivedAt   time.Time
 	ReceivedFrom interface{}
+	DposContext  *DposContext
 }
 
 // NewBlock creates a new block.
@@ -207,6 +214,7 @@ func (b *Block) TransactionsRoot() utils.Hash { return b.header.TransactionsRoot
 func (b *Block) ReceiptsRoot() utils.Hash     { return b.header.ReceiptsRoot }
 func (b *Block) ExtraData() []byte            { return utils.CopyBytes(b.header.ExtraData) }
 func (b *Block) BlockHeader() *BlockHeader    { return CopyBlockHeader(b.header) }
+func (b *Block) DposCtx() *DposContext        { return b.DposContext }
 
 // Hash returns the keccak256 hash of b's header.
 func (b *Block) Hash() utils.Hash {
@@ -246,6 +254,7 @@ func (b *Block) WithSeal(header *BlockHeader) *Block {
 	return &Block{
 		header:       cpy,
 		transactions: b.transactions,
+		DposContext:  b.DposContext,
 	}
 }
 

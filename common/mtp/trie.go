@@ -490,6 +490,9 @@ func (t *Trie) Commit(onleaf LeafCallback) (root utils.Hash, err error) {
 // CommitTo writes all nodes to the given database.
 // Nodes are stored with their sha3 hash as the key.
 func (t *Trie) CommitTo(db *Database) (root utils.Hash, err error) {
+	if t.db == nil {
+		panic("commit called on trie with nil database")
+	}
 	hash, cached, err := t.hashRoot(db, nil)
 	if err != nil {
 		return (utils.Hash{}), err

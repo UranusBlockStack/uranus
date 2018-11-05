@@ -22,7 +22,6 @@ import (
 	"fmt"
 
 	"github.com/UranusBlockStack/uranus/common/crypto/sha3"
-	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
@@ -35,7 +34,7 @@ type DposContext struct {
 	candidateTrie *mtp.Trie
 	mintCntTrie   *mtp.Trie
 
-	db db.Database
+	db *mtp.Database
 }
 
 var (
@@ -46,27 +45,27 @@ var (
 	mintCntPrefix   = []byte("mintCnt-")
 )
 
-func NewEpochTrie(root utils.Hash, db db.Database) (*mtp.Trie, error) {
-	return mtp.NewWithPrefix(root, epochPrefix, mtp.NewDatabase(db))
+func NewEpochTrie(root utils.Hash, db *mtp.Database) (*mtp.Trie, error) {
+	return mtp.NewWithPrefix(root, epochPrefix, db)
 }
 
-func NewDelegateTrie(root utils.Hash, db db.Database) (*mtp.Trie, error) {
-	return mtp.NewWithPrefix(root, delegatePrefix, mtp.NewDatabase(db))
+func NewDelegateTrie(root utils.Hash, db *mtp.Database) (*mtp.Trie, error) {
+	return mtp.NewWithPrefix(root, delegatePrefix, db)
 }
 
-func NewVoteTrie(root utils.Hash, db db.Database) (*mtp.Trie, error) {
-	return mtp.NewWithPrefix(root, votePrefix, mtp.NewDatabase(db))
+func NewVoteTrie(root utils.Hash, db *mtp.Database) (*mtp.Trie, error) {
+	return mtp.NewWithPrefix(root, votePrefix, db)
 }
 
-func NewCandidateTrie(root utils.Hash, db db.Database) (*mtp.Trie, error) {
-	return mtp.NewWithPrefix(root, candidatePrefix, mtp.NewDatabase(db))
+func NewCandidateTrie(root utils.Hash, db *mtp.Database) (*mtp.Trie, error) {
+	return mtp.NewWithPrefix(root, candidatePrefix, db)
 }
 
-func NewMintCntTrie(root utils.Hash, db db.Database) (*mtp.Trie, error) {
-	return mtp.NewWithPrefix(root, mintCntPrefix, mtp.NewDatabase(db))
+func NewMintCntTrie(root utils.Hash, db *mtp.Database) (*mtp.Trie, error) {
+	return mtp.NewWithPrefix(root, mintCntPrefix, db)
 }
 
-func NewDposContext(db db.Database) (*DposContext, error) {
+func NewDposContext(db *mtp.Database) (*DposContext, error) {
 	epochTrie, err := NewEpochTrie(utils.Hash{}, db)
 	if err != nil {
 		return nil, err
@@ -97,7 +96,7 @@ func NewDposContext(db db.Database) (*DposContext, error) {
 	}, nil
 }
 
-func NewDposContextFromProto(db db.Database, ctxProto *DposContextProto) (*DposContext, error) {
+func NewDposContextFromProto(db *mtp.Database, ctxProto *DposContextProto) (*DposContext, error) {
 	epochTrie, err := NewEpochTrie(ctxProto.EpochHash, db)
 	if err != nil {
 		return nil, err
@@ -334,6 +333,13 @@ func (d *DposContext) CommitTo(dbw *mtp.Database) (*DposContextProto, error) {
 	if err != nil {
 		return nil, err
 	}
+	// fmt.Println("===Debug=====")
+	// fmt.Println("===CommitTo epochRoot 		===>", epochRoot.Hex())
+	// fmt.Println("===CommitTo delegateRoot	===>", delegateRoot.Hex())
+	// fmt.Println("===CommitTo voteRoot		===>", voteRoot.Hex())
+	// fmt.Println("===CommitTo candidateRoot	===>", candidateRoot.Hex())
+	// fmt.Println("===CommitTo mintCntRoot		===>", mintCntRoot.Hex())
+
 	return &DposContextProto{
 		EpochHash:     epochRoot,
 		DelegateHash:  delegateRoot,
@@ -348,7 +354,7 @@ func (d *DposContext) DelegateTrie() *mtp.Trie           { return d.delegateTrie
 func (d *DposContext) VoteTrie() *mtp.Trie               { return d.voteTrie }
 func (d *DposContext) EpochTrie() *mtp.Trie              { return d.epochTrie }
 func (d *DposContext) MintCntTrie() *mtp.Trie            { return d.mintCntTrie }
-func (d *DposContext) DB() db.Database                   { return d.db }
+func (d *DposContext) DB() *mtp.Database                 { return d.db }
 func (dc *DposContext) SetEpoch(epoch *mtp.Trie)         { dc.epochTrie = epoch }
 func (dc *DposContext) SetDelegate(delegate *mtp.Trie)   { dc.delegateTrie = delegate }
 func (dc *DposContext) SetVote(vote *mtp.Trie)           { dc.voteTrie = vote }

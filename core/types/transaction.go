@@ -18,6 +18,7 @@ package types
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"io"
 	"math/big"
 	"sync/atomic"
@@ -38,6 +39,14 @@ const (
 	UnDelegate
 )
 
+var (
+	ErrInvalidSig     = errors.New("invalid transaction v, r, s values")
+	errNoSigner       = errors.New("missing signing methods")
+	ErrInvalidType    = errors.New("invalid transaction type")
+	ErrInvalidAddress = errors.New("invalid transaction payload address")
+	ErrInvalidAction  = errors.New("invalid transaction payload action")
+)
+
 // Transaction transaction
 type Transaction struct {
 	data txdata
@@ -49,21 +58,23 @@ type Transaction struct {
 }
 
 type txdata struct {
-	Nonce     uint64         `json:"nonce"    gencodec:"required"`
-	GasPrice  *big.Int       `json:"gasPrice" gencodec:"required"`
-	GasLimit  uint64         `json:"gas"      gencodec:"required"`
-	To        *utils.Address `json:"to"       rlp:"nil"`
-	Value     *big.Int       `json:"value"    gencodec:"required"`
-	Payload   []byte         `json:"payload"    gencodec:"required"`
-	Signature []byte         `json:"signature"    gencodec:"required"`
+	Type      TxType         `json:"type"`
+	Nonce     uint64         `json:"nonce"`
+	GasPrice  *big.Int       `json:"gasPrice"`
+	GasLimit  uint64         `json:"gas"`
+	To        *utils.Address `json:"to" rlp:"nil"`
+	Value     *big.Int       `json:"value"`
+	Payload   []byte         `json:"payload"`
+	Signature []byte         `json:"signature"`
 }
 
 // NewTransaction new transaction
-func NewTransaction(nonce uint64, to *utils.Address, value *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *Transaction {
+func NewTransaction(txType TxType, nonce uint64, to *utils.Address, value *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *Transaction {
 	if len(data) > 0 {
 		data = utils.CopyBytes(data)
 	}
 	d := txdata{
+		Type:     txType,
 		Nonce:    nonce,
 		GasLimit: gasLimit,
 		GasPrice: new(big.Int),
@@ -80,12 +91,30 @@ func NewTransaction(nonce uint64, to *utils.Address, value *big.Int, gasLimit ui
 
 	return &Transaction{data: d}
 }
+
+// Validate Valid the transaction when the type isn't the binary
+func (tx *Transaction) Validate() error {
+	if tx.Type() != Binary {
+		if tx.Value().Uint64() != 0 {
+			return errors.New("transaction value should be 0")
+		}
+		if tx.To() == nil && tx.Type() != LoginCandidate && tx.Type() != LogoutCandidate {
+			return errors.New("receipient was required")
+		}
+		if tx.Payload() != nil {
+			return errors.New("payload should be empty")
+		}
+	}
+	return nil
+}
+
 func (tx *Transaction) Signature() []byte  { return utils.CopyBytes(tx.data.Signature) }
 func (tx *Transaction) Payload() []byte    { return utils.CopyBytes(tx.data.Payload) }
 func (tx *Transaction) Gas() uint64        { return tx.data.GasLimit }
 func (tx *Transaction) GasPrice() *big.Int { return new(big.Int).Set(tx.data.GasPrice) }
 func (tx *Transaction) Value() *big.Int    { return new(big.Int).Set(tx.data.Value) }
 func (tx *Transaction) Nonce() uint64      { return tx.data.Nonce }
+func (tx *Transaction) Type() TxType       { return tx.data.Type }
 func (tx *Transaction) To() *utils.Address {
 	if tx.data.To == nil {
 		return nil

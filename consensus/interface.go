@@ -46,7 +46,7 @@ type IBlockChain interface {
 	PostEvent(event interface{})
 	GetCurrentInfo() (*types.Block, *state.StateDB, error)
 	WriteBlockWithState(*types.Block, types.Receipts, *state.StateDB) (bool, error)
-	ExecTransaction(*utils.Address, *utils.GasPool, *state.StateDB, *types.BlockHeader, *types.Transaction, *uint64, vm.Config) (*types.Receipt, uint64, error)
+	ExecTransaction(*utils.Address, *types.DposContext, *utils.GasPool, *state.StateDB, *types.BlockHeader, *types.Transaction, *uint64, vm.Config) (*types.Receipt, uint64, error)
 }
 
 type IChainReader interface {

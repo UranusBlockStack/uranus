@@ -68,8 +68,8 @@ type BlockChain struct {
 }
 
 // NewBlockChain returns a fully initialised block chain using information available in the database.
-func NewBlockChain(cfg *ledger.Config, chainCfg *params.ChainConfig, db db.Database, engine consensus.Engine, vmCfg *vm.Config) (*BlockChain, error) {
-	stateCache := state.NewDatabase(db)
+func NewBlockChain(cfg *ledger.Config, chainCfg *params.ChainConfig, statedb state.Database, db db.Database, engine consensus.Engine, vmCfg *vm.Config) (*BlockChain, error) {
+	stateCache := statedb
 	ledger := ledger.New(cfg, db, func(hash utils.Hash) bool {
 		_, err := stateCache.OpenTrie(hash)
 		return err == nil
@@ -243,6 +243,14 @@ func (bc *BlockChain) execBlock(block *types.Block) (types.Receipts, []*types.Lo
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
+	dposContext, err := types.NewDposContextFromProto(state.Database().TrieDB(), parent.BlockHeader().DposContext)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	block.DposContext = dposContext
+
 	// Process block using the parent state as reference point.
 	receipts, logs, usedGas, err := bc.executor.ExecBlock(block, state, *bc.vmConfig)
 	if err != nil {
@@ -258,9 +266,10 @@ func (bc *BlockChain) execBlock(block *types.Block) (types.Receipts, []*types.Lo
 
 // ExecTransaction execute transaction and return receipts
 func (bc *BlockChain) ExecTransaction(author *utils.Address,
+	dposcontext *types.DposContext,
 	gp *utils.GasPool, statedb *state.StateDB, header *types.BlockHeader,
 	tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
-	return bc.executor.ExecTransaction(author, gp, statedb, header, tx, usedGas, cfg)
+	return bc.executor.ExecTransaction(author, dposcontext, gp, statedb, header, tx, usedGas, cfg)
 }
 
 //WriteBlockWithState write the block to the chain and get the status.
@@ -286,6 +295,10 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts types.Rec
 	triedb := bc.stateCache.TrieDB()
 
 	if err := triedb.Commit(root, false); err != nil {
+		return false, err
+	}
+
+	if _, err := block.DposContext.CommitTo(triedb); err != nil {
 		return false, err
 	}
 

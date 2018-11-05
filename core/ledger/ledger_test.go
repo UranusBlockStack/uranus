@@ -30,7 +30,7 @@ func TestRewindChain(t *testing.T) {
 		_, err := stateCache.OpenTrie(hash)
 		return err == nil
 	})
-	genesisBlock := DefaultGenesis().ToBlock(ledger.chain)
+	genesisBlock, _ := DefaultGenesis().ToBlock(ledger.chain)
 	DefaultGenesis().Commit(ledger.chain)
 
 	ledger.CheckLastBlock(genesisBlock)

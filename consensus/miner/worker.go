@@ -38,15 +38,18 @@ type Work struct {
 	gasUsed  *uint64
 	state    *state.StateDB
 	tcount   int // tx count in cycle
+
+	dposContext *types.DposContext
 }
 
-func NewWork(blk *types.Block, height uint64, state *state.StateDB) *Work {
+func NewWork(blk *types.Block, height uint64, state *state.StateDB, dposContext *types.DposContext) *Work {
 	return &Work{
-		Block:   blk,
-		Height:  height,
-		state:   state,
-		gasUsed: new(uint64),
-		signer:  types.Signer{},
+		Block:       blk,
+		Height:      height,
+		state:       state,
+		gasUsed:     new(uint64),
+		signer:      types.Signer{},
+		dposContext: dposContext,
 	}
 }
 
@@ -114,9 +117,11 @@ func (w *Work) applyTransactions(blockchain consensus.IBlockChain, txs *types.Tr
 
 func (w *Work) commitTransaction(tx *types.Transaction, bc consensus.IBlockChain, GasUsed *uint64, gp *utils.GasPool) (error, []*types.Log) {
 	snap := w.state.Snapshot()
-	receipt, _, err := bc.ExecTransaction(&w.Block.BlockHeader().Miner, gp, w.state, w.Block.BlockHeader(), tx, GasUsed, vm.Config{})
+	dposSnap := w.dposContext.Snapshot()
+	receipt, _, err := bc.ExecTransaction(&w.Block.BlockHeader().Miner, w.dposContext, gp, w.state, w.Block.BlockHeader(), tx, GasUsed, vm.Config{})
 	if err != nil {
 		w.state.RevertToSnapshot(snap)
+		w.dposContext.RevertToSnapShot(dposSnap)
 		return err, nil
 	}
 	w.txs = append(w.txs, tx)

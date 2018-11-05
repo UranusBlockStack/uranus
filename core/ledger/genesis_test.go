@@ -22,25 +22,27 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/params"
 )
 
 func TestDefaultGenesis(t *testing.T) {
-	block := DefaultGenesis().ToBlock(NewChain(db.NewMemDatabase()))
-	utils.AssertEquals(t, block.Hash().Hex(), "0xd4e1dcfda3c2d0a54bea6905a149f6394ce34ba4bacafe4f29b94467f17e041c")
+	block, _ := DefaultGenesis().ToBlock(NewChain(db.NewMemDatabase()))
+	utils.AssertEquals(t, block.Hash().Hex(), "0xbe6ea29b491a31ed976f726cbd864f87269ff41c1043f8213b70a4b3c31446e2")
+
 }
 
 func TestSetupGenesisBlock(t *testing.T) {
 	tests := []struct {
 		name       string
-		fn         func(c *Chain) (*params.ChainConfig, utils.Hash, error)
+		fn         func(c *Chain) (*params.ChainConfig, state.Database, utils.Hash, error)
 		wantConfig *params.ChainConfig
 		wantHash   utils.Hash
 		wantErr    error
 	}{
 		{
 			name: "genesis without ChainConfig",
-			fn: func(c *Chain) (*params.ChainConfig, utils.Hash, error) {
+			fn: func(c *Chain) (*params.ChainConfig, state.Database, utils.Hash, error) {
 				return SetupGenesis(new(Genesis), c)
 			},
 			wantErr:    errGenesisNoConfig,
@@ -48,19 +50,19 @@ func TestSetupGenesisBlock(t *testing.T) {
 		},
 		{
 			name: "no block in DB, genesis == nil",
-			fn: func(c *Chain) (*params.ChainConfig, utils.Hash, error) {
+			fn: func(c *Chain) (*params.ChainConfig, state.Database, utils.Hash, error) {
 				return SetupGenesis(nil, c)
 			},
-			wantHash:   utils.HexToHash("0xd4e1dcfda3c2d0a54bea6905a149f6394ce34ba4bacafe4f29b94467f17e041c"),
+			wantHash:   utils.HexToHash("0xbe6ea29b491a31ed976f726cbd864f87269ff41c1043f8213b70a4b3c31446e2"),
 			wantConfig: params.DefaultChainConfig,
 		},
 		{
 			name: "genesis block in DB, genesis == nil",
-			fn: func(c *Chain) (*params.ChainConfig, utils.Hash, error) {
+			fn: func(c *Chain) (*params.ChainConfig, state.Database, utils.Hash, error) {
 				DefaultGenesis().Commit(c)
 				return SetupGenesis(nil, c)
 			},
-			wantHash:   utils.HexToHash("0xd4e1dcfda3c2d0a54bea6905a149f6394ce34ba4bacafe4f29b94467f17e041c"),
+			wantHash:   utils.HexToHash("0xbe6ea29b491a31ed976f726cbd864f87269ff41c1043f8213b70a4b3c31446e2"),
 			wantConfig: params.DefaultChainConfig,
 		},
 	}
@@ -71,7 +73,7 @@ func TestSetupGenesisBlock(t *testing.T) {
 		defer db.Close()
 
 		Chaindb := NewChain(db)
-		config, hash, err := test.fn(Chaindb)
+		config, _, hash, err := test.fn(Chaindb)
 
 		utils.AssertEquals(t, err, test.wantErr)
 		utils.AssertEquals(t, config, test.wantConfig)
