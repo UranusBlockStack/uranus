@@ -46,25 +46,18 @@ type Processor interface {
 
 // BlockChain manages chain imports, reverts, chain reorganisations.
 type BlockChain struct {
-	config   *params.ChainConfig
-	vmConfig *vm.Config
-
 	*ledger.Ledger
-
-	genesisBlock *types.Block
-	currentBlock atomic.Value
-
-	stateCache state.Database // State database to reuse between imports (contains state cache)
-	validator  *blockValidator.Validator
-
+	config              *params.ChainConfig
+	vmConfig            *vm.Config
+	genesisBlock        *types.Block
+	currentBlock        atomic.Value
+	stateCache          state.Database // State database to reuse between imports (contains state cache)
 	chainBlockFeed      feed.Feed
 	chainBlockscription feed.Subscription
-
-	executor *exec.Executor
-	engine   consensus.Engine
-
-	chainmu sync.RWMutex
-	quit    chan struct{} // blockchain quit channel
+	validator           *blockValidator.Validator
+	executor            *exec.Executor
+	chainmu             sync.RWMutex
+	quit                chan struct{} // blockchain quit channel
 }
 
 // NewBlockChain returns a fully initialised block chain using information available in the database.
@@ -81,7 +74,6 @@ func NewBlockChain(cfg *ledger.Config, chainCfg *params.ChainConfig, db db.Datab
 		Ledger:     ledger,
 		validator:  blockValidator.New(ledger, engine),
 		executor:   exec.NewExecutor(chainCfg, ledger, engine),
-		engine:     engine,
 		quit:       make(chan struct{}),
 	}
 
@@ -126,18 +118,28 @@ func (bc *BlockChain) loop() {
 		case <-futureTimer.C:
 			bc.processBlocks()
 		case <-bc.quit:
-			bc.chainBlockscription.Unsubscribe()
+			if bc.chainBlockscription != nil {
+				bc.chainBlockscription.Unsubscribe()
+			}
 			log.Info("blockchain service stop.")
 			return
 		}
 	}
 }
 
+// Stop stops the blockchain service.
+func (bc *BlockChain) Stop() {
+	if bc.chainBlockscription != nil {
+		bc.chainBlockscription.Unsubscribe()
+	}
+	close(bc.quit)
+	log.Info("Blockchain manager stopped")
+}
+
 func (bc *BlockChain) processBlocks() {
 	blocks := bc.GetFutureBlock()
 	// sort by number
 	sort.Sort(blocks)
-
 	for _, b := range blocks {
 		// insert future block one by one.
 		event, _, err := bc.insertChain(b)
@@ -164,7 +166,7 @@ func (bc *BlockChain) InsertChain(blocks types.Blocks) (int, error) {
 		}
 	}
 
-	n := 0
+	var n int
 	for _, blk := range blocks {
 		if bc.HasBlock(blk.Hash()) {
 			continue
@@ -283,6 +285,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts types.Rec
 	if err != nil {
 		return false, err
 	}
+
 	triedb := bc.stateCache.TrieDB()
 
 	if err := triedb.Commit(root, false); err != nil {
@@ -305,12 +308,10 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts types.Rec
 			}
 			status = true
 		}
-
 	}
 
 	bc.WriteBlockAndReceipts(block, receipts)
-
-	if !status && reorg {
+	if !status && !reorg {
 		// Set new head.
 		bc.WriteLegitimateHashAndHeadBlockHash(block.Height().Uint64(), block.Hash())
 		bc.currentBlock.Store(block)

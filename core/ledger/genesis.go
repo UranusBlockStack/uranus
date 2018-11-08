@@ -89,14 +89,13 @@ func (g *Genesis) Commit(chain *Chain) (*types.Block, error) {
 	chain.putLegitimateHash(block.Height().Uint64(), block.Hash())
 	chain.putHeadBlockHash(block.Hash())
 	chain.putChainConfig(block.Hash(), g.Config)
-
 	return block, nil
 }
 
 // ToBlock creates the genesis block and writes state.
 func (g *Genesis) ToBlock(chain *Chain) *types.Block {
 	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(chain.db))
-	root := statedb.IntermediateRoot(false)
+	root := statedb.IntermediateRoot(true)
 	head := &types.BlockHeader{
 		Height:       new(big.Int).SetUint64(g.Height),
 		Nonce:        types.EncodeNonce(g.Nonce),
@@ -109,8 +108,7 @@ func (g *Genesis) ToBlock(chain *Chain) *types.Block {
 		Miner:        g.Miner,
 		StateRoot:    root,
 	}
-	statedb.Commit(false)
-
+	statedb.Commit(true)
 	statedb.Database().TrieDB().Commit(root, true)
 	return types.NewBlock(head, nil, nil)
 }

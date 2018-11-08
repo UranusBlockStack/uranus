@@ -15,3 +15,27 @@
 // along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
 
 package core
+
+import (
+	"testing"
+
+	"github.com/UranusBlockStack/uranus/consensus/pow/cpuminer"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestTheLastBlock(t *testing.T) {
+	cpum := cpuminer.NewCpuMiner()
+	_, blockchain, err := newLegitimate(cpum, 0)
+	if err != nil {
+		t.Fatalf("failed to create pristine chain: %v", err)
+	}
+	defer blockchain.Stop()
+
+	blocks := makeBlocks(blockchain.CurrentBlock(), 1, cpum, blockchain.GetDB(), 0)
+
+	if _, err := blockchain.InsertChain(blocks); err != nil {
+		t.Fatalf("Failed to insert block: %v", err)
+	}
+
+	assert.Equal(t, blocks[len(blocks)-1].Hash().Hex(), blockchain.GetHeadBlockHash().Hex())
+}

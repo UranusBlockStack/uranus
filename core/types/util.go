@@ -25,6 +25,7 @@ import (
 	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/params"
 )
 
 func rlpHash(x interface{}) (h utils.Hash) {
@@ -124,4 +125,25 @@ func LogsBloom(logs []*Log) *big.Int {
 	}
 
 	return bin
+}
+
+// CalcGasLimit computes the gas limit of the next block after parent.
+func CalcGasLimit(parent *Block) uint64 {
+	// contrib = (parentGasUsed * 3 / 2) / 1024
+	contrib := (parent.GasUsed() + parent.GasUsed()/2) / params.GasLimitBoundDivisor
+	// decay = parentGasLimit / 1024 -1
+	decay := parent.GasLimit()/params.GasLimitBoundDivisor - 1
+	limit := parent.GasLimit() - decay + contrib
+	if limit < params.MinGasLimit {
+		limit = params.MinGasLimit
+	}
+	// however, if we're now below the target (TargetGasLimit) we increase the
+	// limit as much as we can (parentGasLimit / 1024 -1)
+	if limit < params.GenesisGasLimit {
+		limit = parent.GasLimit() + decay
+		if limit > params.GenesisGasLimit {
+			limit = params.GenesisGasLimit
+		}
+	}
+	return limit
 }

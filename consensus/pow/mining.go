@@ -281,7 +281,7 @@ func (m *UMiner) prepareNewBlock() error {
 		Miner:        *m.coinbase,
 		Height:       height.Add(height, big.NewInt(1)),
 		TimeStamp:    big.NewInt(timestamp),
-		GasLimit:     calcGasLimit(parent),
+		GasLimit:     types.CalcGasLimit(parent),
 		Difficulty:   difficult,
 	}
 
@@ -371,24 +371,4 @@ func (m *UMiner) PendingBlock() *types.Block {
 		return nil
 	}
 	return m.currentWork.Block
-}
-
-func calcGasLimit(parent *types.Block) uint64 {
-	// contrib = (parentGasUsed * 3 / 2) / 1024
-	contrib := (parent.GasUsed() + parent.GasUsed()/2) / params.GasLimitBoundDivisor
-	// decay = parentGasLimit / 1024 -1
-	decay := parent.GasLimit()/params.GasLimitBoundDivisor - 1
-	limit := parent.GasLimit() - decay + contrib
-	if limit < params.MinGasLimit {
-		limit = params.MinGasLimit
-	}
-	// however, if we're now below the target (TargetGasLimit) we increase the
-	// limit as much as we can (parentGasLimit / 1024 -1)
-	if limit < params.GenesisGasLimit {
-		limit = parent.GasLimit() + decay
-		if limit > params.GenesisGasLimit {
-			limit = params.GenesisGasLimit
-		}
-	}
-	return limit
 }

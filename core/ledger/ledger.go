@@ -92,7 +92,12 @@ func (l *Ledger) RewindChain(height uint64) {
 	return
 }
 
-// WriteLegitimateHashAndHeadBlockHash
+// GetHeadBlockHash get the last block hash
+func (l *Ledger) GetHeadBlockHash() utils.Hash {
+	return l.chain.getHeadBlockHash()
+}
+
+// WriteLegitimateHashAndHeadBlockHash write the Legitimate chain
 func (l *Ledger) WriteLegitimateHashAndHeadBlockHash(height uint64, hash utils.Hash) {
 	l.chain.putLegitimateHash(height, hash)
 	l.chain.putHeadBlockHash(hash)
@@ -149,9 +154,9 @@ func (l *Ledger) HasFutureBlock(hash utils.Hash) bool {
 	return l.cache.futureBlocks.Contains(hash)
 }
 
-// HasHeader checks if a block header is present in the database or not, caching it if present.
+// HasHeader checks if a block header is present in the database or not.
 func (l *Ledger) HasHeader(hash utils.Hash, height uint64) bool {
-	return l.chain.getHeader(hash) != nil
+	return l.chain.HasHeader(hash)
 }
 
 // HasState checks if state trie is fully present in the database or not.

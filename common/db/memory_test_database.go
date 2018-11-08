@@ -63,7 +63,7 @@ func (db *MemDatabase) Get(key []byte) ([]byte, error) {
 	if entry, ok := db.db[string(key)]; ok {
 		return utils.CopyBytes(entry), nil
 	}
-	return nil, errors.New("not found")
+	return nil, errors.New("memdb: not found")
 }
 
 func (db *MemDatabase) Keys() [][]byte {
