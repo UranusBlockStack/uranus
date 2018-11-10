@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/consensus/dpos"
 	"github.com/UranusBlockStack/uranus/core/types"
 )
 
@@ -47,14 +48,27 @@ func (api *DposAPI) GetValidators(number *BlockHeight, reply *[]utils.Address) e
 	}
 	header := block.BlockHeader()
 
-	// TODO
-	_ = header
+	statedb, err := api.b.BlockChain().State()
+	if err != nil {
+		return err
+	}
+	epochTrie, err := types.NewEpochTrie(header.DposContext.EpochHash, statedb.Database().TrieDB())
+	if err != nil {
+		return err
+	}
+	dposContext := types.DposContext{}
+	dposContext.SetEpoch(epochTrie)
+	validators, err := dposContext.GetValidators()
+	if err != nil {
+		return err
+	}
 
+	*reply = validators
 	return nil
 }
 
 // GetVoters retrieves the list of the voters at specified block
-func (api *DposAPI) GetVoters(number *BlockHeight, reply *[]utils.Address) error {
+func (api *DposAPI) GetVoters(number *BlockHeight, reply *map[utils.Address]utils.Big) error {
 	var block *types.Block
 	if number == nil || *number == LatestBlockHeight {
 		block = api.b.CurrentBlock()
@@ -66,14 +80,33 @@ func (api *DposAPI) GetVoters(number *BlockHeight, reply *[]utils.Address) error
 	}
 	header := block.BlockHeader()
 
-	// TODO
-	_ = header
+	statedb, err := api.b.BlockChain().State()
+	if err != nil {
+		return err
+	}
 
+	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), header.DposContext)
+	if err != nil {
+		return err
+	}
+	epochContext := &dpos.EpochContext{DposContext: dposContext, Statedb: statedb}
+
+	voters, err := epochContext.CountVotes()
+	if err != nil {
+		return err
+	}
+
+	result := make(map[utils.Address]utils.Big)
+	for voter, score := range voters {
+		result[voter] = *(*utils.Big)(score)
+	}
+
+	*reply = result
 	return nil
 }
 
-// GetDelegators retrieves the list of the delegators at specified block
-func (api *DposAPI) GetDelegators(number *BlockHeight, reply *[]utils.Address) error {
+// GetCandidates retrieves the list of the candidate at specified block
+func (api *DposAPI) GetCandidates(number *BlockHeight, reply *[]utils.Address) error {
 	var block *types.Block
 	if number == nil || *number == LatestBlockHeight {
 		block = api.b.CurrentBlock()
@@ -85,8 +118,21 @@ func (api *DposAPI) GetDelegators(number *BlockHeight, reply *[]utils.Address) e
 	}
 	header := block.BlockHeader()
 
-	// TODO
-	_ = header
+	statedb, err := api.b.BlockChain().State()
+	if err != nil {
+		return err
+	}
+	candidateTrie, err := types.NewEpochTrie(header.DposContext.CandidateHash, statedb.Database().TrieDB())
+	if err != nil {
+		return err
+	}
+	dposContext := types.DposContext{}
+	dposContext.SetCandidate(candidateTrie)
+	candidates, err := dposContext.GetCandidates()
+	if err != nil {
+		return err
+	}
 
+	*reply = candidates
 	return nil
 }
