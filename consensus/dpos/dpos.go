@@ -21,8 +21,8 @@ import (
 const (
 	extraSeal = 65 // Fixed number of extra-data suffix bytes reserved for signer seal
 
-	blockInterval    = int64(10)
-	epochInterval    = int64(86400)
+	blockInterval    = int64(3)
+	epochInterval    = int64(3 * 21)
 	maxValidatorSize = 21
 	safeSize         = maxValidatorSize*2/3 + 1
 	consensusSize    = maxValidatorSize*2/3 + 1
@@ -267,7 +267,7 @@ func (d *Dpos) CheckValidator(lastBlock *types.Block, coinbase utils.Address, no
 	if lastBlock.Time().Int64() >= nextSlot {
 		return ErrMintFutureBlock
 	}
-	if lastBlock.Height().Int64() > 0 && lastBlock.Time().Int64() != prevSlot {
+	if lastBlock.Time().Int64() != prevSlot && nextSlot-now >= 1 {
 		return ErrWaitForPrevBlock
 	}
 

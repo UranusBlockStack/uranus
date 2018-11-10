@@ -28,8 +28,7 @@ import (
 
 func TestDefaultGenesis(t *testing.T) {
 	block, _ := DefaultGenesis().ToBlock(NewChain(db.NewMemDatabase()))
-	utils.AssertEquals(t, block.Hash().Hex(), "0xbe6ea29b491a31ed976f726cbd864f87269ff41c1043f8213b70a4b3c31446e2")
-
+	utils.AssertEquals(t, block.Hash().Hex(), "0xe5061a41807973b3d73d2e59b9f7119c0f3ab60178c675ab19c73134d763c5fd")
 }
 
 func TestSetupGenesisBlock(t *testing.T) {
@@ -53,7 +52,7 @@ func TestSetupGenesisBlock(t *testing.T) {
 			fn: func(c *Chain) (*params.ChainConfig, state.Database, utils.Hash, error) {
 				return SetupGenesis(nil, c)
 			},
-			wantHash:   utils.HexToHash("0xbe6ea29b491a31ed976f726cbd864f87269ff41c1043f8213b70a4b3c31446e2"),
+			wantHash:   utils.HexToHash("0xe5061a41807973b3d73d2e59b9f7119c0f3ab60178c675ab19c73134d763c5fd"),
 			wantConfig: params.DefaultChainConfig,
 		},
 		{
@@ -62,7 +61,7 @@ func TestSetupGenesisBlock(t *testing.T) {
 				DefaultGenesis().Commit(c)
 				return SetupGenesis(nil, c)
 			},
-			wantHash:   utils.HexToHash("0xbe6ea29b491a31ed976f726cbd864f87269ff41c1043f8213b70a4b3c31446e2"),
+			wantHash:   utils.HexToHash("0xe5061a41807973b3d73d2e59b9f7119c0f3ab60178c675ab19c73134d763c5fd"),
 			wantConfig: params.DefaultChainConfig,
 		},
 	}

@@ -184,6 +184,7 @@ func (m *UMiner) Stop() {
 }
 
 func (m *UMiner) Wait() {
+	defer m.wg.Done()
 out:
 	for {
 		select {
@@ -205,11 +206,11 @@ out:
 			break out
 		}
 	}
-	m.wg.Done()
 	log.Debug("miner wait block thread quit ...")
 }
 
 func (m *UMiner) Update() {
+	defer m.wg.Done()
 out:
 	for {
 		select {
@@ -228,7 +229,6 @@ out:
 			break out
 		}
 	}
-	m.wg.Done()
 	log.Debug("miner update to generate block thread quit ...")
 }
 
@@ -250,7 +250,9 @@ func (m *UMiner) GenerateBlocks(work *Work, quit <-chan struct{}) {
 	}
 
 	block := types.NewBlock(header, work.txs, work.receipts)
-	block.DposContext = work.dposContext
+	if _, ok := m.engine.(*dpos.Dpos); ok {
+		block.DposContext = work.dposContext
+	}
 	work.Block = block
 
 	if result, err := m.engine.Seal(m.uranus, work.Block, quit, int(m.threads), m.updateHashes); result != nil {
@@ -293,9 +295,13 @@ func (m *UMiner) prepareNewBlock() error {
 		Difficulty:   difficult,
 		ExtraData:    m.extraData,
 	}
-	dposContext, err := types.NewDposContextFromProto(stateDB.Database().TrieDB(), parent.BlockHeader().DposContext)
-	if err != nil {
-		return err
+	var dposContext *types.DposContext = nil
+	if _, ok := m.engine.(*dpos.Dpos); ok {
+		var err error
+		dposContext, err = types.NewDposContextFromProto(stateDB.Database().TrieDB(), parent.BlockHeader().DposContext)
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Debugf("miner a block with coinbase %v", m.coinbase)
@@ -340,6 +346,7 @@ func (m *UMiner) SpeedMonitor() {
 	var totalHashes uint64
 	ticker := time.NewTicker(time.Second * hpsUpdateSecs)
 	defer ticker.Stop()
+	defer m.wg.Done()
 
 out:
 	for {
@@ -367,7 +374,6 @@ out:
 		}
 	}
 
-	m.wg.Done()
 	log.Debug("CPU miner speed monitor quit")
 }
 
@@ -407,6 +413,7 @@ func calcGasLimit(parent *types.Block) uint64 {
 }
 
 func (m *UMiner) mintLoop() {
+	defer m.wg.Done()
 	ticker := time.NewTicker(time.Second)
 	sub := m.mux.Subscribe(feed.NewMinedBlockEvent{})
 	if _, ok := m.engine.(*dpos.Dpos); !ok {

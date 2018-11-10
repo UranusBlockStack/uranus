@@ -294,11 +294,11 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts types.Rec
 	}
 	triedb := bc.stateCache.TrieDB()
 
-	if err := triedb.Commit(root, false); err != nil {
+	if _, err := block.DposContext.CommitTo(triedb); err != nil {
 		return false, err
 	}
 
-	if _, err := block.DposContext.CommitTo(triedb); err != nil {
+	if err := triedb.Commit(root, false); err != nil {
 		return false, err
 	}
 

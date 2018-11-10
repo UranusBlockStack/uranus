@@ -333,6 +333,21 @@ func (d *DposContext) CommitTo(dbw *mtp.Database) (*DposContextProto, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := dbw.Commit(epochRoot, false); err != nil {
+		return nil, err
+	}
+	if err := dbw.Commit(delegateRoot, false); err != nil {
+		return nil, err
+	}
+	if err := dbw.Commit(voteRoot, false); err != nil {
+		return nil, err
+	}
+	if err := dbw.Commit(candidateRoot, false); err != nil {
+		return nil, err
+	}
+	if err := dbw.Commit(mintCntRoot, false); err != nil {
+		return nil, err
+	}
 	// fmt.Println("===Debug=====")
 	// fmt.Println("===CommitTo epochRoot 		===>", epochRoot.Hex())
 	// fmt.Println("===CommitTo delegateRoot	===>", delegateRoot.Hex())
@@ -360,6 +375,17 @@ func (dc *DposContext) SetDelegate(delegate *mtp.Trie)   { dc.delegateTrie = del
 func (dc *DposContext) SetVote(vote *mtp.Trie)           { dc.voteTrie = vote }
 func (dc *DposContext) SetCandidate(candidate *mtp.Trie) { dc.candidateTrie = candidate }
 func (dc *DposContext) SetMintCnt(mintCnt *mtp.Trie)     { dc.mintCntTrie = mintCnt }
+
+func (dc *DposContext) GetCandidates() ([]utils.Address, error) {
+	candidates := []utils.Address{}
+	candidateIterator := mtp.NewIterator(dc.candidateTrie.NodeIterator(nil))
+	for candidateIterator.Next() {
+		candidate := candidateIterator.Value
+		candidateAddr := utils.BytesToAddress(candidate)
+		candidates = append(candidates, candidateAddr)
+	}
+	return candidates, nil
+}
 
 func (dc *DposContext) GetValidators() ([]utils.Address, error) {
 	var validators []utils.Address

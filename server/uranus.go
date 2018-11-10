@@ -147,7 +147,7 @@ func (u *Uranus) APIs() []rpc.API {
 			Service:   rpcapi.NewBlockChainAPI(u.uranusAPI),
 		},
 		{
-			Namespace: "dpos",
+			Namespace: "Dpos",
 			Version:   "0.0.1",
 			Service:   rpcapi.NewDposAPI(u.uranusAPI),
 		},

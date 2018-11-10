@@ -63,7 +63,7 @@ func (ec *EpochContext) tryElect(genesis, parent *types.BlockHeader) error {
 				return err
 			}
 		}
-		votes, err := ec.countVotes()
+		votes, err := ec.CountVotes()
 		if err != nil {
 			return err
 		}
@@ -99,8 +99,8 @@ func (ec *EpochContext) tryElect(genesis, parent *types.BlockHeader) error {
 	return nil
 }
 
-// countVotes
-func (ec *EpochContext) countVotes() (votes map[utils.Address]*big.Int, err error) {
+// CountVotes
+func (ec *EpochContext) CountVotes() (votes map[utils.Address]*big.Int, err error) {
 	votes = map[utils.Address]*big.Int{}
 	delegateTrie := ec.DposContext.DelegateTrie()
 	candidateTrie := ec.DposContext.CandidateTrie()

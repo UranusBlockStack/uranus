@@ -18,6 +18,7 @@ package rpcapi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/UranusBlockStack/uranus/common/utils"
@@ -102,6 +103,10 @@ func (api *DposAPI) GetVoters(number *BlockHeight, reply *map[utils.Address]util
 	}
 
 	*reply = result
+	fmt.Println("===", result)
+	s, _ := json.Marshal(result)
+	fmt.Println(string(s))
+
 	return nil
 }
 
