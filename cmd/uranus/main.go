@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"syscall"
 
+	cmdutils "github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/node"
 	"github.com/UranusBlockStack/uranus/server"
@@ -96,7 +97,7 @@ func init() {
 	falgs.StringVar(&startConfig.LogConfig.Format, "log_format", "text", "Logging format: text,json.")
 
 	// node
-	falgs.StringVarP(&startConfig.NodeConfig.DataDir, "datadir", "d", defaultDataDir(), "Data directory for the databases")
+	falgs.StringVarP(&startConfig.NodeConfig.DataDir, "datadir", "d", cmdutils.DefaultDataDir(), "Data directory for the databases")
 	falgs.StringVar(&startConfig.NodeConfig.Host, "node_rpchost", startConfig.NodeConfig.Host, "HTTP and RPC server listening interface")
 	falgs.IntVar(&startConfig.NodeConfig.Port, "node_rpcport", startConfig.NodeConfig.Port, "HTTP and RPC server listening port")
 	falgs.StringArrayVar(&startConfig.NodeConfig.Cors, "node_rpccors", startConfig.NodeConfig.Cors, "HTTP and RPC accept cross origin requests")
@@ -200,10 +201,7 @@ func unmarshalCfgFile(startConfig *StartConfig) error {
 	}
 
 	// miner
-	if err := viper.Unmarshal(startConfig.UranusConfig.MinerConfig); err != nil {
-		return err
-	}
-	return nil
+	return viper.Unmarshal(startConfig.UranusConfig.MinerConfig)
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.

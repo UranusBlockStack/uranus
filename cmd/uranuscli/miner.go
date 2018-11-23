@@ -17,6 +17,7 @@
 package main
 
 import (
+	cmdutils "github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/spf13/cobra"
 )
@@ -32,11 +33,11 @@ var startMinerCmd = &cobra.Command{
 			threads *int32
 		)
 		if len(args) != 0 {
-			num := getUint64(args[0])
+			num := cmdutils.GetUint64(args[0])
 			*threads = int32(num)
 		}
-		ClientCall("Miner.Start", threads, &result)
-		printJSON(result)
+		cmdutils.ClientCall("Miner.Start", threads, &result)
+		cmdutils.PrintJSON(result)
 	},
 }
 
@@ -47,8 +48,8 @@ var stopMinerCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		var result bool
-		ClientCall("Miner.Stop", nil, &result)
-		printJSON(result)
+		cmdutils.ClientCall("Miner.Stop", nil, &result)
+		cmdutils.PrintJSON(result)
 	},
 }
 
@@ -59,7 +60,7 @@ var setCoinbaseCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		var result bool
-		ClientCall("Miner.SetCoinbase", utils.HexToAddress(isHexAddr(args[0])), &result)
-		printJSON(result)
+		cmdutils.ClientCall("Miner.SetCoinbase", utils.HexToAddress(cmdutils.IsHexAddr(args[0])), &result)
+		cmdutils.PrintJSON(result)
 	},
 }

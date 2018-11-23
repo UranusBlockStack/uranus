@@ -17,6 +17,7 @@
 package main
 
 import (
+	cmdutils "github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/rpcapi"
 	"github.com/spf13/cobra"
@@ -29,8 +30,8 @@ var createAccountCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		result := utils.Address{}
-		ClientCall("Wallet.NewAccount", args[0], &result)
-		printJSON(result)
+		cmdutils.ClientCall("Wallet.NewAccount", args[0], &result)
+		cmdutils.PrintJSON(result)
 	},
 }
 
@@ -41,10 +42,10 @@ var deleteAccountCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		var result bool
-		ClientCall("Wallet.Delete", rpcapi.DeleteArgs{
-			Address:    utils.HexToAddress(isHexAddr(args[0])),
+		cmdutils.ClientCall("Wallet.Delete", rpcapi.DeleteArgs{
+			Address:    utils.HexToAddress(cmdutils.IsHexAddr(args[0])),
 			Passphrase: args[1]}, &result)
-		printJSON(result)
+		cmdutils.PrintJSON(result)
 	},
 }
 
@@ -55,11 +56,11 @@ var updateAccountCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
 		var result bool
-		ClientCall("Wallet.Update", rpcapi.UpdateArgs{
-			Address:       utils.HexToAddress(isHexAddr(args[0])),
+		cmdutils.ClientCall("Wallet.Update", rpcapi.UpdateArgs{
+			Address:       utils.HexToAddress(cmdutils.IsHexAddr(args[0])),
 			Passphrase:    args[1],
 			NewPassphrase: args[2]}, &result)
-		printJSON(result)
+		cmdutils.PrintJSON(result)
 	},
 }
 
@@ -71,8 +72,8 @@ var listAccountsCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		result := []utils.Address{}
-		ClientCall("Wallet.Accounts", nil, &result)
-		printJSONList(result)
+		cmdutils.ClientCall("Wallet.Accounts", nil, &result)
+		cmdutils.PrintJSONList(result)
 	},
 }
 
@@ -83,9 +84,9 @@ var importRawKeyCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		result := utils.Address{}
-		ClientCall("Wallet.ImportRawKey", rpcapi.ImportRawKeyArgs{
+		cmdutils.ClientCall("Wallet.ImportRawKey", rpcapi.ImportRawKeyArgs{
 			PrivKeyHex: args[0],
 			Passphrase: args[1]}, &result)
-		printJSON(result)
+		cmdutils.PrintJSON(result)
 	},
 }

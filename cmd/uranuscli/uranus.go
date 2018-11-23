@@ -19,6 +19,7 @@ package main
 import (
 	"encoding/json"
 
+	cmdutils "github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/rpcapi"
 	"github.com/spf13/cobra"
@@ -32,8 +33,8 @@ var suggestGasPriceCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		result := new(utils.Big)
-		ClientCall("Uranus.SuggestGasPrice", nil, &result)
-		printJSON(result)
+		cmdutils.ClientCall("Uranus.SuggestGasPrice", nil, &result)
+		cmdutils.PrintJSON(result)
 	},
 }
 
@@ -48,14 +49,14 @@ var getBalanceCmd = &cobra.Command{
 		req := &rpcapi.GetBalanceArgs{}
 		switch len(args) {
 		case 1:
-			req.Address = utils.HexToAddress(isHexAddr(args[0]))
+			req.Address = utils.HexToAddress(cmdutils.IsHexAddr(args[0]))
 		case 2:
-			req.Address = utils.HexToAddress(isHexAddr(args[0]))
-			req.BlockHeight = getBlockheight(args[1])
+			req.Address = utils.HexToAddress(cmdutils.IsHexAddr(args[0]))
+			req.BlockHeight = cmdutils.GetBlockheight(args[1])
 		}
 
-		ClientCall("Uranus.GetBalance", req, &result)
-		printJSON(result)
+		cmdutils.ClientCall("Uranus.GetBalance", req, &result)
+		cmdutils.PrintJSON(result)
 	},
 }
 
@@ -70,14 +71,14 @@ var getNonceCmd = &cobra.Command{
 		req := &rpcapi.GetNonceArgs{}
 		switch len(args) {
 		case 1:
-			req.Address = utils.HexToAddress(isHexAddr(args[0]))
+			req.Address = utils.HexToAddress(cmdutils.IsHexAddr(args[0]))
 		case 2:
-			req.Address = utils.HexToAddress(isHexAddr(args[0]))
-			req.BlockHeight = getBlockheight(args[1])
+			req.Address = utils.HexToAddress(cmdutils.IsHexAddr(args[0]))
+			req.BlockHeight = cmdutils.GetBlockheight(args[1])
 		}
 
-		ClientCall("Uranus.GetNonce", req, &result)
-		printJSON(result)
+		cmdutils.ClientCall("Uranus.GetNonce", req, &result)
+		cmdutils.PrintJSON(result)
 	},
 }
 var getCodeCmd = &cobra.Command{
@@ -90,14 +91,14 @@ var getCodeCmd = &cobra.Command{
 		req := &rpcapi.GetCodeArgs{}
 		switch len(args) {
 		case 1:
-			req.Address = utils.HexToAddress(isHexAddr(args[0]))
+			req.Address = utils.HexToAddress(cmdutils.IsHexAddr(args[0]))
 		case 2:
-			req.Address = utils.HexToAddress(isHexAddr(args[0]))
-			req.BlockHeight = getBlockheight(args[1])
+			req.Address = utils.HexToAddress(cmdutils.IsHexAddr(args[0]))
+			req.BlockHeight = cmdutils.GetBlockheight(args[1])
 		}
 
-		ClientCall("Uranus.GetCode", req, &result)
-		printJSON(result)
+		cmdutils.ClientCall("Uranus.GetCode", req, &result)
+		cmdutils.PrintJSON(result)
 	},
 }
 
@@ -108,8 +109,8 @@ var sendRawTransactionCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		result := &utils.Hash{}
-		ClientCall("Uranus.SendRawTransaction", utils.HexToBytes(args[0]), &result)
-		printJSON(result)
+		cmdutils.ClientCall("Uranus.SendRawTransaction", utils.HexToBytes(args[0]), &result)
+		cmdutils.PrintJSON(result)
 	},
 }
 
@@ -124,8 +125,8 @@ var signAndSendTransactionCmd = &cobra.Command{
 		if err := json.Unmarshal([]byte(args[0]), req); err != nil {
 			jww.ERROR.Println(err)
 		}
-		ClientCall("Uranus.SignAndSendTransaction", req, &result)
-		printJSON(result)
+		cmdutils.ClientCall("Uranus.SignAndSendTransaction", req, &result)
+		cmdutils.PrintJSON(result)
 	},
 }
 
@@ -141,7 +142,7 @@ var callCmd = &cobra.Command{
 		if err := json.Unmarshal([]byte(args[0]), req); err != nil {
 			jww.ERROR.Println(err)
 		}
-		ClientCall("Uranus.Call", req, &result)
-		printJSON(result)
+		cmdutils.ClientCall("Uranus.Call", req, &result)
+		cmdutils.PrintJSON(result)
 	},
 }

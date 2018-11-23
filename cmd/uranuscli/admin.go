@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/UranusBlockStack/uranus/p2p"
 	"github.com/spf13/cobra"
 )
@@ -28,8 +29,8 @@ var listPeersCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		result := []*p2p.PeerInfo{}
-		ClientCall("Admin.Peers", nil, &result)
-		printJSONList(result)
+		utils.ClientCall("Admin.Peers", nil, &result)
+		utils.PrintJSONList(result)
 	},
 }
 
@@ -40,8 +41,8 @@ var addPeerCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		var result bool
-		ClientCall("Admin.AddPeer", args[0], &result)
-		printJSON(result)
+		utils.ClientCall("Admin.AddPeer", args[0], &result)
+		utils.PrintJSON(result)
 	},
 }
 
@@ -52,8 +53,8 @@ var removePeerCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		var result bool
-		ClientCall("Admin.RemovePeer", args[0], &result)
-		printJSON(result)
+		utils.ClientCall("Admin.RemovePeer", args[0], &result)
+		utils.PrintJSON(result)
 	},
 }
 var nodeInfoCmd = &cobra.Command{
@@ -63,7 +64,7 @@ var nodeInfoCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		result := &p2p.NodeInfo{}
-		ClientCall("Admin.NodeInfo", nil, &result)
-		printJSON(result)
+		utils.ClientCall("Admin.NodeInfo", nil, &result)
+		utils.PrintJSON(result)
 	},
 }

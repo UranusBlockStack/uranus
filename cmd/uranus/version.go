@@ -17,12 +17,7 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"runtime"
-	"strings"
-
-	"github.com/UranusBlockStack/uranus/params"
+	cmdutils "github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -32,22 +27,8 @@ var versionCmd = &cobra.Command{
 	Short: "Show uranus current version",
 	Long:  `Show uranus current version`,
 	Run: func(cmd *cobra.Command, args []string) {
-		version()
+		cmdutils.Version()
 	},
-}
-
-func version() {
-	fmt.Println(strings.Title(params.Identifier))
-	gitCommit := params.GitCommit()
-	fmt.Println("Version:", params.VersionWithCommit(gitCommit))
-	if gitCommit != "" {
-		fmt.Println("Git Commit:", gitCommit)
-	}
-	fmt.Println("Architecture:", runtime.GOARCH)
-	fmt.Println("Go Version:", runtime.Version())
-	fmt.Println("Operating System:", runtime.GOOS)
-	fmt.Printf("GOPATH=%s\n", os.Getenv("GOPATH"))
-	fmt.Printf("GOROOT=%s\n", runtime.GOROOT())
 }
 
 func init() {

@@ -20,6 +20,7 @@ import (
 	"os"
 	"strconv"
 
+	cmdutils "github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/rpcapi"
 	"github.com/spf13/cobra"
@@ -35,9 +36,9 @@ var getBlockByHeightCmd = &cobra.Command{
 		req := rpcapi.GetBlockByHeightArgs{}
 		switch len(args) {
 		case 1:
-			req.BlockHeight = getBlockheight(args[0])
+			req.BlockHeight = cmdutils.GetBlockheight(args[0])
 		case 2:
-			req.BlockHeight = getBlockheight(args[0])
+			req.BlockHeight = cmdutils.GetBlockheight(args[0])
 			full, err := strconv.ParseBool(args[1])
 			if err != nil {
 				jww.ERROR.Printf("Invalid fulltx value: %v err: %v", args[1], err)
@@ -47,8 +48,8 @@ var getBlockByHeightCmd = &cobra.Command{
 		}
 
 		result := map[string]interface{}{}
-		ClientCall("BlockChain.GetBlockByHeight", req, &result)
-		printJSON(result)
+		cmdutils.ClientCall("BlockChain.GetBlockByHeight", req, &result)
+		cmdutils.PrintJSON(result)
 	},
 }
 
@@ -62,9 +63,9 @@ var getBlockByHashCmd = &cobra.Command{
 
 		switch len(args) {
 		case 1:
-			req.BlockHash = utils.HexToHash(isHexHash(args[0]))
+			req.BlockHash = utils.HexToHash(cmdutils.IsHexHash(args[0]))
 		case 2:
-			req.BlockHash = utils.HexToHash(isHexHash(args[0]))
+			req.BlockHash = utils.HexToHash(cmdutils.IsHexHash(args[0]))
 			full, err := strconv.ParseBool(args[1])
 			if err != nil {
 				jww.ERROR.Printf("ParseBool args: %v err: %v", args[1], err)
@@ -73,8 +74,8 @@ var getBlockByHashCmd = &cobra.Command{
 			req.FullTx = full
 		}
 		result := map[string]interface{}{}
-		ClientCall("BlockChain.GetBlockByHash", req, &result)
-		printJSON(result)
+		cmdutils.ClientCall("BlockChain.GetBlockByHash", req, &result)
+		cmdutils.PrintJSON(result)
 	},
 }
 
@@ -85,8 +86,8 @@ var getTransactionByHashCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		result := &rpcapi.RPCTransaction{}
-		ClientCall("BlockChain.GetTransactionByHash", utils.HexToHash(isHexHash(args[0])), &result)
-		printJSON(result)
+		cmdutils.ClientCall("BlockChain.GetTransactionByHash", utils.HexToHash(cmdutils.IsHexHash(args[0])), &result)
+		cmdutils.PrintJSON(result)
 	},
 }
 
@@ -97,7 +98,7 @@ var getTransactionReceiptCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		result := map[string]interface{}{}
-		ClientCall("BlockChain.GetTransactionReceipt", utils.HexToHash(isHexHash(args[0])), &result)
-		printJSON(result)
+		cmdutils.ClientCall("BlockChain.GetTransactionReceipt", utils.HexToHash(cmdutils.IsHexHash(args[0])), &result)
+		cmdutils.PrintJSON(result)
 	},
 }

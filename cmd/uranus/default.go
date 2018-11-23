@@ -85,7 +85,6 @@ func defaultNodeConfig() *node.Config {
 }
 
 func defaultP2PConfig() *p2p.Config {
-	// todo add p2p config-
 	return &p2p.Config{
 		ListenAddr: "127.0.0.1:7090",
 		MaxPeers:   25,

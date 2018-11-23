@@ -17,6 +17,7 @@
 package main
 
 import (
+	cmdutils "github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/rpcapi"
 	"github.com/spf13/cobra"
@@ -29,8 +30,8 @@ var getContentCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		result := map[string]map[string]map[string]*rpcapi.RPCTransaction{}
-		ClientCall("TxPool.Content", nil, &result)
-		printJSON(result)
+		cmdutils.ClientCall("TxPool.Content", nil, &result)
+		cmdutils.PrintJSON(result)
 	},
 }
 var getStatusCmd = &cobra.Command{
@@ -40,7 +41,7 @@ var getStatusCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		result := map[string]utils.Uint{}
-		ClientCall("TxPool.Status", nil, &result)
-		printJSON(result)
+		cmdutils.ClientCall("TxPool.Status", nil, &result)
+		cmdutils.PrintJSON(result)
 	},
 }
