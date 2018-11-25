@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	lockcache "github.com/UranusBlockStack/uranus/common/cache"
@@ -30,8 +31,6 @@ import (
 
 const (
 	defaultAccountCacheLimit = 1000
-	// errSuffix                = `: no such file or directory`
-	keyFileSuffix = `.json`
 )
 
 type Wallet struct {
@@ -50,20 +49,23 @@ func NewWallet(ksdir string) *Wallet {
 }
 
 // Accounts list all account.
-func (w *Wallet) Accounts() ([]utils.Address, error) {
-	accounts := []utils.Address{}
+func (w *Wallet) Accounts() (Accounts, error) {
+	accounts := Accounts{}
 	rd, err := ioutil.ReadDir(w.ks.keyStoreDir)
 	if err != nil {
 		return nil, err
 	}
 	for _, fi := range rd {
-		if fi.IsDir() {
-			continue
-		} else {
+		if !noKeyFile(fi) {
 			addrHex := strings.TrimSuffix(fi.Name(), keyFileSuffix)
-			accounts = append(accounts, utils.HexToAddress(addrHex))
+			addr := utils.HexToAddress(addrHex[len(addrHex)-40:])
+			accounts = append(accounts, Account{
+				Address:  addr,
+				FileName: fi.Name(),
+			})
 		}
 	}
+	sort.Sort(accounts)
 	return accounts, nil
 }
 
@@ -75,65 +77,97 @@ func (w *Wallet) ImportRawKey(privkey string, passphrase string) (utils.Address,
 	}
 	addr := crypto.PubkeyToAddress(key.PublicKey)
 
+	fileName := keyFileName(addr)
+	path := filepath.Join(w.ks.keyStoreDir, fileName)
 	// check if key exist
-	fileName := filepath.Join(w.ks.keyStoreDir, addr.Hex()+keyFileSuffix)
-	if utils.FileExists(fileName) {
+	if utils.FileExists(path) {
 		return addr, nil
 	}
-	account := &Account{
+	account := Account{
 		Address:    addr,
 		PrivateKey: key,
+		FileName:   fileName,
 	}
-	if err := w.ks.PutKey(account, fileName, passphrase); err != nil {
+	if err := w.ks.PutKey(account, path, passphrase); err != nil {
 		return utils.Address{}, err
 	}
 
-	w.accountCache.Add(account.Address, &lockAccount{passphrase: passphrase, account: account})
+	w.accountCache.Add(account.Address, &lockAccount{passphrase: passphrase, account: &account})
 	return account.Address, nil
 }
 
 // NewAccount creates a new account
-func (w *Wallet) NewAccount(passphrase string) (*Account, error) {
+func (w *Wallet) NewAccount(passphrase string) (Account, error) {
 	account, err := genNewAccount()
 	if err != nil {
-		return nil, err
+		return Account{}, err
 	}
 
-	fileName := filepath.Join(w.ks.keyStoreDir, account.Address.Hex()+keyFileSuffix)
-	if err := w.ks.PutKey(account, fileName, passphrase); err != nil {
-		return nil, err
+	path := filepath.Join(w.ks.keyStoreDir, account.FileName)
+	if err := w.ks.PutKey(account, path, passphrase); err != nil {
+		return Account{}, err
 	}
-	w.accountCache.Add(account.Address, &lockAccount{passphrase: passphrase, account: account})
+	w.accountCache.Add(account.Address, &lockAccount{passphrase: passphrase, account: &account})
 	return account, nil
 }
 
+// Find resolves the given account into a unique entry in the keystore.
+func (w *Wallet) Find(addr utils.Address) (Account, error) {
+	if la, ok := w.accountCache.Get(addr); ok {
+		return *la.(*lockAccount).account, nil
+	}
+
+	rd, err := ioutil.ReadDir(w.ks.keyStoreDir)
+	if err != nil {
+		return Account{}, err
+	}
+
+	for _, fi := range rd {
+		if !noKeyFile(fi) {
+			addrHex := strings.TrimSuffix(fi.Name(), keyFileSuffix)
+			address := utils.HexToAddress(addrHex[len(addrHex)-40:])
+			if address == addr {
+				return Account{
+					Address:  addr,
+					FileName: fi.Name(),
+				}, nil
+			}
+		}
+	}
+
+	return Account{}, ErrNoMatch
+}
+
 // Delete removes the speciified account
-func (w *Wallet) Delete(address utils.Address, passphrase string) error {
-	fileName := filepath.Join(w.ks.keyStoreDir, address.Hex()+keyFileSuffix)
-	if !utils.FileExists(fileName) {
+func (w *Wallet) Delete(account Account, passphrase string) error {
+	path := filepath.Join(w.ks.keyStoreDir, account.FileName)
+
+	if !utils.FileExists(path) {
 		return nil
 	}
-	_, err := w.ks.GetKey(address, fileName, passphrase)
+	_, err := w.ks.GetKey(account.Address, path, passphrase)
 	if err != nil {
 		return err
 	}
 
-	w.accountCache.Remove(address)
-	return os.Remove(fileName)
+	w.accountCache.Remove(account.Address)
+	return os.Remove(path)
 }
 
 // Update update the specified account
-func (w *Wallet) Update(address utils.Address, passphrase, newPassphrase string) error {
-	fileName := filepath.Join(w.ks.keyStoreDir, address.Hex()+keyFileSuffix)
-	if !utils.FileExists(fileName) {
+func (w *Wallet) Update(account Account, passphrase, newPassphrase string) error {
+	path := filepath.Join(w.ks.keyStoreDir, account.FileName)
+
+	if !utils.FileExists(path) {
 		return ErrNoMatch
 	}
-	account, err := w.ks.GetKey(address, fileName, passphrase)
+	newaccount, err := w.ks.GetKey(account.Address, path, passphrase)
 	if err != nil {
 		return err
 	}
-	w.accountCache.Add(address, &lockAccount{passphrase: newPassphrase, account: account})
-	return w.ks.PutKey(account, fileName, newPassphrase)
+	newaccount.FileName = account.FileName
+	w.accountCache.Add(account.Address, &lockAccount{passphrase: newPassphrase, account: newaccount})
+	return w.ks.PutKey(*newaccount, path, newPassphrase)
 }
 
 // SignTx sign the specified transaction
@@ -148,8 +182,8 @@ func (w *Wallet) SignTx(addr utils.Address, tx *types.Transaction, passphrase st
 		return nil, ErrDecrypt
 	}
 
-	fileName := filepath.Join(w.ks.keyStoreDir, addr.Hex()+keyFileSuffix)
-	account, err := w.ks.GetKey(addr, fileName, passphrase)
+	path := filepath.Join(w.ks.keyStoreDir, keyFileName(addr))
+	account, err := w.ks.GetKey(addr, path, passphrase)
 	if err != nil {
 		return nil, err
 	}

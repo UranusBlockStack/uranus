@@ -20,13 +20,18 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"io"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
+	"github.com/UranusBlockStack/uranus/common/utils"
 	"golang.org/x/crypto/scrypt"
 )
 
@@ -84,16 +89,45 @@ func writeKeyFile(file string, content []byte) error {
 	return os.Rename(f.Name(), file)
 }
 
-func genNewAccount() (*Account, error) {
+func genNewAccount() (Account, error) {
 	key, err := crypto.GenerateKey()
 	if err != nil {
-		return nil, err
+		return Account{}, err
 	}
 	addr := crypto.PubkeyToAddress(key.PublicKey)
-	account := &Account{
+	return Account{
 		PrivateKey: key,
 		Address:    addr,
-	}
+		FileName:   keyFileName(addr),
+	}, nil
+}
 
-	return account, nil
+var keyFileSuffix = `.json`
+
+// keyFileName implements the naming convention for keyfiles:
+// UTC--<created_at UTC ISO8601>-<address hex>
+func keyFileName(keyAddr utils.Address) string {
+	ts := time.Now().UTC()
+	return fmt.Sprintf("UTC--%s--%s", toISO8601(ts), hex.EncodeToString(keyAddr[:])) + keyFileSuffix
+}
+
+func toISO8601(t time.Time) string {
+	var tz string
+	name, offset := t.Zone()
+	if name == "UTC" {
+		tz = "Z"
+	} else {
+		tz = fmt.Sprintf("%03d00", offset/3600)
+	}
+	return fmt.Sprintf("%04d-%02d-%02dT%02d-%02d-%02d.%09d%s", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), tz)
+}
+
+func noKeyFile(fi os.FileInfo) bool {
+	if strings.HasSuffix(fi.Name(), "~") || strings.HasPrefix(fi.Name(), ".") {
+		return true
+	}
+	if fi.IsDir() || fi.Mode()&os.ModeType != 0 {
+		return true
+	}
+	return false
 }

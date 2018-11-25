@@ -44,7 +44,7 @@ func TestKeyEncryptDecrypt(t *testing.T) {
 		t.Errorf(" key address mismatch: have %x, want %x", account.Address, address)
 	}
 	password += "new data appended"
-	if keyjson, err = EncryptKey(account, password); err != nil {
+	if keyjson, err = EncryptKey(*account, password); err != nil {
 		t.Errorf(" failed to recrypt key %v", err)
 	}
 }

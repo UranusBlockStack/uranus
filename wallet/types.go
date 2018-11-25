@@ -18,6 +18,7 @@ package wallet
 
 import (
 	"crypto/ecdsa"
+	"strings"
 
 	"github.com/UranusBlockStack/uranus/common/utils"
 )
@@ -41,7 +42,26 @@ type lockAccount struct {
 	passphrase string
 }
 
+// Account represents an uranus account.
 type Account struct {
-	Address    utils.Address
-	PrivateKey *ecdsa.PrivateKey
+	Address    utils.Address     `json:"address"`
+	PrivateKey *ecdsa.PrivateKey `json:"privatekey,omitempty" `
+	FileName   string            `json:"filename"`
 }
+
+// Cmp compares x and y and returns:
+//
+//   -1 if x <  y
+//    0 if x == y
+//   +1 if x >  y
+//
+func (a Account) Cmp(account Account) int {
+	return strings.Compare(a.FileName, account.FileName)
+}
+
+// Accounts  is a Account slice type.
+type Accounts []Account
+
+func (as Accounts) Len() int           { return len(as) }
+func (as Accounts) Less(i, j int) bool { return as[i].Cmp(as[j]) < 0 }
+func (as Accounts) Swap(i, j int)      { as[i], as[j] = as[j], as[i] }

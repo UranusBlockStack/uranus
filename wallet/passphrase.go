@@ -28,7 +28,7 @@ import (
 )
 
 // EncryptKey encrypt the key via auth
-func EncryptKey(account *Account, auth string) ([]byte, error) {
+func EncryptKey(account Account, auth string) ([]byte, error) {
 	salt := getRandBuff(32)
 	derivedKey, err := getScryptKey(auth, salt)
 	if err != nil {
@@ -72,9 +72,11 @@ func DecryptKey(keyjson []byte, auth string) (*Account, error) {
 	if err != nil {
 		return nil, err
 	}
+	addr := crypto.PubkeyToAddress(key.PublicKey)
 	return &Account{
-		Address:    crypto.PubkeyToAddress(key.PublicKey),
+		Address:    addr,
 		PrivateKey: key,
+		FileName:   keyFileName(addr),
 	}, nil
 }
 

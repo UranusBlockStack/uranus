@@ -56,13 +56,13 @@ func (ks KeyStore) GetKey(addr utils.Address, filename, auth string) (*Account, 
 }
 
 // PutKey stores the specified key
-func (ks KeyStore) PutKey(account *Account, filename string, auth string) error {
+func (ks KeyStore) PutKey(account Account, path string, auth string) error {
 	keyjson, err := EncryptKey(account, auth)
 	if err != nil {
 		return err
 	}
 
-	return writeKeyFile(filename, keyjson)
+	return writeKeyFile(path, keyjson)
 }
 
 // JoinPath returns the abs path of the keystore file

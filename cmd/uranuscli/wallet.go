@@ -20,6 +20,7 @@ import (
 	cmdutils "github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/rpcapi"
+	"github.com/UranusBlockStack/uranus/wallet"
 	"github.com/spf13/cobra"
 )
 
@@ -71,7 +72,7 @@ var listAccountsCmd = &cobra.Command{
 	Long:  `List all exist accounts.`,
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		result := []utils.Address{}
+		result := wallet.Accounts{}
 		cmdutils.ClientCall("Wallet.Accounts", nil, &result)
 		cmdutils.PrintJSONList(result)
 	},

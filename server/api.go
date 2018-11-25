@@ -152,18 +152,26 @@ func (api *APIBackend) TxPoolContent() (map[utils.Address]types.Transactions, ma
 }
 
 // NewAccount creates a new account
-func (api *APIBackend) NewAccount(passphrase string) (*wallet.Account, error) {
+func (api *APIBackend) NewAccount(passphrase string) (wallet.Account, error) {
 	return api.u.wallet.NewAccount(passphrase)
 }
 
 // Delete removes the speciified account
 func (api *APIBackend) Delete(address utils.Address, passphrase string) error {
-	return api.u.wallet.Delete(address, passphrase)
+	acc, err := api.u.wallet.Find(address)
+	if err != nil {
+		return err
+	}
+	return api.u.wallet.Delete(acc, passphrase)
 }
 
 // Update update the specified account
 func (api *APIBackend) Update(address utils.Address, passphrase, newPassphrase string) error {
-	return api.u.wallet.Update(address, passphrase, newPassphrase)
+	acc, err := api.u.wallet.Find(address)
+	if err != nil {
+		return err
+	}
+	return api.u.wallet.Update(acc, passphrase, newPassphrase)
 }
 
 // SignTx sign the specified transaction
@@ -172,7 +180,7 @@ func (api *APIBackend) SignTx(addr utils.Address, tx *types.Transaction, passphr
 }
 
 // Accounts list all wallet accounts.
-func (api *APIBackend) Accounts() ([]utils.Address, error) {
+func (api *APIBackend) Accounts() (wallet.Accounts, error) {
 	return api.u.wallet.Accounts()
 }
 

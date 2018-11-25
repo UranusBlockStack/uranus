@@ -69,7 +69,7 @@ func checkMinerConfig(cfg *pow.Config, wallet *wallet.Wallet) *pow.Config {
 		return cfg
 	}
 
-	cfg.CoinBaseAddr = accounts[0].Hex()
+	cfg.CoinBaseAddr = accounts[0].Address.Hex()
 	log.Infof("Coinbase addr: %v", cfg.CoinBaseAddr)
 	return cfg
 }

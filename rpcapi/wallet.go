@@ -17,7 +17,10 @@
 package rpcapi
 
 import (
+	"errors"
+
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/wallet"
 )
 
 // WalletAPI exposes methods for the RPC interface
@@ -70,12 +73,15 @@ func (w *WalletAPI) Update(args UpdateArgs, reply *bool) error {
 }
 
 // Accounts list all wallet account.
-func (w *WalletAPI) Accounts(ignore string, reply *[]utils.Address) error {
-	account, err := w.b.Accounts()
+func (w *WalletAPI) Accounts(ignore string, reply *wallet.Accounts) error {
+	accounts, err := w.b.Accounts()
 	if err != nil {
 		return err
 	}
-	*reply = account
+	if len(accounts) == 0 {
+		return errors.New("wallet is nil")
+	}
+	*reply = accounts
 	return nil
 }
 

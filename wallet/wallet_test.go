@@ -17,7 +17,6 @@
 package wallet
 
 import (
-	"fmt"
 	"io/ioutil"
 	"math/big"
 	"path/filepath"
@@ -42,17 +41,16 @@ func TestAccounts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	addresses := []utils.Address{account1.Address, account2.Address}
+	var accounts Accounts
+	accounts = append(accounts, Account{Address: account1.Address, FileName: account1.FileName})
+	accounts = append(accounts, Account{Address: account2.Address, FileName: account2.FileName})
 
-	taddresses, err := w.Accounts()
+	taccounts, err := w.Accounts()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_ = taddresses
-	_ = addresses
-	// todo sort
-	// assert.Equal(t, addresses, taddresses)
+	assert.Equal(t, accounts, taccounts)
 }
 
 func TestImportRawKey(t *testing.T) {
@@ -62,7 +60,6 @@ func TestImportRawKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(utils.BytesToHex(crypto.ByteFromECDSA(account.PrivateKey)))
 
 	addr, err := w.ImportRawKey(utils.BytesToHex(crypto.ByteFromECDSA(account.PrivateKey)), "test")
 	if err != nil {
@@ -81,9 +78,9 @@ func TestNewAccount(t *testing.T) {
 	}
 
 	ks := NewKeyStore(dir)
-	fileName := filepath.Join(dir, account.Address.Hex()+".json")
+	path := filepath.Join(dir, account.FileName)
 
-	newAccount, err := ks.GetKey(account.Address, fileName, "test")
+	newAccount, err := ks.GetKey(account.Address, path, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,17 +97,17 @@ func TestDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := w.Delete(account.Address, "test"); err != nil {
+	if err := w.Delete(account, "test"); err != nil {
 		t.Fatal(err)
 	}
-	fileName := filepath.Join(dir, account.Address.Hex()+".json")
+	path := filepath.Join(dir, account.FileName)
 
-	if utils.FileExists(fileName) {
+	if utils.FileExists(path) {
 		t.Error()
 	}
 
 	// test remove nil file
-	if err := w.Delete(account.Address, "test"); err != nil {
+	if err := w.Delete(account, "test"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -122,13 +119,13 @@ func TestUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := w.Update(account.Address, "test", "newTest"); err != nil {
+	if err := w.Update(account, "test", "newTest"); err != nil {
 		t.Fatal(err)
 	}
 
 	ks := NewKeyStore(dir)
-	fileName := filepath.Join(dir, account.Address.Hex()+".json")
-	newAccount, err := ks.GetKey(account.Address, fileName, "newTest")
+	path := filepath.Join(dir, account.FileName)
+	newAccount, err := ks.GetKey(account.Address, path, "newTest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +133,7 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(t, account.Address, newAccount.Address)
 	assert.Equal(t, crypto.ByteFromECDSA(account.PrivateKey), crypto.ByteFromECDSA(newAccount.PrivateKey))
 
-	newAccount, err = ks.GetKey(account.Address, fileName, "test")
+	newAccount, err = ks.GetKey(account.Address, path, "test")
 	assert.Equal(t, err, ErrDecrypt)
 }
 

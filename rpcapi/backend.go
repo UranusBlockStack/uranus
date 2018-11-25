@@ -49,11 +49,11 @@ type Backend interface {
 	TxPoolStats() (pending int, queued int)
 	TxPoolContent() (map[utils.Address]types.Transactions, map[utils.Address]types.Transactions)
 	// wallet backend
-	NewAccount(passphrase string) (*wallet.Account, error)
+	NewAccount(passphrase string) (wallet.Account, error)
 	Delete(address utils.Address, passphrase string) error
 	Update(address utils.Address, passphrase, newPassphrase string) error
 	SignTx(addr utils.Address, tx *types.Transaction, passphrase string) (*types.Transaction, error)
-	Accounts() ([]utils.Address, error)
+	Accounts() (wallet.Accounts, error)
 	ImportRawKey(privkey string, passphrase string) (utils.Address, error)
 	// forecast backend
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
