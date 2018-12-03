@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	ldb "github.com/UranusBlockStack/uranus/common/db"
@@ -40,10 +41,15 @@ func (s *StateSuite) TestDump(c *checker.C) {
 	// generate a few entries
 	obj1 := s.state.GetOrNewStateObject(toAddr([]byte{0x01}))
 	obj1.AddBalance(big.NewInt(22))
+	obj1.LockBalance(big.NewInt(21))
 	obj2 := s.state.GetOrNewStateObject(toAddr([]byte{0x01, 0x02}))
+	obj2.SetDelegateTimestamp(utils.Big1)
 	obj2.SetCode(crypto.Keccak256Hash([]byte{3, 3, 3, 3, 3, 3, 3}), []byte{3, 3, 3, 3, 3, 3, 3})
 	obj3 := s.state.GetOrNewStateObject(toAddr([]byte{0x02}))
 	obj3.SetBalance(big.NewInt(44))
+	addr0 := utils.BytesToAddress([]byte{0})
+	addr1 := utils.BytesToAddress([]byte{1})
+	obj3.SetDelegateAddresses([]*utils.Address{&addr0, &addr1})
 
 	// write some of them to the trie
 	s.state.updateStateObject(obj1)
@@ -51,12 +57,15 @@ func (s *StateSuite) TestDump(c *checker.C) {
 	s.state.Commit(false)
 
 	// check that dump contains the state objects that are in trie
-	got := string(s.state.Dump())
+	got := s.state.Dump()
 	want := `{
-    "root": "71edff0130dd2385947095001c73d9e28d862fc286fca2b922ca6f6f3cddfdd2",
+    "root": "abfeb1b4803f4e525bb10424b80473bba5e2d6870e98c438b2027953a7bc3a77",
     "accounts": {
         "0000000000000000000000000000000000000001": {
             "balance": "22",
+            "lockedBalance": "21",
+            "delegateTimestamp": "0",
+            "delegateAddresses": null,
             "nonce": 0,
             "root": "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "codeHash": "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
@@ -65,6 +74,12 @@ func (s *StateSuite) TestDump(c *checker.C) {
         },
         "0000000000000000000000000000000000000002": {
             "balance": "44",
+            "lockedBalance": "0",
+            "delegateTimestamp": "0",
+            "delegateAddresses": [
+                "0x0000000000000000000000000000000000000000",
+                "0x0000000000000000000000000000000000000001"
+            ],
             "nonce": 0,
             "root": "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "codeHash": "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
@@ -73,6 +88,9 @@ func (s *StateSuite) TestDump(c *checker.C) {
         },
         "0000000000000000000000000000000000000102": {
             "balance": "0",
+            "lockedBalance": "0",
+            "delegateTimestamp": "1",
+            "delegateAddresses": null,
             "nonce": 0,
             "root": "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "codeHash": "87874902497a5bb968da31a2998d8f22e949d1ef6214bcdedd8bae24cca4b9e3",
@@ -81,7 +99,7 @@ func (s *StateSuite) TestDump(c *checker.C) {
         }
     }
 }`
-	if got != want {
+	if bytes.Compare(got, []byte(want)) != 0 {
 		c.Errorf("dump mismatch:\ngot: %s\nwant: %s\n", got, want)
 	}
 }
@@ -148,6 +166,13 @@ func TestSnapshot2(t *testing.T) {
 
 	// db, trie are already non-empty values
 	so0 := state.getStateObject(stateobjaddr0)
+
+	so0.LockBalance(big.NewInt(41))
+	addr0 := utils.BytesToAddress([]byte{0})
+	addr1 := utils.BytesToAddress([]byte{1})
+	so0.SetDelegateAddresses([]*utils.Address{&addr0, &addr1})
+	so0.SetDelegateTimestamp(big.NewInt(time.Now().Unix()))
+
 	so0.SetBalance(big.NewInt(42))
 	so0.SetNonce(43)
 	so0.SetCode(crypto.Keccak256Hash([]byte{'c', 'a', 'f', 'e'}), []byte{'c', 'a', 'f', 'e'})
@@ -160,6 +185,13 @@ func TestSnapshot2(t *testing.T) {
 
 	// and one with deleted == true
 	so1 := state.getStateObject(stateobjaddr1)
+
+	so1.LockBalance(big.NewInt(51))
+	addr01 := utils.BytesToAddress([]byte{01})
+	addr11 := utils.BytesToAddress([]byte{11})
+	so1.SetDelegateAddresses([]*utils.Address{&addr01, &addr11})
+	so1.SetDelegateTimestamp(big.NewInt(time.Now().Unix()))
+
 	so1.SetBalance(big.NewInt(52))
 	so1.SetNonce(53)
 	so1.SetCode(crypto.Keccak256Hash([]byte{'c', 'a', 'f', 'e', '2'}), []byte{'c', 'a', 'f', 'e', '2'})
@@ -190,6 +222,20 @@ func TestSnapshot2(t *testing.T) {
 }
 
 func compareStateObjects(so0, so1 *stateObject, t *testing.T) {
+	if so0.LockedBalance().Cmp(so1.LockedBalance()) != 0 {
+		t.Fatalf("lockedBalance mismatch: have %v, want %v", so0.LockedBalance(), so1.LockedBalance())
+	}
+
+	if so0.DelegateTimestamp().Cmp(so1.DelegateTimestamp()) != 0 {
+		t.Fatalf("DelegateTimestamp mismatch: have %v, want %v", so0.DelegateTimestamp(), so1.DelegateTimestamp())
+	}
+
+	for k, v := range so0.DelegateAddresses() {
+		if so1.DelegateAddresses()[k].Hex() != v.Hex() {
+			t.Errorf("Storage key %x mismatch: have %v, want %v", k, so0.DelegateAddresses()[k], v)
+		}
+	}
+
 	if so0.Address() != so1.Address() {
 		t.Fatalf("Address mismatch: have %v, want %v", so0.address, so1.address)
 	}

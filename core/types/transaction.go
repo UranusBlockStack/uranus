@@ -19,6 +19,7 @@ package types
 import (
 	"crypto/ecdsa"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"sync/atomic"
@@ -26,6 +27,7 @@ import (
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/params"
 )
 
 // TxType transaction type
@@ -94,16 +96,25 @@ func NewTransaction(txType TxType, nonce uint64, value *big.Int, gasLimit uint64
 
 // Validate Valid the transaction when the type isn't the binary
 func (tx *Transaction) Validate() error {
-	if tx.Type() != Binary {
-		if tx.Value().Uint64() != 0 {
-			return errors.New("transaction value should be 0")
+	switch tx.Type() {
+	case Binary:
+		if len(tx.Tos()) > 1 {
+			return errors.New("binary transaction tos need not greater than 1")
 		}
-		if tx.Tos() == nil && tx.Type() != LoginCandidate && tx.Type() != LogoutCandidate {
-			return errors.New("receipient was required")
+	case Delegate:
+		fallthrough
+	case UnDelegate:
+		if uint64(len(tx.Tos())) > params.MaxVotes || tx.Tos() == nil {
+			return fmt.Errorf("tos was required but not greater than %v", params.MaxVotes)
 		}
-		if tx.Payload() != nil {
-			return errors.New("payload should be empty")
+	case LoginCandidate:
+		fallthrough
+	case LogoutCandidate:
+		if tx.Tos() != nil {
+			return errors.New("LoginCandidate and LogoutCandidate tx.tos wasn't required")
 		}
+	default:
+		return ErrInvalidType
 	}
 	return nil
 }

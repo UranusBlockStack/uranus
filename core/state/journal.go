@@ -116,6 +116,20 @@ type (
 		prevcode, prevhash []byte
 	}
 
+	// Changes to dpos
+	lockedBalanceChange struct {
+		account *utils.Address
+		prev    *big.Int
+	}
+	delegateAddressesChange struct {
+		account   *utils.Address
+		prevAddrs []*utils.Address
+	}
+	delegateTimestampChange struct {
+		account *utils.Address
+		prev    *big.Int
+	}
+
 	// Changes to other state values.
 	refundChange struct {
 		prev uint64
@@ -192,6 +206,30 @@ func (ch codeChange) revert(s *StateDB) {
 }
 
 func (ch codeChange) dirtied() *utils.Address {
+	return ch.account
+}
+
+func (ch lockedBalanceChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).setLockBalance(ch.prev)
+}
+
+func (ch lockedBalanceChange) dirtied() *utils.Address {
+	return ch.account
+}
+
+func (ch delegateAddressesChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).setDelegateAddresses(ch.prevAddrs)
+}
+
+func (ch delegateAddressesChange) dirtied() *utils.Address {
+	return ch.account
+}
+
+func (ch delegateTimestampChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).setDelegateTimestamp(ch.prev)
+}
+
+func (ch delegateTimestampChange) dirtied() *utils.Address {
 	return ch.account
 }
 

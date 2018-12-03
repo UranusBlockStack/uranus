@@ -86,7 +86,7 @@ func (e *Executor) ExecTransaction(author *utils.Address,
 	}
 
 	if tx.Type() != types.Binary {
-		if err = applyDposMessage(dposContext, tx); err != nil {
+		if err = applyDposMessage(dposContext, tx, statedb); err != nil {
 			return nil, 0, err
 		}
 	}
@@ -107,7 +107,7 @@ func (e *Executor) ExecTransaction(author *utils.Address,
 	return receipt, gas, err
 }
 
-func applyDposMessage(dposContext *types.DposContext, tx *types.Transaction) error {
+func applyDposMessage(dposContext *types.DposContext, tx *types.Transaction, statedb *state.StateDB) error {
 	from, _ := tx.Sender(types.Signer{})
 	switch tx.Type() {
 	case types.LoginCandidate:
@@ -115,9 +115,13 @@ func applyDposMessage(dposContext *types.DposContext, tx *types.Transaction) err
 	case types.LogoutCandidate:
 		dposContext.KickoutCandidate(from)
 	case types.Delegate:
-		// dposContext.Delegate(from, *(tx.Tos()))
+		for _, to := range tx.Tos() {
+			dposContext.Delegate(from, *to)
+		}
 	case types.UnDelegate:
-		// dposContext.UnDelegate(from, *(tx.Tos()))
+		for _, to := range tx.Tos() {
+			dposContext.UnDelegate(from, *to)
+		}
 	default:
 		return types.ErrInvalidType
 	}
