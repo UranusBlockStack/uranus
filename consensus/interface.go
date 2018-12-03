@@ -36,6 +36,8 @@ type Engine interface {
 	//VerifyHeader(chain IChainReader, header *types.BlockHeader) error
 
 	Seal(chain IChainReader, block *types.Block, stop <-chan struct{}, threads int, updateHashes chan uint64) (*types.Block, error)
+
+	Finalize(chain IChainReader, header *types.BlockHeader, state *state.StateDB, txs []*types.Transaction, receipts []*types.Receipt, dposContext *types.DposContext) (*types.Block, error)
 }
 
 type ITxPool interface {

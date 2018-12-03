@@ -26,6 +26,7 @@ import (
 	"github.com/UranusBlockStack/uranus/common/math"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/consensus"
+	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
 	"github.com/UranusBlockStack/uranus/params"
 )
@@ -223,4 +224,11 @@ func (cm *CpuMiner) VerifySeal(chain consensus.IChainReader, header *types.Block
 		return nil
 	}
 	return errors.New("invalid proof-of-work")
+}
+func (cm *CpuMiner) Finalize(chain consensus.IChainReader, header *types.BlockHeader, state *state.StateDB, txs []*types.Transaction, receipts []*types.Receipt, dposContext *types.DposContext) (*types.Block, error) {
+	// Accumulate block rewards and commit the final state root
+	state.AddBalance(header.Miner, params.BlockReward)
+	header.StateRoot = state.IntermediateRoot(true)
+
+	return types.NewBlock(header, txs, receipts), nil
 }

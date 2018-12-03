@@ -110,7 +110,7 @@ func (s *BlockChainAPI) GetTransactionReceipt(Hash utils.Hash, reply *map[string
 		"transactionHash":   Hash,
 		"transactionIndex":  utils.Uint64(stx.TxIndex),
 		"from":              from,
-		"to":                stx.Tx.To(),
+		"tos":               stx.Tx.Tos(),
 		"gasUsed":           utils.Uint64(receipt.GasUsed),
 		"cumulativeGasUsed": utils.Uint64(receipt.CumulativeGasUsed),
 		"contractAddress":   nil,

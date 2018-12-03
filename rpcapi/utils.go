@@ -30,7 +30,7 @@ func submitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (u
 	if err := b.SendTx(ctx, tx); err != nil {
 		return utils.Hash{}, err
 	}
-	if tx.To() == nil {
+	if tx.Tos() == nil {
 		from, err := tx.Sender(types.Signer{})
 		if err != nil {
 			return utils.Hash{}, err
@@ -38,7 +38,7 @@ func submitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (u
 		addr := crypto.CreateAddress(from, tx.Nonce())
 		log.Infof("Submitted contract creation hash: %v ,contract address: %v", tx.Hash(), addr)
 	} else {
-		log.Infof("Submitted transaction hash: %v,recipient address: %v", tx.Hash(), tx.To())
+		log.Infof("Submitted transaction hash: %v,recipient address: %v", tx.Hash(), tx.Tos())
 	}
 	return tx.Hash(), nil
 }

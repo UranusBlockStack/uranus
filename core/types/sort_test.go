@@ -39,7 +39,7 @@ func TestSortTxPriceNonce(t *testing.T) {
 		addr := crypto.PubkeyToAddress(key.PublicKey)
 		for i := 0; i < 25; i++ {
 
-			tx := NewTransaction(Binary, uint64(start+i), nil, big.NewInt(100), 100, big.NewInt(int64(start+i)), nil)
+			tx := NewTransaction(Binary, uint64(start+i), big.NewInt(100), 100, big.NewInt(int64(start+i)), nil, nil)
 			tx.SignTx(Signer{}, key)
 			groups[addr] = append(groups[addr], tx)
 		}

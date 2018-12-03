@@ -92,7 +92,7 @@ func (api *DposAPI) GetVoters(number *BlockHeight, reply *map[utils.Address]util
 	}
 	epochContext := &dpos.EpochContext{DposContext: dposContext, Statedb: statedb}
 
-	voters, err := epochContext.CountVotes()
+	voters, _, err := epochContext.CountVotes()
 	if err != nil {
 		return err
 	}
@@ -139,5 +139,15 @@ func (api *DposAPI) GetCandidates(number *BlockHeight, reply *[]utils.Address) e
 	}
 
 	*reply = candidates
+	return nil
+}
+
+// GetConfirmedBlockNumber retrieves the latest irreversible block
+func (api *DposAPI) GetConfirmedBlockNumber(ignore string, reply *utils.Big) error {
+	n, err := api.b.GetConfirmedBlockNumber()
+	if err != nil {
+		return err
+	}
+	*reply = *(*utils.Big)(n)
 	return nil
 }

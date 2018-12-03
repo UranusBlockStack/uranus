@@ -25,6 +25,7 @@ import (
 	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/params"
 )
 
 type DposContext struct {
@@ -405,4 +406,17 @@ func (dc *DposContext) SetValidators(validators []utils.Address) error {
 	}
 	dc.epochTrie.Update(key, validatorsRLP)
 	return nil
+}
+
+func (dc *DposContext) IsDpos() bool {
+	var validators []utils.Address
+	key := []byte("validator")
+	validatorsRLP := dc.epochTrie.Get(key)
+	if err := rlp.DecodeBytes(validatorsRLP, &validators); err != nil {
+		return false
+	}
+	if len(validators) == 1 && bytes.Compare(validators[0].Bytes(), utils.HexToAddress(params.GenesisCandidate).Bytes()) == 0 {
+		return false
+	}
+	return true
 }

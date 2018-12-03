@@ -233,36 +233,25 @@ out:
 }
 
 func (m *UMiner) GenerateBlocks(work *Work, quit <-chan struct{}) {
-	// block reward
-	work.state.AddBalance(work.Block.Miner(), params.BlockReward)
-
-	work.Block.WithStateRoot(work.state.IntermediateRoot(true))
 	header := m.currentWork.Block.BlockHeader()
-	//header.ExtraData = m.extraData
 	header.GasUsed = *m.currentWork.gasUsed
 
-	if _, ok := m.engine.(*dpos.Dpos); ok {
-		if err := dpos.TryElect(work.state, work.dposContext, header.TimeStamp.Int64(), header, m.uranus); err != nil {
-			log.Errorf("GenerateBlocks %v", err)
-			return
-		}
-		header.DposContext = work.dposContext.ToProto()
-	}
-
-	block := types.NewBlock(header, work.txs, work.receipts)
-	if _, ok := m.engine.(*dpos.Dpos); ok {
-		block.DposContext = work.dposContext
-	}
-	work.Block = block
-
-	if result, err := m.engine.Seal(m.uranus, work.Block, quit, int(m.threads), m.updateHashes); result != nil {
-		log.Infof("Successfully sealed new block number: %v, hash: %v, diff: %v", result.Height(), result.Hash(), result.Difficulty())
-		m.recvCh <- &Result{work, result}
-	} else {
-		if err != nil {
-			log.Warnf("Block sealing failed: %v", err)
-		}
+	block, err := m.engine.Finalize(m.uranus, header, work.state, work.txs, work.receipts, work.dposContext)
+	block.DposContext = work.dposContext
+	if err != nil {
+		log.Warnf("Block sealing failed: %v", err)
 		m.recvCh <- nil
+	} else {
+		work.Block = block
+		if result, err := m.engine.Seal(m.uranus, work.Block, quit, int(m.threads), m.updateHashes); result != nil {
+			log.Infof("Successfully sealed new block number: %v, hash: %v, diff: %v", result.Height(), result.Hash(), result.Difficulty())
+			m.recvCh <- &Result{work, result}
+		} else {
+			if err != nil {
+				log.Warnf("Block sealing failed: %v", err)
+			}
+			m.recvCh <- nil
+		}
 	}
 }
 

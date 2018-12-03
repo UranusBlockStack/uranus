@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/crypto/sha3"
+	"github.com/UranusBlockStack/uranus/common/db"
+	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
@@ -22,24 +25,15 @@ const (
 	extraSeal = 65 // Fixed number of extra-data suffix bytes reserved for signer seal
 
 	blockInterval    = int64(3)
-	epochInterval    = int64(3 * 21)
-	maxValidatorSize = 21
-	safeSize         = maxValidatorSize*2/3 + 1
+	blockRepeat      = int64(6)
+	maxValidatorSize = int64(3)
 	consensusSize    = maxValidatorSize*2/3 + 1
+	safeSize         = consensusSize
+	epochInterval    = blockInterval * blockRepeat * maxValidatorSize
 )
 
 var (
-	// errMissingVanity is returned if a block's extra-data section is shorter than
-	// 32 bytes, which is required to store the signer vanity.
-	errMissingVanity = errors.New("extra-data 32 byte vanity prefix missing")
-	// errMissingSignature is returned if a block's extra-data section doesn't seem
-	// to contain a 65 byte secp256k1 signature.
-	errMissingSignature = errors.New("extra-data 65 byte suffix signature missing")
-
-	errInvalidDifficulty = errors.New("invalid difficulty")
-
-	// ErrInvalidTimestamp is returned if the timestamp of a block is lower than
-	// the previous block's timestamp + the minimum block period.
+	errMissingSignature           = errors.New("extra-data 65 byte suffix signature missing")
 	ErrInvalidTimestamp           = errors.New("invalid timestamp")
 	ErrWaitForPrevBlock           = errors.New("wait for last block arrived")
 	ErrMintFutureBlock            = errors.New("mint the future block")
@@ -49,30 +43,25 @@ var (
 	ErrNilBlockHeader             = errors.New("nil block header returned")
 )
 var (
-	big0  = big.NewInt(0)
-	big8  = big.NewInt(8)
-	big32 = big.NewInt(32)
-
-	timeOfFirstBlock = int64(0)
-
-	confirmedBlockHead = []byte("confirmed-block-head")
+	timeOfFirstBlock      = int64(0)
+	confirmedBlockHead    = []byte("confirmed-block-head")
+	bftconfirmedBlockHead = []byte("bft-confirmed-block-head")
 )
-
-// DposConfig is the consensus engine configs for delegated proof-of-stake based sealing.
-type DposConfig struct {
-	Validators []utils.Address `json:"validators"`
-}
 
 type SignerFn func(utils.Address, []byte) ([]byte, error)
 type Dpos struct {
-	db     state.Database
-	signFn SignerFn
+	chainDb                 db.Database
+	db                      state.Database
+	signFn                  SignerFn
+	confirmedBlockHeader    *types.BlockHeader
+	bftConfirmedBlockHeader *types.BlockHeader
 }
 
-func NewDpos(db state.Database, signFn SignerFn) *Dpos {
+func NewDpos(chainDb db.Database, db state.Database, signFn SignerFn) *Dpos {
 	d := &Dpos{
-		db:     db,
-		signFn: signFn,
+		chainDb: chainDb,
+		db:      db,
+		signFn:  signFn,
 	}
 	return d
 }
@@ -132,7 +121,7 @@ func sigHash(header *types.BlockHeader) (hash utils.Hash) {
 		header.TimeStamp,
 		header.ExtraData[:len(header.ExtraData)-extraSeal], // Yes, this will panic if extra is too short
 		header.Nonce,
-		//header.DposContext.Root(),
+		header.DposContext.Root(),
 	})
 	hasher.Sum(hash[:0])
 	return hash
@@ -189,39 +178,6 @@ func (d *Dpos) CalcDifficulty(config *params.ChainConfig, time uint64, parent *t
 	return big.NewInt(1)
 }
 
-// func (d *Dpos) VerifyHeader(chain consensus.IChainReader, header *types.BlockHeader, seal bool) error {
-// 	if header == nil || header.Height == nil {
-// 		return consensus.ErrUnknownBlock
-// 	}
-// 	// Short circuit if the header is known, or it's parent not
-// 	if chain.GetBlockByHash(header.Hash()) != nil {
-// 		return nil
-// 	}
-// 	parent := chain.GetBlockByHash(header.PreviousHash)
-// 	if parent == nil {
-// 		return consensus.ErrUnknownAncestor
-// 	}
-// 	if header.TimeStamp.Cmp(big.NewInt(time.Now().Unix())) > 0 {
-// 		return consensus.ErrFutureBlock
-// 	}
-// 	parentHeader := parent.BlockHeader()
-// 	// Check that the extra-data contains both the vanity and signature
-// 	if len(header.ExtraData) < extraVanity {
-// 		return errMissingVanity
-// 	}
-// 	if len(header.ExtraData) < extraVanity+extraSeal {
-// 		return errMissingSignature
-// 	}
-// 	// Difficulty always 1
-// 	if header.Difficulty.Uint64() != 1 {
-// 		return errInvalidDifficulty
-// 	}
-// 	if parentHeader.TimeStamp.Uint64()+uint64(blockInterval) > header.TimeStamp.Uint64() {
-// 		return ErrInvalidTimestamp
-// 	}
-// 	return nil
-// }
-
 func (d *Dpos) VerifySeal(chain consensus.IChainReader, header *types.BlockHeader) error {
 	if header == nil || header.Height == nil {
 		return consensus.ErrUnknownBlock
@@ -258,7 +214,103 @@ func (d *Dpos) VerifySeal(chain consensus.IChainReader, header *types.BlockHeade
 	if bytes.Compare(validator.Bytes(), header.Miner.Bytes()) != 0 {
 		return ErrInvalidBlockValidator
 	}
+	return d.updateConfirmedBlockHeader(chain)
+}
+
+func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader) error {
+	if d.confirmedBlockHeader == nil {
+		header, err := d.loadConfirmedBlockHeader(chain)
+		if err != nil {
+			header = chain.GetBlockByHeight(0).BlockHeader()
+			if header == nil {
+				return err
+			}
+		}
+		d.confirmedBlockHeader = header
+	}
+
+	epoch := int64(-1)
+	validatorMap := make(map[utils.Address]bool)
+	curHeader := chain.CurrentBlock().BlockHeader()
+	for d.confirmedBlockHeader.Hash() != curHeader.Hash() &&
+		d.confirmedBlockHeader.Height.Uint64() < curHeader.Height.Uint64() {
+		curEpoch := curHeader.TimeStamp.Int64() / epochInterval
+		if curEpoch != epoch {
+			epoch = curEpoch
+			validatorMap = make(map[utils.Address]bool)
+		}
+		// fast return
+		// if block number difference less consensusSize-witnessNum
+		// there is no need to check block is confirmed
+		if curHeader.Height.Int64()-d.confirmedBlockHeader.Height.Int64() < int64(consensusSize-int64(len(validatorMap))) {
+			log.Debug("Dpos fast return", "current", curHeader.Height.String(), "confirmed", d.confirmedBlockHeader.Height.String(), "witnessCount", len(validatorMap))
+			return nil
+		}
+		validatorMap[curHeader.Miner] = true
+		if int64(len(validatorMap)) >= consensusSize {
+			d.confirmedBlockHeader = curHeader
+			if err := d.storeConfirmedBlockHeader(); err != nil {
+				return err
+			}
+			log.Debug("dpos set confirmed block header success", "currentHeader", curHeader.Height.String())
+			return nil
+		}
+		curHeader = chain.GetBlockByHash(curHeader.PreviousHash).BlockHeader()
+		if curHeader == nil {
+			return ErrNilBlockHeader
+		}
+	}
 	return nil
+}
+
+func (d *Dpos) loadConfirmedBlockHeader(chain consensus.IChainReader) (*types.BlockHeader, error) {
+	key, err := d.chainDb.Get(confirmedBlockHead)
+	if err != nil {
+		return nil, err
+	}
+	header := chain.GetBlockByHash(utils.BytesToHash(key)).BlockHeader()
+	if header == nil {
+		return nil, ErrNilBlockHeader
+	}
+	return header, nil
+}
+
+// store inserts the snapshot into the database.
+func (d *Dpos) storeConfirmedBlockHeader() error {
+	return d.chainDb.Put(confirmedBlockHead, d.confirmedBlockHeader.Hash().Bytes())
+}
+
+func (d *Dpos) GetConfirmedBlockNumber() (*big.Int, error) {
+	header := d.confirmedBlockHeader
+	if header == nil {
+		return big.NewInt(0), nil
+	}
+	return header.Height, nil
+}
+
+func (d *Dpos) loadBFTConfirmedBlockHeader(chain consensus.IChainReader) (*types.BlockHeader, error) {
+	key, err := d.chainDb.Get(bftconfirmedBlockHead)
+	if err != nil {
+		return nil, err
+	}
+	header := chain.GetBlockByHash(utils.BytesToHash(key)).BlockHeader()
+	if header == nil {
+		return nil, ErrNilBlockHeader
+	}
+	return header, nil
+}
+
+// store inserts the snapshot into the database.
+func (d *Dpos) storeBFTConfirmedBlockHeader() error {
+	return d.chainDb.Put(bftconfirmedBlockHead, d.bftConfirmedBlockHeader.Hash().Bytes())
+}
+
+func (d *Dpos) GetBFTConfirmedBlockNumber() (*big.Int, error) {
+	header := d.bftConfirmedBlockHeader
+	if header == nil {
+		return big.NewInt(0), nil
+	}
+	return header.Height, nil
 }
 
 func (d *Dpos) CheckValidator(lastBlock *types.Block, coinbase utils.Address, now int64) error {
@@ -293,4 +345,31 @@ func (d *Dpos) CheckValidator(lastBlock *types.Block, coinbase utils.Address, no
 		return ErrInvalidBlockValidator
 	}
 	return nil
+}
+
+func (d *Dpos) Finalize(chain consensus.IChainReader, header *types.BlockHeader, state *state.StateDB, txs []*types.Transaction, receipts []*types.Receipt, dposContext *types.DposContext) (*types.Block, error) {
+	// Accumulate block rewards and commit the final state root
+	state.AddBalance(header.Miner, params.BlockReward)
+	header.StateRoot = state.IntermediateRoot(true)
+
+	epochContext := &EpochContext{
+		Statedb:     state,
+		DposContext: dposContext,
+		TimeStamp:   header.TimeStamp.Int64(),
+	}
+	parent := chain.GetBlockByHash(header.PreviousHash)
+	if timeOfFirstBlock == 0 {
+		if firstBlock := chain.GetBlockByHeight(1); firstBlock != nil {
+			timeOfFirstBlock = firstBlock.BlockHeader().TimeStamp.Int64()
+		}
+	}
+	genesis := chain.GetBlockByHeight(0)
+	err := epochContext.tryElect(genesis.BlockHeader(), parent.BlockHeader())
+	if err != nil {
+		return nil, fmt.Errorf("got error when elect next epoch, err: %v", err)
+	}
+	//update mint count trie
+	updateMintCnt(parent.BlockHeader().TimeStamp.Int64(), header.TimeStamp.Int64(), header.Miner, dposContext)
+	header.DposContext = dposContext.ToProto()
+	return types.NewBlock(header, txs, receipts), nil
 }

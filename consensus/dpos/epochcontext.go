@@ -12,9 +12,9 @@ import (
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/utils"
-	"github.com/UranusBlockStack/uranus/consensus"
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
+	"github.com/UranusBlockStack/uranus/params"
 )
 
 type EpochContext struct {
@@ -29,17 +29,22 @@ func (ec *EpochContext) lookupValidator(now int64) (validator utils.Address, err
 	// if offset%blockInterval != 0 {
 	// 	return utils.Address{}, ErrInvalidMintBlockTime
 	// }
-	offset /= blockInterval
+	offset /= blockInterval * blockRepeat
 
 	validators, err := ec.DposContext.GetValidators()
 	if err != nil {
 		return utils.Address{}, err
 	}
-	validatorSize := len(validators)
+	validatorSize := int64(len(validators))
+
 	if validatorSize == 0 {
 		return utils.Address{}, errors.New("failed to lookup validator")
 	}
-	offset %= int64(validatorSize)
+	if !ec.DposContext.IsDpos() {
+		offset %= int64(validatorSize)
+	} else if offset >= validatorSize {
+		return utils.Address{}, nil
+	}
 	return validators[offset], nil
 }
 
@@ -63,19 +68,19 @@ func (ec *EpochContext) tryElect(genesis, parent *types.BlockHeader) error {
 				return err
 			}
 		}
-		votes, err := ec.CountVotes()
+		votes, total, err := ec.CountVotes()
 		if err != nil {
 			return err
+		}
+		if !ec.DposContext.IsDpos() || total.Cmp(params.MinStartQuantity) < 0 {
+			return nil
 		}
 		candidates := sortableAddresses{}
 		for candidate, cnt := range votes {
 			candidates = append(candidates, &sortableAddress{candidate, cnt})
 		}
-		// if len(candidates) < safeSize {
-		// 	return errors.New("too few candidates")
-		// }
 		sort.Sort(candidates)
-		if len(candidates) > maxValidatorSize {
+		if int64(len(candidates)) > maxValidatorSize {
 			candidates = candidates[:maxValidatorSize]
 		}
 
@@ -94,13 +99,13 @@ func (ec *EpochContext) tryElect(genesis, parent *types.BlockHeader) error {
 		epochTrie, _ := types.NewEpochTrie(utils.Hash{}, ec.DposContext.DB())
 		ec.DposContext.SetEpoch(epochTrie)
 		ec.DposContext.SetValidators(sortedValidators)
-		log.Info("Come to new epoch", "prevEpoch", i, "nextEpoch", i+1)
+		log.Infof("Come to new epoch prevEpoch %v nextEpoch %v", i, i+1)
 	}
 	return nil
 }
 
 // CountVotes
-func (ec *EpochContext) CountVotes() (votes map[utils.Address]*big.Int, err error) {
+func (ec *EpochContext) CountVotes() (votes map[utils.Address]*big.Int, total *big.Int, err error) {
 	votes = map[utils.Address]*big.Int{}
 	delegateTrie := ec.DposContext.DelegateTrie()
 	candidateTrie := ec.DposContext.CandidateTrie()
@@ -109,8 +114,9 @@ func (ec *EpochContext) CountVotes() (votes map[utils.Address]*big.Int, err erro
 	iterCandidate := mtp.NewIterator(candidateTrie.NodeIterator(nil))
 	existCandidate := iterCandidate.Next()
 	if !existCandidate {
-		return votes, errors.New("no candidates")
+		return votes, total, errors.New("no candidates")
 	}
+	total = big.NewInt(0)
 	for existCandidate {
 		candidate := iterCandidate.Value
 		candidateAddr := utils.BytesToAddress(candidate)
@@ -129,13 +135,14 @@ func (ec *EpochContext) CountVotes() (votes map[utils.Address]*big.Int, err erro
 			}
 			delegatorAddr := utils.BytesToAddress(delegator)
 			weight := statedb.GetBalance(delegatorAddr)
+			total = new(big.Int).Add(total, weight)
 			score.Add(score, weight)
 			votes[candidateAddr] = score
 			existDelegator = delegateIterator.Next()
 		}
 		existCandidate = iterCandidate.Next()
 	}
-	return votes, nil
+	return votes, total, nil
 }
 
 func (ec *EpochContext) kickoutValidator(epoch int64) error {
@@ -171,13 +178,13 @@ func (ec *EpochContext) kickoutValidator(epoch int64) error {
 		}
 	}
 	// no validators need kickout
-	needKickoutValidatorCnt := len(needKickoutValidators)
+	needKickoutValidatorCnt := int64(len(needKickoutValidators))
 	if needKickoutValidatorCnt <= 0 {
 		return nil
 	}
 	sort.Sort(sort.Reverse(needKickoutValidators))
 
-	candidateCount := 0
+	candidateCount := int64(0)
 	iter := mtp.NewIterator(ec.DposContext.CandidateTrie().NodeIterator(nil))
 	for iter.Next() {
 		candidateCount++
@@ -219,27 +226,4 @@ func (p sortableAddresses) Less(i, j int) bool {
 	} else {
 		return p[i].address.String() < p[j].address.String()
 	}
-}
-
-func TryElect(statedb *state.StateDB, dposContext *types.DposContext, timeStamp int64, header *types.BlockHeader, uranus consensus.IUranus) error {
-	epochContext := &EpochContext{
-		Statedb:     statedb,
-		DposContext: dposContext,
-		TimeStamp:   timeStamp,
-	}
-	parent := uranus.GetBlockByHash(header.PreviousHash)
-	if timeOfFirstBlock == 0 {
-		if firstBlock := uranus.GetBlockByHeight(1); firstBlock != nil {
-			timeOfFirstBlock = firstBlock.BlockHeader().TimeStamp.Int64()
-		}
-	}
-	genesis := uranus.GetBlockByHeight(0)
-	err := epochContext.tryElect(genesis.BlockHeader(), parent.BlockHeader())
-	if err != nil {
-		return fmt.Errorf("got error when elect next epoch, err: %v", err)
-	}
-
-	//update mint count trie
-	updateMintCnt(parent.BlockHeader().TimeStamp.Int64(), header.TimeStamp.Int64(), header.Miner, dposContext)
-	return nil
 }

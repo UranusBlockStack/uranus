@@ -31,6 +31,7 @@ import (
 type Executor struct {
 	config *params.ChainConfig // Chain configuration options
 	ledger *ledger.Ledger      // ledger
+	chain  consensus.IChainReader
 	engine consensus.Engine
 }
 
@@ -64,7 +65,7 @@ func (e *Executor) ExecBlock(block *types.Block, statedb *state.StateDB, cfg vm.
 		allLogs = append(allLogs, receipt.Logs...)
 	}
 
-	statedb.AddBalance(block.Miner(), params.BlockReward)
+	e.engine.Finalize(e.chain, header, statedb, block.Transactions(), receipts, block.DposCtx())
 	return receipts, allLogs, *usedGas, nil
 }
 
@@ -97,7 +98,7 @@ func (e *Executor) ExecTransaction(author *utils.Address,
 	receipt.TransactionHash = tx.Hash()
 	receipt.GasUsed = gas
 	// create contract
-	if tx.To() == nil {
+	if tx.Tos() == nil {
 		receipt.ContractAddress = crypto.CreateAddress(vmenv.Context.Origin, tx.Nonce())
 	}
 	// Set the receipt logs and create a bloom for filtering
@@ -114,9 +115,9 @@ func applyDposMessage(dposContext *types.DposContext, tx *types.Transaction) err
 	case types.LogoutCandidate:
 		dposContext.KickoutCandidate(from)
 	case types.Delegate:
-		dposContext.Delegate(from, *(tx.To()))
+		// dposContext.Delegate(from, *(tx.Tos()))
 	case types.UnDelegate:
-		dposContext.UnDelegate(from, *(tx.To()))
+		// dposContext.UnDelegate(from, *(tx.Tos()))
 	default:
 		return types.ErrInvalidType
 	}

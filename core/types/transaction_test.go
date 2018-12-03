@@ -30,11 +30,11 @@ var (
 	testTx = NewTransaction(
 		Binary,
 		3,
-		&to,
 		big.NewInt(10),
 		2000,
 		big.NewInt(1),
 		utils.FromHex("55"),
+		&to,
 	)
 )
 
@@ -43,7 +43,7 @@ func TestTxEncodeAndDecode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("encode error: %v", err)
 	}
-	utils.AssertEquals(t, txb, utils.FromHex("de8003018207d094970e8128ab834e8eac17ab8e3812f010678cf7910a5580"))
+	utils.AssertEquals(t, txb, utils.FromHex("df8003018207d0d594970e8128ab834e8eac17ab8e3812f010678cf7910a5580"))
 
 	tmpTx, err := decodeTx(txb)
 	if err != nil {
@@ -51,7 +51,7 @@ func TestTxEncodeAndDecode(t *testing.T) {
 	}
 
 	utils.AssertEquals(t, tmpTx.Nonce(), testTx.Nonce())
-	utils.AssertEquals(t, tmpTx.To().Hex(), testTx.To().Hex())
+	utils.AssertEquals(t, tmpTx.Tos()[0].Hex(), testTx.Tos()[0].Hex())
 	utils.AssertEquals(t, tmpTx.Value().Int64(), testTx.Value().Int64())
 	utils.AssertEquals(t, tmpTx.Gas(), testTx.Gas())
 	utils.AssertEquals(t, tmpTx.GasPrice().Int64(), testTx.GasPrice().Int64())

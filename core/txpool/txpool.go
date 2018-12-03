@@ -346,7 +346,7 @@ func (tp *TxPool) validateTx(tx *types.Transaction) error {
 	if tp.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
 		return ErrInsufficientFunds
 	}
-	intrGas, err := IntrinsicGas(tx.Payload(), tx.To() == nil)
+	intrGas, err := IntrinsicGas(tx.Payload(), tx.Tos() == nil)
 	if err != nil {
 		return err
 	}
@@ -399,7 +399,7 @@ func (tp *TxPool) add(tx *types.Transaction) (bool, error) {
 		tp.txs.Add(tx)
 		tp.priceList.Put(tx)
 
-		log.Warnf("Pooled new executable transaction hash: %v, from: %v, to: %v", hash, from, tx.To())
+		log.Warnf("Pooled new executable transaction hash: %v, from: %v, to: %v", hash, from, tx.Tos())
 
 		go tp.txFeed.Send(feed.NewTxsEvent{Txs: types.Transactions{tx}})
 
@@ -411,7 +411,7 @@ func (tp *TxPool) add(tx *types.Transaction) (bool, error) {
 		return false, err
 	}
 
-	log.Warnf("Pooled new future transaction hash: %v, from: %v ,to: %v", hash, from, tx.To())
+	log.Warnf("Pooled new future transaction hash: %v, from: %v ,to: %v", hash, from, tx.Tos())
 	return replace, nil
 }
 

@@ -58,18 +58,18 @@ type Transaction struct {
 }
 
 type txdata struct {
-	Type      TxType         `json:"type"`
-	Nonce     uint64         `json:"nonce"`
-	GasPrice  *big.Int       `json:"gasPrice"`
-	GasLimit  uint64         `json:"gas"`
-	To        *utils.Address `json:"to" rlp:"nil"`
-	Value     *big.Int       `json:"value"`
-	Payload   []byte         `json:"payload"`
-	Signature []byte         `json:"signature"`
+	Type      TxType           `json:"type"`
+	Nonce     uint64           `json:"nonce"`
+	GasPrice  *big.Int         `json:"gasPrice"`
+	GasLimit  uint64           `json:"gas"`
+	Tos       []*utils.Address `json:"tos" rlp:"nil"`
+	Value     *big.Int         `json:"value"`
+	Payload   []byte           `json:"payload"`
+	Signature []byte           `json:"signature"`
 }
 
 // NewTransaction new transaction
-func NewTransaction(txType TxType, nonce uint64, to *utils.Address, value *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *Transaction {
+func NewTransaction(txType TxType, nonce uint64, value *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, tos ...*utils.Address) *Transaction {
 	if len(data) > 0 {
 		data = utils.CopyBytes(data)
 	}
@@ -78,7 +78,7 @@ func NewTransaction(txType TxType, nonce uint64, to *utils.Address, value *big.I
 		Nonce:    nonce,
 		GasLimit: gasLimit,
 		GasPrice: new(big.Int),
-		To:       to,
+		Tos:      tos,
 		Value:    new(big.Int),
 		Payload:  data,
 	}
@@ -98,7 +98,7 @@ func (tx *Transaction) Validate() error {
 		if tx.Value().Uint64() != 0 {
 			return errors.New("transaction value should be 0")
 		}
-		if tx.To() == nil && tx.Type() != LoginCandidate && tx.Type() != LogoutCandidate {
+		if tx.Tos() == nil && tx.Type() != LoginCandidate && tx.Type() != LogoutCandidate {
 			return errors.New("receipient was required")
 		}
 		if tx.Payload() != nil {
@@ -115,12 +115,11 @@ func (tx *Transaction) GasPrice() *big.Int { return new(big.Int).Set(tx.data.Gas
 func (tx *Transaction) Value() *big.Int    { return new(big.Int).Set(tx.data.Value) }
 func (tx *Transaction) Nonce() uint64      { return tx.data.Nonce }
 func (tx *Transaction) Type() TxType       { return tx.data.Type }
-func (tx *Transaction) To() *utils.Address {
-	if tx.data.To == nil {
+func (tx *Transaction) Tos() []*utils.Address {
+	if tx.data.Tos == nil {
 		return nil
 	}
-	to := *tx.data.To
-	return &to
+	return tx.data.Tos
 }
 
 // Cost returns value + gasprice * gaslimit.

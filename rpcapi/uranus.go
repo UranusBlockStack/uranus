@@ -108,7 +108,7 @@ func (u *UranusAPI) GetCode(args GetCodeArgs, reply *utils.Bytes) error {
 // SendTxArgs represents the arguments to sumbit a new transaction into the transaction pool.
 type SendTxArgs struct {
 	From       utils.Address
-	To         *utils.Address
+	Tos        []*utils.Address
 	Gas        *utils.Uint64
 	GasPrice   *utils.Big
 	Value      *utils.Big
@@ -142,7 +142,7 @@ func (args *SendTxArgs) check(ctx context.Context, b Backend) error {
 		args.Nonce = (*utils.Uint64)(&nonce)
 	}
 
-	if args.To == nil {
+	if args.Tos == nil {
 		// Contract creation
 		var input []byte
 		if args.Data != nil {
@@ -161,10 +161,10 @@ func (args *SendTxArgs) toTransaction() *types.Transaction {
 	if args.Data != nil {
 		input = *args.Data
 	}
-	if args.To == nil {
-		return types.NewTransaction(types.TxType(args.TxType), uint64(*args.Nonce), nil, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+	if args.Tos == nil {
+		return types.NewTransaction(types.TxType(args.TxType), uint64(*args.Nonce), (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input, nil)
 	}
-	return types.NewTransaction(types.TxType(args.TxType), uint64(*args.Nonce), args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+	return types.NewTransaction(types.TxType(args.TxType), uint64(*args.Nonce), (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input, args.Tos...)
 }
 
 // SignAndSendTransaction sign and send transaction .
@@ -204,7 +204,7 @@ func (u *UranusAPI) SendRawTransaction(encodedTx utils.Bytes, reply *utils.Hash)
 // CallArgs represents the arguments for a call.
 type CallArgs struct {
 	From        utils.Address
-	To          *utils.Address
+	Tos         []*utils.Address
 	Gas         utils.Uint64
 	GasPrice    utils.Big
 	Value       utils.Big
@@ -244,7 +244,7 @@ func (u *UranusAPI) Call(args CallArgs, reply *utils.Bytes) error {
 		return err
 	}
 
-	tx := types.NewTransaction(types.TxType(args.TxType), nonce, args.To, args.Value.ToInt(), gas, gasPrice, args.Data)
+	tx := types.NewTransaction(types.TxType(args.TxType), nonce, args.Value.ToInt(), gas, gasPrice, args.Data, args.Tos...)
 
 	// Setup context so it may be cancelled the call has completed
 	// or, in case of unmetered gas, setup a context with a timeout.

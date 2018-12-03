@@ -24,6 +24,7 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/math"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/consensus/dpos"
 	"github.com/UranusBlockStack/uranus/core"
 	"github.com/UranusBlockStack/uranus/core/executor"
 	"github.com/UranusBlockStack/uranus/core/state"
@@ -250,4 +251,7 @@ func (api *APIBackend) Stop() error {
 func (api *APIBackend) SetCoinbase(address utils.Address) error {
 	api.u.miner.SetCoinBase(address)
 	return nil
+}
+func (api *APIBackend) GetConfirmedBlockNumber() (*big.Int, error) {
+	return api.u.engine.(*dpos.Dpos).GetConfirmedBlockNumber()
 }

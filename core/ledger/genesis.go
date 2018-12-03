@@ -53,8 +53,7 @@ func DefaultGenesis() *Genesis {
 		GasLimit:   params.GenesisGasLimit,
 		Difficulty: big.NewInt(1000000),
 		Validators: []utils.Address{
-			utils.HexToAddress("0xc08b5542d177ac6686946920409741463a15dddb"),
-			utils.HexToAddress("0x970e8128ab834e8eac17ab8e3812f010678cf791"),
+			utils.HexToAddress(params.GenesisCandidate),
 		},
 	}
 }
