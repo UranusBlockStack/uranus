@@ -128,17 +128,15 @@ func (e *Executor) applyDposMessage(dposContext *types.DposContext, tx *types.Tr
 		statedb.SetDelegateTimestamp(from, big.NewInt(time.Now().Unix()))
 		statedb.SubBalance(from, tx.Value())
 		statedb.SetLockedBalance(from, tx.Value())
-		statedb.SetDelegateAddresses(from, tx.Tos())
 		for _, to := range tx.Tos() {
 			dposContext.Delegate(from, *to)
 		}
 	case types.UnDelegate:
 		statedb.ResetDelegateTimestamp(from)
-		candidaters := statedb.GetDelegateAddresses(from)
-		for _, candidater := range candidaters {
+		// todo validate tos
+		for _, candidater := range tx.Tos() {
 			dposContext.UnDelegate(from, *candidater)
 		}
-		statedb.RmoveDelegateAddresses(from)
 	case types.Redeem:
 		timestamp := statedb.GetDelegateTimestamp(from)
 		if new(big.Int).Sub(big.NewInt(time.Now().Unix()), timestamp).Cmp(params.DelayDuration) < 0 {

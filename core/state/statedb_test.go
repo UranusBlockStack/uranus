@@ -50,9 +50,6 @@ func TestUpdateLeaks(t *testing.T) {
 		state.SetNonce(addr, uint64(42*i))
 
 		state.SetLockedBalance(addr, big.NewInt(int64(41*i)))
-		addr0 := utils.BytesToAddress([]byte{0})
-		addr1 := utils.BytesToAddress([]byte{1})
-		state.SetDelegateAddresses(addr, []*utils.Address{&addr0, &addr1})
 		state.SetDelegateTimestamp(addr, big.NewInt(time.Now().Unix()))
 
 		if i%2 == 0 {
@@ -83,9 +80,6 @@ func TestIntermediateLeaks(t *testing.T) {
 		state.SetBalance(addr, big.NewInt(int64(11*i)+int64(tweak)))
 		state.SetNonce(addr, uint64(42*i+tweak))
 		state.SetLockedBalance(addr, big.NewInt(int64(41*i)+int64(tweak)))
-		addr0 := utils.BytesToAddress([]byte{0})
-		addr1 := utils.BytesToAddress([]byte{1})
-		state.SetDelegateAddresses(addr, []*utils.Address{&addr0, &addr1})
 		state.SetDelegateTimestamp(addr, big.NewInt(time.Now().Unix()))
 
 		if i%2 == 0 {
@@ -259,15 +253,6 @@ func newTestAction(addr utils.Address, r *rand.Rand) testAction {
 			},
 			args: make([]int64, 1),
 		}, {
-			name: "SetDelegateAddresses",
-			fn: func(a testAction, s *StateDB) {
-				addcode := make([]byte, 20)
-				binary.BigEndian.PutUint64(addcode, uint64(a.args[0]))
-				testAddr := utils.BytesToAddress(addcode)
-				s.SetDelegateAddresses(addr, []*utils.Address{&testAddr})
-			},
-			args: make([]int64, 1),
-		}, {
 			name: "SetDelegateTimestamp",
 			fn: func(a testAction, s *StateDB) {
 				s.SetDelegateTimestamp(addr, big.NewInt(a.args[0]))
@@ -425,7 +410,6 @@ func (test *snapshotTest) checkEqual(state, checkstate *StateDB) error {
 		checkeq("GetNonce", state.GetNonce(addr), checkstate.GetNonce(addr))
 		checkeq("GetLockedBalance", state.GetLockedBalance(addr), checkstate.GetLockedBalance(addr))
 		checkeq("GetDelegateTimestamp", state.GetDelegateTimestamp(addr), checkstate.GetDelegateTimestamp(addr))
-		checkeq("GetDelegateAddresses", state.GetDelegateAddresses(addr), checkstate.GetDelegateAddresses(addr))
 		checkeq("GetCode", state.GetCode(addr), checkstate.GetCode(addr))
 		checkeq("GetCodeHash", state.GetCodeHash(addr), checkstate.GetCodeHash(addr))
 		checkeq("GetCodeSize", state.GetCodeSize(addr), checkstate.GetCodeSize(addr))

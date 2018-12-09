@@ -18,6 +18,7 @@ package types
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -57,6 +58,7 @@ func TestTxEncodeAndDecode(t *testing.T) {
 	utils.AssertEquals(t, tmpTx.GasPrice().Int64(), testTx.GasPrice().Int64())
 	utils.AssertEquals(t, tmpTx.Payload(), testTx.Payload())
 
+	fmt.Println(testTx.Hash().Hex())
 }
 
 func decodeTx(data []byte) (*Transaction, error) {

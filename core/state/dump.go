@@ -29,7 +29,6 @@ type DumpAccount struct {
 	Balance           string            `json:"balance"`
 	LockedBalance     string            `json:"lockedBalance"`
 	DelegateTimestamp string            `json:"delegateTimestamp"`
-	DelegateAddresses []string          `json:"delegateAddresses"`
 	Nonce             uint64            `json:"nonce"`
 	Root              string            `json:"root"`
 	CodeHash          string            `json:"codeHash"`
@@ -67,11 +66,6 @@ func (s *StateDB) RawDump() Dump {
 			Code:              utils.BytesToHex(obj.Code(s.db)),
 			Storage:           make(map[string]string),
 		}
-		var addrs []string
-		for _, addr := range data.DelegateAddresses {
-			addrs = append(addrs, addr.Hex())
-		}
-		account.DelegateAddresses = addrs
 		storageIt := mtp.NewIterator(obj.getTrie(s.db).NodeIterator(nil))
 		for storageIt.Next() {
 			account.Storage[utils.BytesToHex(s.trie.GetKey(storageIt.Key))] = utils.BytesToHex(storageIt.Value)

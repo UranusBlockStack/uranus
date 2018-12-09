@@ -217,10 +217,6 @@ func (ch lockedBalanceChange) dirtied() *utils.Address {
 	return ch.account
 }
 
-func (ch delegateAddressesChange) revert(s *StateDB) {
-	s.getStateObject(*ch.account).setDelegateAddresses(ch.prevAddrs)
-}
-
 func (ch delegateAddressesChange) dirtied() *utils.Address {
 	return ch.account
 }

@@ -250,14 +250,6 @@ func (s *StateDB) GetLockedBalance(addr utils.Address) *big.Int {
 	return utils.Big0
 }
 
-func (s *StateDB) GetDelegateAddresses(addr utils.Address) []*utils.Address {
-	stateObject := s.getStateObject(addr)
-	if stateObject != nil {
-		return stateObject.DelegateAddresses()
-	}
-	return nil
-}
-
 func (s *StateDB) GetDelegateTimestamp(addr utils.Address) *big.Int {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
@@ -349,20 +341,6 @@ func (s *StateDB) UnLockBalance(addr utils.Address) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.UnLockBalance()
-	}
-}
-
-func (s *StateDB) SetDelegateAddresses(addr utils.Address, addrs []*utils.Address) {
-	stateObject := s.GetOrNewStateObject(addr)
-	if stateObject != nil {
-		stateObject.SetDelegateAddresses(addrs)
-	}
-}
-
-func (s *StateDB) RmoveDelegateAddresses(addr utils.Address) {
-	stateObject := s.GetOrNewStateObject(addr)
-	if stateObject != nil {
-		stateObject.RmoveDelegateAddresses()
 	}
 }
 

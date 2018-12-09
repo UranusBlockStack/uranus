@@ -14,36 +14,24 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
 
-package types
+package txpool
 
 import (
-	"bytes"
-	"math/big"
-	"testing"
+	"sync"
 
-	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/core/types"
 )
 
-func TestActionEncodeAndDecode(t *testing.T) {
-	var (
-		txHash = utils.HexToHash("0x317b45ef844c4108432a06a4466aca2e11720b6dc1df3e7035a065d02829eca6")
-		sender = utils.HexToAddress("0x970e8128ab834e8eac17ab8e3812f010678cf791")
-		gen    = big.NewInt(1)
-		delay  = big.NewInt(2)
-	)
-	exp := NewAction(txHash, sender, gen, delay)
-	actionBytes, err := rlp.EncodeToBytes(exp)
-	if err != nil {
-		t.Fatal(err)
+type deferredList struct {
+	all   map[utils.Hash]*types.Action
+	lock  sync.RWMutex
+	items *timeHeap
+}
+
+func newDeferredList() *deferredList {
+	return &deferredList{
+		all:   make(map[utils.Hash]*types.Action),
+		items: new(timeHeap),
 	}
-
-	var act Action
-	rlp.Decode(bytes.NewReader(actionBytes), &act)
-
-	utils.AssertEquals(t, act.Hash(), exp.Hash())
-	utils.AssertEquals(t, act.TxHash, exp.TxHash)
-	utils.AssertEquals(t, act.Sender, exp.Sender)
-	utils.AssertEquals(t, act.GenTimeStamp, exp.GenTimeStamp)
-	utils.AssertEquals(t, act.DelayDur, exp.DelayDur)
 }

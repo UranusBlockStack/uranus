@@ -98,7 +98,6 @@ func (s *stateObject) empty() bool {
 type Account struct {
 	// dpos
 	LockedBalance     *big.Int
-	DelegateAddresses []*utils.Address
 	DelegateTimestamp *big.Int
 
 	Nonce    uint64
@@ -301,22 +300,6 @@ func (s *stateObject) setLockBalance(amount *big.Int) {
 	s.data.LockedBalance = amount
 }
 
-func (s *stateObject) RmoveDelegateAddresses() {
-	s.setDelegateAddresses(nil)
-}
-
-func (s *stateObject) SetDelegateAddresses(addrs []*utils.Address) {
-	s.db.journal.append(delegateAddressesChange{
-		account:   &s.address,
-		prevAddrs: s.data.DelegateAddresses,
-	})
-	s.setDelegateAddresses(addrs)
-}
-
-func (s *stateObject) setDelegateAddresses(addrs []*utils.Address) {
-	s.data.DelegateAddresses = addrs
-}
-
 func (s *stateObject) ResetDelegateTimestamp() {
 	if s.DelegateTimestamp().Sign() == 0 {
 		return
@@ -421,9 +404,7 @@ func (s *stateObject) Nonce() uint64 {
 func (s *stateObject) LockedBalance() *big.Int {
 	return s.data.LockedBalance
 }
-func (s *stateObject) DelegateAddresses() []*utils.Address {
-	return s.data.DelegateAddresses
-}
+
 func (s *stateObject) DelegateTimestamp() *big.Int {
 	return s.data.DelegateTimestamp
 }

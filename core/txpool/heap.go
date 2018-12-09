@@ -73,3 +73,31 @@ func (h *nonceHeap) Pop() interface{} {
 	*h = old[0 : n-1]
 	return x
 }
+
+type timeActionHash struct {
+	hash      utils.Hash
+	timestamp *big.Int
+}
+
+type timeHeap []*timeActionHash
+
+func (t timeHeap) Len() int { return len(t) }
+func (t timeHeap) Less(i, j int) bool {
+	switch t[i].timestamp.Cmp(t[j].timestamp) {
+	case 1:
+		return false
+	default:
+		return true
+	}
+}
+func (t timeHeap) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
+func (t *timeHeap) Push(x interface{}) {
+	*t = append(*t, x.(*timeActionHash))
+}
+func (t *timeHeap) Pop() interface{} {
+	old := *t
+	n := len(old)
+	x := old[n-1]
+	*t = old[0 : n-1]
+	return x
+}
