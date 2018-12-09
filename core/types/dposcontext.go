@@ -38,6 +38,12 @@ type DposContext struct {
 	db *mtp.Database
 }
 
+type CandidateInfo struct {
+	Addr        utils.Address
+	Weight      uint64 // 100
+	DegradeTime uint64
+}
+
 var (
 	epochPrefix     = []byte("epoch-")
 	delegatePrefix  = []byte("delegate-")
@@ -255,7 +261,15 @@ func (d *DposContext) KickoutCandidate(candidateAddr utils.Address) error {
 
 func (d *DposContext) BecomeCandidate(candidateAddr utils.Address) error {
 	candidate := candidateAddr.Bytes()
-	return d.candidateTrie.TryUpdate(candidate, candidate)
+	candidateInfo := &CandidateInfo{
+		Addr:   candidateAddr,
+		Weight: 100,
+	}
+	val, err := rlp.EncodeToBytes(candidateInfo)
+	if err != nil {
+		return err
+	}
+	return d.candidateTrie.TryUpdate(candidate, val)
 }
 
 func (d *DposContext) Delegate(delegatorAddr, candidateAddr utils.Address) error {
@@ -381,11 +395,24 @@ func (dc *DposContext) GetCandidates() ([]utils.Address, error) {
 	candidates := []utils.Address{}
 	candidateIterator := mtp.NewIterator(dc.candidateTrie.NodeIterator(nil))
 	for candidateIterator.Next() {
-		candidate := candidateIterator.Value
-		candidateAddr := utils.BytesToAddress(candidate)
-		candidates = append(candidates, candidateAddr)
+		candidateInfo := &CandidateInfo{}
+		err := rlp.DecodeBytes(candidateIterator.Value, candidateInfo)
+		if err != nil {
+			return nil, err
+		}
+		candidates = append(candidates, candidateInfo.Addr)
 	}
 	return candidates, nil
+}
+
+func (dc *DposContext) GetDelegators(candidate utils.Address) ([]utils.Address, error) {
+	delegators := []utils.Address{}
+	iter := mtp.NewIterator(dc.delegateTrie.PrefixIterator(candidate.Bytes()))
+	for iter.Next() {
+		delegator := iter.Value
+		delegators = append(delegators, utils.BytesToAddress(delegator))
+	}
+	return delegators, nil
 }
 
 func (dc *DposContext) GetValidators() ([]utils.Address, error) {

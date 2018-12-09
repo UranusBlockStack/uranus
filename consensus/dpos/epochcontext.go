@@ -11,6 +11,7 @@ import (
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/mtp"
+	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
@@ -72,7 +73,8 @@ func (ec *EpochContext) tryElect(genesis, parent *types.BlockHeader) error {
 		if err != nil {
 			return err
 		}
-		if !ec.DposContext.IsDpos() || total.Cmp(params.MinStartQuantity) < 0 {
+		if !ec.DposContext.IsDpos() || int64(len(votes)) < consensusSize || total.Cmp(params.MinStartQuantity) < 0 {
+			log.Warn("dpos not activated")
 			return nil
 		}
 		candidates := sortableAddresses{}
@@ -118,9 +120,10 @@ func (ec *EpochContext) CountVotes() (votes map[utils.Address]*big.Int, total *b
 	}
 	total = big.NewInt(0)
 	for existCandidate {
-		candidate := iterCandidate.Value
-		candidateAddr := utils.BytesToAddress(candidate)
-		delegateIterator := mtp.NewIterator(delegateTrie.PrefixIterator(candidate))
+		candidateInfo := &types.CandidateInfo{}
+		rlp.DecodeBytes(iterCandidate.Value, candidateInfo)
+		candidateAddr := candidateInfo.Addr
+		delegateIterator := mtp.NewIterator(delegateTrie.PrefixIterator(candidateInfo.Addr.Bytes()))
 		existDelegator := delegateIterator.Next()
 		if !existDelegator {
 			votes[candidateAddr] = new(big.Int)
@@ -134,12 +137,13 @@ func (ec *EpochContext) CountVotes() (votes map[utils.Address]*big.Int, total *b
 				score = new(big.Int)
 			}
 			delegatorAddr := utils.BytesToAddress(delegator)
-			weight := statedb.GetBalance(delegatorAddr)
+			weight := statedb.GetLockedBalance(delegatorAddr)
 			total = new(big.Int).Add(total, weight)
 			score.Add(score, weight)
 			votes[candidateAddr] = score
 			existDelegator = delegateIterator.Next()
 		}
+		votes[candidateAddr] = new(big.Int).Mul(votes[candidateAddr], big.NewInt(int64(candidateInfo.Weight)))
 		existCandidate = iterCandidate.Next()
 	}
 	return votes, total, nil
@@ -172,9 +176,33 @@ func (ec *EpochContext) kickoutValidator(epoch int64) error {
 		if cntBytes := ec.DposContext.MintCntTrie().Get(key); cntBytes != nil {
 			cnt = int64(binary.BigEndian.Uint64(cntBytes))
 		}
+		// degrade && upgrade
+		candidate, err := ec.DposContext.CandidateTrie().TryGet(validator.Bytes())
+		if err != nil {
+			return err
+		}
+		if candidate == nil {
+			return errors.New("invalid candidate to delegate")
+		}
+		candidateInfo := &types.CandidateInfo{}
+		if err := rlp.DecodeBytes(candidate, candidateInfo); err != nil {
+			return err
+		}
 		if cnt < epochDuration/blockInterval/maxValidatorSize/2 {
-			// not active validators need kickout
-			needKickoutValidators = append(needKickoutValidators, &sortableAddress{validator, big.NewInt(cnt)})
+			if candidateInfo.Weight > 0 {
+				candidateInfo.Weight -= 10
+			}
+		} else {
+			if candidateInfo.Weight < 100 {
+				candidateInfo.Weight += 10
+			}
+		}
+		val, err := rlp.EncodeToBytes(candidateInfo)
+		if err != nil {
+			return err
+		}
+		if err := ec.DposContext.CandidateTrie().TryUpdate(validator.Bytes(), val); err != nil {
+			return err
 		}
 	}
 	// no validators need kickout
@@ -188,14 +216,14 @@ func (ec *EpochContext) kickoutValidator(epoch int64) error {
 	iter := mtp.NewIterator(ec.DposContext.CandidateTrie().NodeIterator(nil))
 	for iter.Next() {
 		candidateCount++
-		if candidateCount >= needKickoutValidatorCnt+safeSize {
+		if candidateCount >= needKickoutValidatorCnt+consensusSize {
 			break
 		}
 	}
 
 	for i, validator := range needKickoutValidators {
-		// ensure candidate count greater than or equal to safeSize
-		if candidateCount <= safeSize {
+		// ensure candidate count greater than or equal to consensusSize
+		if candidateCount <= consensusSize {
 			log.Info("No more candidate can be kickout", "prevEpochID", epoch, "candidateCount", candidateCount, "needKickoutCount", len(needKickoutValidators)-i)
 			return nil
 		}

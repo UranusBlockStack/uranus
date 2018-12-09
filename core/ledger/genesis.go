@@ -21,11 +21,23 @@ import (
 	"math/big"
 
 	"github.com/UranusBlockStack/uranus/common/log"
+	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
 	"github.com/UranusBlockStack/uranus/params"
 )
+
+// GenesisAlloc specifies the initial state that is part of the genesis block.
+type GenesisAlloc map[utils.Address]GenesisAccount
+
+// GenesisAccount is an account in the state of the genesis block.
+type GenesisAccount struct {
+	Code    []byte                    `json:"code,omitempty"`
+	Storage map[utils.Hash]utils.Hash `json:"storage,omitempty"`
+	Balance *big.Int                  `json:"balance" gencodec:"required"`
+	Nonce   uint64                    `json:"nonce,omitempty"`
+}
 
 // Genesis specifies the header fields, state of a genesis block.
 type Genesis struct {
@@ -40,7 +52,8 @@ type Genesis struct {
 	Height       uint64              `json:"height"`
 	GasUsed      uint64              `json:"gasUsed"`
 	PreviousHash utils.Hash          `json:"previousHash"`
-	Validators   []utils.Address     `json:"validators"`
+	Validator    utils.Address       `json:"validator"`
+	Alloc        GenesisAlloc        `json:"alloc"`
 }
 
 // DefaultGenesis returns the nurans main net genesis block.
@@ -52,9 +65,7 @@ func DefaultGenesis() *Genesis {
 		ExtraData:  extraData,
 		GasLimit:   params.GenesisGasLimit,
 		Difficulty: big.NewInt(1000000),
-		Validators: []utils.Address{
-			utils.HexToAddress(params.GenesisCandidate),
-		},
+		Validator:  utils.HexToAddress(params.GenesisCandidate),
 	}
 }
 
@@ -105,11 +116,15 @@ func (g *Genesis) ToBlock(chain *Chain) (*types.Block, state.Database) {
 	if err != nil {
 		panic(err)
 	}
-	dposContext.SetValidators(g.Validators)
-	for _, validator := range g.Validators {
-		dposContext.DelegateTrie().TryUpdate(append(validator.Bytes(), validator.Bytes()...), validator.Bytes())
-		dposContext.CandidateTrie().TryUpdate(validator.Bytes(), validator.Bytes())
+	dposContext.SetValidators([]utils.Address{g.Validator})
+	validator := g.Validator
+	dposContext.DelegateTrie().TryUpdate(append(validator.Bytes(), validator.Bytes()...), validator.Bytes())
+	candidateInfo := &types.CandidateInfo{
+		Addr: validator,
 	}
+	val, _ := rlp.EncodeToBytes(candidateInfo)
+	dposContext.CandidateTrie().TryUpdate(validator.Bytes(), val)
+
 	dposContextProto := dposContext.ToProto()
 	head := &types.BlockHeader{
 		Height:       new(big.Int).SetUint64(g.Height),

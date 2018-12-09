@@ -23,8 +23,6 @@ var BlockReward *big.Int = big.NewInt(3e+18)
 
 const (
 
-	//MaxVotes Maximum size of dpos Delegate votes.
-	MaxVotes uint64 = 30
 	//MaxExtraDataSize Maximum size extra data may be after Genesis.
 	MaxExtraDataSize uint64 = 32
 	//GasLimitBoundDivisor The bound divisor of the gas limit, used in update calculations.

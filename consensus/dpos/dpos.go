@@ -28,7 +28,6 @@ const (
 	blockRepeat      = int64(6)
 	maxValidatorSize = int64(3)
 	consensusSize    = maxValidatorSize*2/3 + 1
-	safeSize         = consensusSize
 	epochInterval    = blockInterval * blockRepeat * maxValidatorSize
 )
 
@@ -363,13 +362,15 @@ func (d *Dpos) Finalize(chain consensus.IChainReader, header *types.BlockHeader,
 			timeOfFirstBlock = firstBlock.BlockHeader().TimeStamp.Int64()
 		}
 	}
+
+	//update mint count trie
+	updateMintCnt(parent.BlockHeader().TimeStamp.Int64(), header.TimeStamp.Int64(), header.Miner, dposContext)
+
 	genesis := chain.GetBlockByHeight(0)
 	err := epochContext.tryElect(genesis.BlockHeader(), parent.BlockHeader())
 	if err != nil {
 		return nil, fmt.Errorf("got error when elect next epoch, err: %v", err)
 	}
-	//update mint count trie
-	updateMintCnt(parent.BlockHeader().TimeStamp.Int64(), header.TimeStamp.Int64(), header.Miner, dposContext)
 	header.DposContext = dposContext.ToProto()
 	return types.NewBlock(header, txs, receipts), nil
 }

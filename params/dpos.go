@@ -16,9 +16,17 @@
 
 package params
 
-import "math/big"
+import (
+	"math/big"
+)
 
 var (
 	GenesisCandidate = "0x970e8128ab834e8eac17ab8e3812f010678cf791"
 	MinStartQuantity = big.NewInt(100)
+
+	// MaxVotes Maximum size of dpos Delegate votes.
+	MaxVotes uint64 = 30
+
+	// DelayDuration the redeem transacion delay Duration.
+	DelayDuration = big.NewInt(72 * 3600)
 )

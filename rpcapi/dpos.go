@@ -142,6 +142,44 @@ func (api *DposAPI) GetCandidates(number *BlockHeight, reply *[]utils.Address) e
 	return nil
 }
 
+type CandidateArgs struct {
+	Number    *BlockHeight
+	Candidate utils.Address
+}
+
+// GetDelegators retrieves the list of the delegators of specified candidate at specified block
+func (api *DposAPI) GetDelegators(args *CandidateArgs, reply *[]utils.Address) error {
+	var block *types.Block
+	if args.Number == nil || *args.Number == LatestBlockHeight {
+		block = api.b.CurrentBlock()
+	} else {
+		block, _ = api.b.BlockByHeight(context.Background(), *args.Number)
+	}
+	if block == nil {
+		return fmt.Errorf("not found block %v", *args.Number)
+	}
+	header := block.BlockHeader()
+
+	statedb, err := api.b.BlockChain().State()
+	if err != nil {
+		return err
+	}
+
+	delegatorTrie, err := types.NewEpochTrie(header.DposContext.DelegateHash, statedb.Database().TrieDB())
+	if err != nil {
+		return err
+	}
+	dposContext := types.DposContext{}
+	dposContext.SetDelegate(delegatorTrie)
+	delegators, err := dposContext.GetDelegators(args.Candidate)
+	if err != nil {
+		return err
+	}
+
+	*reply = delegators
+	return nil
+}
+
 // GetConfirmedBlockNumber retrieves the latest irreversible block
 func (api *DposAPI) GetConfirmedBlockNumber(ignore string, reply *utils.Big) error {
 	n, err := api.b.GetConfirmedBlockNumber()

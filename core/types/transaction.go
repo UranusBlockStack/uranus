@@ -39,6 +39,7 @@ const (
 	LogoutCandidate
 	Delegate
 	UnDelegate
+	Redeem
 )
 
 var (
@@ -102,11 +103,13 @@ func (tx *Transaction) Validate() error {
 			return errors.New("binary transaction tos need not greater than 1")
 		}
 	case Delegate:
-		fallthrough
-	case UnDelegate:
 		if uint64(len(tx.Tos())) > params.MaxVotes || tx.Tos() == nil {
 			return fmt.Errorf("tos was required but not greater than %v", params.MaxVotes)
 		}
+	case Redeem:
+		fallthrough
+	case UnDelegate:
+		fallthrough
 	case LoginCandidate:
 		fallthrough
 	case LogoutCandidate:

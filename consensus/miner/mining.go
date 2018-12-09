@@ -237,11 +237,11 @@ func (m *UMiner) GenerateBlocks(work *Work, quit <-chan struct{}) {
 	header.GasUsed = *m.currentWork.gasUsed
 
 	block, err := m.engine.Finalize(m.uranus, header, work.state, work.txs, work.receipts, work.dposContext)
-	block.DposContext = work.dposContext
 	if err != nil {
 		log.Warnf("Block sealing failed: %v", err)
 		m.recvCh <- nil
 	} else {
+		block.DposContext = work.dposContext
 		work.Block = block
 		if result, err := m.engine.Seal(m.uranus, work.Block, quit, int(m.threads), m.updateHashes); result != nil {
 			log.Infof("Successfully sealed new block number: %v, hash: %v, diff: %v", result.Height(), result.Hash(), result.Difficulty())

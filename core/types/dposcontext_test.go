@@ -19,6 +19,8 @@ package types
 import (
 	"testing"
 
+	"github.com/UranusBlockStack/uranus/common/rlp"
+
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/utils"
@@ -67,14 +69,21 @@ func TestDposContextBecomeCandidate(t *testing.T) {
 
 	candidateMap := map[utils.Address]bool{}
 	candidateIter := mtp.NewIterator(dposContext.candidateTrie.NodeIterator(nil))
+
 	for candidateIter.Next() {
-		candidateMap[utils.BytesToAddress(candidateIter.Value)] = true
+		info := &CandidateInfo{}
+		if err := rlp.DecodeBytes(candidateIter.Value, info); err != nil {
+			t.Fatal(err)
+		}
+		candidateMap[info.Addr] = true
 	}
 
 	utils.AssertEquals(t, len(candidates), len(candidateMap))
+
 	for _, candidate := range candidates {
 		utils.AssertEquals(t, candidateMap[candidate], true)
 	}
+
 }
 
 func TestDposContextKickoutCandidate(t *testing.T) {
@@ -105,13 +114,18 @@ func TestDposContextKickoutCandidate(t *testing.T) {
 	candidateMap := map[utils.Address]bool{}
 	candidateIter := mtp.NewIterator(dposContext.candidateTrie.NodeIterator(nil))
 	for candidateIter.Next() {
-		candidateMap[utils.BytesToAddress(candidateIter.Value)] = true
+		info := &CandidateInfo{}
+		if err := rlp.DecodeBytes(candidateIter.Value, info); err != nil {
+			t.Fatal(err)
+		}
+		candidateMap[info.Addr] = true
 	}
 	voteIter := mtp.NewIterator(dposContext.voteTrie.NodeIterator(nil))
 	voteMap := map[utils.Address]bool{}
 	for voteIter.Next() {
 		voteMap[utils.BytesToAddress(voteIter.Value)] = true
 	}
+
 	for i, candidate := range candidates {
 		delegateIter := mtp.NewIterator(dposContext.delegateTrie.PrefixIterator(candidate.Bytes()))
 		if i == kickIdx {
