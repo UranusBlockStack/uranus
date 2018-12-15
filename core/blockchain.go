@@ -59,6 +59,8 @@ type BlockChain struct {
 
 	chainBlockFeed      feed.Feed
 	chainBlockscription feed.Subscription
+	sideBlockFeed       feed.Feed
+	SideBlockscription  feed.Subscription
 
 	executor *exec.Executor
 	engine   consensus.Engine
@@ -80,10 +82,10 @@ func NewBlockChain(cfg *ledger.Config, chainCfg *params.ChainConfig, statedb sta
 		stateCache: stateCache,
 		Ledger:     ledger,
 		validator:  blockValidator.New(ledger, engine),
-		executor:   exec.NewExecutor(chainCfg, ledger, engine),
 		engine:     engine,
 		quit:       make(chan struct{}),
 	}
+	bc.executor = exec.NewExecutor(chainCfg, ledger, bc, engine)
 
 	// check chain before blockchian service start.
 	if err := bc.preCheck(); err != nil {
@@ -92,6 +94,10 @@ func NewBlockChain(cfg *ledger.Config, chainCfg *params.ChainConfig, statedb sta
 
 	go bc.loop()
 	return bc, nil
+}
+
+func (bc *BlockChain) SetAddActionInterface(tp exec.ITxPool) {
+	bc.executor.SetTxPool(tp)
 }
 
 func (bc *BlockChain) preCheck() error {
@@ -145,13 +151,19 @@ func (bc *BlockChain) processBlocks() {
 			log.Errorf("inster chain err :%v", err)
 			continue
 		}
-		bc.chainBlockFeed.Send(event)
+		bc.PostEvent(event)
 	}
 
 }
 
 func (bc *BlockChain) PostEvent(event interface{}) {
-	bc.chainBlockFeed.Send(event)
+	switch ev := event.(type) {
+	case feed.BlockAndLogsEvent:
+		bc.chainBlockFeed.Send(ev)
+
+	case feed.ForkBlockEvent:
+		bc.sideBlockFeed.Send(ev)
+	}
 }
 
 func (bc *BlockChain) InsertChain(blocks types.Blocks) (int, error) {
@@ -175,7 +187,7 @@ func (bc *BlockChain) InsertChain(blocks types.Blocks) (int, error) {
 		} else {
 			return n, err
 		}
-		bc.chainBlockFeed.Send(event)
+		bc.PostEvent(event)
 	}
 	return n, nil
 }
@@ -270,6 +282,11 @@ func (bc *BlockChain) ExecTransaction(author *utils.Address,
 	gp *utils.GasPool, statedb *state.StateDB, header *types.BlockHeader,
 	tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
 	return bc.executor.ExecTransaction(author, dposcontext, gp, statedb, header, tx, usedGas, cfg)
+}
+
+// ExecActions execute actions
+func (bc *BlockChain) ExecActions(statedb *state.StateDB, actions []*types.Action) {
+	bc.executor.ExecActions(statedb, actions)
 }
 
 //WriteBlockWithState write the block to the chain and get the status.
@@ -432,6 +449,12 @@ func (bc *BlockChain) StateAt(root utils.Hash) (*state.StateDB, error) {
 func (bc *BlockChain) SubscribeChainBlockEvent(ch chan<- feed.BlockAndLogsEvent) feed.Subscription {
 	bc.chainBlockscription = bc.chainBlockFeed.Subscribe(ch)
 	return bc.chainBlockscription
+}
+
+// SubscribeSideBlockEvent registers a subscription of Blockfeed.
+func (bc *BlockChain) SubscribeSideBlockEvent(ch chan<- feed.ForkBlockEvent) feed.Subscription {
+	bc.SideBlockscription = bc.sideBlockFeed.Subscribe(ch)
+	return bc.SideBlockscription
 }
 
 func (bc *BlockChain) Config() *params.ChainConfig {

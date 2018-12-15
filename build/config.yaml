@@ -41,6 +41,9 @@ p2p-listenaddr: "127.0.0.1:7090"
 # Maximum number of network peers
 p2p-maxpeers: 25
 
+# nodes
+p2p-bootnodes: ["enode://c97cc4700c1fd9232de8c63196cb7bf273683f52da48922043af851353c5fad40fc142bd06f333f32e54b677916d12e54fc30f383aaead9b36d5c3079de88f9a@127.0.0.1:7090"]
+
 # Public address for block mining rewards (default = first account created)
 # miner-conbase: 
 

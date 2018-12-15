@@ -25,7 +25,6 @@ import (
 	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
-	"github.com/UranusBlockStack/uranus/params"
 )
 
 type DposContext struct {
@@ -247,14 +246,32 @@ func (d *DposContext) KickoutCandidate(candidateAddr utils.Address) error {
 				return err
 			}
 		}
-		if err == nil && bytes.Equal(v, candidate) {
-			err = d.voteTrie.TryDelete(delegator)
-			if err != nil {
-				if _, ok := err.(*mtp.MissingNodeError); !ok {
-					return err
+
+		oldCandidateAddrs := []*utils.Address{}
+		if err := rlp.DecodeBytes(v, &oldCandidateAddrs); err != nil {
+			return err
+		}
+		for index, oldCandidateAddr := range oldCandidateAddrs {
+			if bytes.Equal(oldCandidateAddr.Bytes(), candidate) {
+				oldCandidateAddrs = append(oldCandidateAddrs[:index], oldCandidateAddrs[index+1:]...)
+				if len(oldCandidateAddrs) == 0 {
+					err = d.voteTrie.TryDelete(delegator)
+				} else {
+					if candidate, err := rlp.EncodeToBytes(oldCandidateAddrs); err != nil {
+						return err
+					} else {
+						err = d.voteTrie.TryUpdate(delegator, candidate)
+					}
 				}
+				if err != nil {
+					if _, ok := err.(*mtp.MissingNodeError); !ok {
+						return err
+					}
+				}
+
 			}
 		}
+
 	}
 	return nil
 }
@@ -272,16 +289,18 @@ func (d *DposContext) BecomeCandidate(candidateAddr utils.Address) error {
 	return d.candidateTrie.TryUpdate(candidate, val)
 }
 
-func (d *DposContext) Delegate(delegatorAddr, candidateAddr utils.Address) error {
-	delegator, candidate := delegatorAddr.Bytes(), candidateAddr.Bytes()
-
-	// the candidate must be candidate
-	candidateInTrie, err := d.candidateTrie.TryGet(candidate)
-	if err != nil {
-		return err
-	}
-	if candidateInTrie == nil {
-		return errors.New("invalid candidate to delegate")
+func (d *DposContext) Delegate(delegatorAddr utils.Address, candidateAddrs []*utils.Address) error {
+	delegator := delegatorAddr.Bytes()
+	for _, candidateAddr := range candidateAddrs {
+		candidate := candidateAddr.Bytes()
+		// the candidate must be candidate
+		candidateInTrie, err := d.candidateTrie.TryGet(candidate)
+		if err != nil {
+			return err
+		}
+		if candidateInTrie == nil {
+			return errors.New("invalid candidate to delegate")
+		}
 	}
 
 	// delete old candidate if exists
@@ -292,37 +311,66 @@ func (d *DposContext) Delegate(delegatorAddr, candidateAddr utils.Address) error
 		}
 	}
 	if oldCandidate != nil {
-		d.delegateTrie.Delete(append(oldCandidate, delegator...))
+		oldCandidateAddrs := []*utils.Address{}
+		if err := rlp.DecodeBytes(oldCandidate, &oldCandidateAddrs); err != nil {
+			return err
+		}
+		for _, oldCandidateAddr := range oldCandidateAddrs {
+			d.delegateTrie.Delete(append(oldCandidateAddr.Bytes(), delegator...))
+		}
 	}
-	if err = d.delegateTrie.TryUpdate(append(candidate, delegator...), delegator); err != nil {
+
+	for _, candidateAddr := range candidateAddrs {
+		if err = d.delegateTrie.TryUpdate(append(candidateAddr.Bytes(), delegator...), delegator); err != nil {
+			return err
+		}
+	}
+
+	candidate, err := rlp.EncodeToBytes(candidateAddrs)
+	if err != nil {
 		return err
 	}
 	return d.voteTrie.TryUpdate(delegator, candidate)
 }
 
-func (d *DposContext) UnDelegate(delegatorAddr, candidateAddr utils.Address) error {
-	delegator, candidate := delegatorAddr.Bytes(), candidateAddr.Bytes()
+func (d *DposContext) UnDelegate(delegatorAddr utils.Address, candidateAddrs []*utils.Address) error {
+	delegator := delegatorAddr.Bytes()
+	for _, candidateAddr := range candidateAddrs {
+		candidate := candidateAddr.Bytes()
+		// the candidate must be candidate
+		candidateInTrie, err := d.candidateTrie.TryGet(candidate)
+		if err != nil {
+			return err
+		}
+		if candidateInTrie == nil {
+			return errors.New("invalid candidate to undelegate")
+		}
+	}
 
-	// the candidate must be candidate
-	candidateInTrie, err := d.candidateTrie.TryGet(candidate)
+	candidate, err := rlp.EncodeToBytes(candidateAddrs)
 	if err != nil {
 		return err
-	}
-	if candidateInTrie == nil {
-		return errors.New("invalid candidate to undelegate")
 	}
 
 	oldCandidate, err := d.voteTrie.TryGet(delegator)
 	if err != nil {
 		return err
 	}
-	if !bytes.Equal(candidate, oldCandidate) {
+
+	if len(candidateAddrs) != 0 && !bytes.Equal(candidate, oldCandidate) {
 		return errors.New("mismatch candidate to undelegate")
 	}
 
-	if err = d.delegateTrie.TryDelete(append(candidate, delegator...)); err != nil {
+	oldCandidateAddrs := []*utils.Address{}
+	if err := rlp.DecodeBytes(oldCandidate, &oldCandidateAddrs); err != nil {
 		return err
 	}
+	for _, oldCandidateAddr := range oldCandidateAddrs {
+		if err = d.delegateTrie.TryDelete(append(oldCandidateAddr.Bytes(), delegator...)); err != nil {
+			return err
+		}
+	}
+
 	return d.voteTrie.TryDelete(delegator)
 }
 
@@ -442,7 +490,7 @@ func (dc *DposContext) IsDpos() bool {
 	if err := rlp.DecodeBytes(validatorsRLP, &validators); err != nil {
 		return false
 	}
-	if len(validators) == 1 && bytes.Compare(validators[0].Bytes(), utils.HexToAddress(params.GenesisCandidate).Bytes()) == 0 {
+	if len(validators) == 1 {
 		return false
 	}
 	return true

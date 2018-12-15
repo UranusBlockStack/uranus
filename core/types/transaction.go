@@ -96,15 +96,15 @@ func NewTransaction(txType TxType, nonce uint64, value *big.Int, gasLimit uint64
 }
 
 // Validate Valid the transaction when the type isn't the binary
-func (tx *Transaction) Validate() error {
+func (tx *Transaction) Validate(cfg *params.ChainConfig) error {
 	switch tx.Type() {
 	case Binary:
 		if len(tx.Tos()) > 1 {
 			return errors.New("binary transaction tos need not greater than 1")
 		}
 	case Delegate:
-		if uint64(len(tx.Tos())) > params.MaxVotes || tx.Tos() == nil {
-			return fmt.Errorf("tos was required but not greater than %v", params.MaxVotes)
+		if uint64(len(tx.Tos())) > cfg.MaxVotes || tx.Tos() == nil {
+			return fmt.Errorf("tos was required but not greater than %v", cfg.MaxVotes)
 		}
 	case Redeem:
 		fallthrough

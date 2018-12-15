@@ -236,7 +236,7 @@ func (m *UMiner) GenerateBlocks(work *Work, quit <-chan struct{}) {
 	header := m.currentWork.Block.BlockHeader()
 	header.GasUsed = *m.currentWork.gasUsed
 
-	block, err := m.engine.Finalize(m.uranus, header, work.state, work.txs, work.receipts, work.dposContext)
+	block, err := m.engine.Finalize(m.uranus, header, work.state, work.txs, work.actions, work.receipts, work.dposContext)
 	if err != nil {
 		log.Warnf("Block sealing failed: %v", err)
 		m.recvCh <- nil
@@ -256,7 +256,7 @@ func (m *UMiner) GenerateBlocks(work *Work, quit <-chan struct{}) {
 }
 
 func (m *UMiner) prepareNewBlock() error {
-	timestamp := time.Now().Unix()
+	timestamp := time.Now().UnixNano()
 	parent, stateDB, err := m.uranus.GetCurrentInfo()
 	if err != nil {
 		return fmt.Errorf("failed to get current info, %s", err)
@@ -266,11 +266,11 @@ func (m *UMiner) prepareNewBlock() error {
 		timestamp = parent.BlockHeader().TimeStamp.Int64() + 1
 	}
 	// this will ensure we're not going off too far in the future
-	if now := time.Now().Unix(); timestamp > now+1 {
-		wait := time.Duration(timestamp-now) * time.Second
-		log.Infof("Mining too far in the future, waiting for %s", wait)
-		time.Sleep(wait)
-	}
+	// if now := time.Now().UnixNano(); timestamp > now+1 {
+	// 	wait := time.Duration(timestamp-now) * time.Second
+	// 	log.Infof("Mining too far in the future, waiting for %s", wait)
+	// 	time.Sleep(wait)
+	// }
 
 	height := parent.BlockHeader().Height
 	difficult := m.engine.CalcDifficulty(m.uranus.Config(), uint64(timestamp), parent.BlockHeader())
@@ -295,6 +295,10 @@ func (m *UMiner) prepareNewBlock() error {
 
 	log.Debugf("miner a block with coinbase %v", m.coinbase)
 	m.currentWork = NewWork(types.NewBlockWithBlockHeader(header), parent.Height().Uint64(), stateDB, dposContext)
+
+	actions := m.uranus.Actions()
+
+	m.currentWork.applyActions(m.uranus, actions)
 
 	pending, err := m.uranus.Pending()
 	if err != nil {
@@ -409,6 +413,9 @@ func (m *UMiner) mintLoop() {
 		ticker.Stop()
 		defer sub.Unsubscribe()
 	} else {
+		ticker.Stop()
+		time.Sleep(time.Duration(dpos.Option.BlockInterval - int64(time.Now().UnixNano())%dpos.Option.BlockInterval))
+		ticker = time.NewTicker(time.Duration(dpos.Option.BlockInterval / 10))
 		defer ticker.Stop()
 		sub.Unsubscribe()
 	}
@@ -416,7 +423,9 @@ func (m *UMiner) mintLoop() {
 	for {
 		select {
 		case now := <-ticker.C:
-			if err := m.engine.(*dpos.Dpos).CheckValidator(m.uranus.CurrentBlock(), m.coinbase, now.Unix()); err != nil {
+			timestamp := now.UnixNano()
+			timestamp = timestamp - timestamp%dpos.Option.BlockInterval
+			if err := m.engine.(*dpos.Dpos).CheckValidator(m.uranus.CurrentBlock(), m.coinbase, timestamp); err != nil {
 				switch err {
 				case dpos.ErrWaitForPrevBlock,
 					dpos.ErrMintFutureBlock,

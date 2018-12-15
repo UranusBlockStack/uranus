@@ -28,6 +28,10 @@ type MinerBakend struct {
 	u *Uranus
 }
 
+func (m *MinerBakend) Actions() []*types.Action {
+	return m.u.txPool.Actions()
+}
+
 // Pending returns txpool pending transactions
 func (m *MinerBakend) Pending() (map[utils.Address]types.Transactions, error) {
 	return m.u.txPool.Pending()
@@ -45,6 +49,10 @@ func (m *MinerBakend) GetCurrentInfo() (*types.Block, *state.StateDB, error) {
 // WriteBlockWithState write block and state in chain
 func (m *MinerBakend) WriteBlockWithState(block *types.Block, receipts types.Receipts, state *state.StateDB) (bool, error) {
 	return m.u.blockchain.WriteBlockWithState(block, receipts, state)
+}
+
+func (m *MinerBakend) ExecActions(statedb *state.StateDB, actions []*types.Action) {
+	m.u.blockchain.ExecActions(statedb, actions)
 }
 
 // ExecTransaction exectue transaction return receipt

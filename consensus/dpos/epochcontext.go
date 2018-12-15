@@ -15,7 +15,6 @@ import (
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
-	"github.com/UranusBlockStack/uranus/params"
 )
 
 type EpochContext struct {
@@ -26,11 +25,11 @@ type EpochContext struct {
 
 func (ec *EpochContext) lookupValidator(now int64) (validator utils.Address, err error) {
 	validator = utils.Address{}
-	offset := now % epochInterval
-	// if offset%blockInterval != 0 {
+	offset := now % Option.epochInterval()
+	// if offset%Option.BlockInterval != 0 {
 	// 	return utils.Address{}, ErrInvalidMintBlockTime
 	// }
-	offset /= blockInterval * blockRepeat
+	offset /= Option.BlockInterval * Option.BlockRepeat
 
 	validators, err := ec.DposContext.GetValidators()
 	if err != nil {
@@ -50,9 +49,9 @@ func (ec *EpochContext) lookupValidator(now int64) (validator utils.Address, err
 }
 
 func (ec *EpochContext) tryElect(genesis, parent *types.BlockHeader) error {
-	genesisEpoch := genesis.TimeStamp.Int64() / epochInterval
-	prevEpoch := parent.TimeStamp.Int64() / epochInterval
-	currentEpoch := ec.TimeStamp / epochInterval
+	genesisEpoch := genesis.TimeStamp.Int64() / Option.epochInterval()
+	prevEpoch := parent.TimeStamp.Int64() / Option.epochInterval()
+	currentEpoch := ec.TimeStamp / Option.epochInterval()
 
 	prevEpochIsGenesis := prevEpoch == genesisEpoch
 	if prevEpochIsGenesis && prevEpoch < currentEpoch {
@@ -73,8 +72,8 @@ func (ec *EpochContext) tryElect(genesis, parent *types.BlockHeader) error {
 		if err != nil {
 			return err
 		}
-		if !ec.DposContext.IsDpos() || int64(len(votes)) < consensusSize || total.Cmp(params.MinStartQuantity) < 0 {
-			log.Warn("dpos not activated")
+		if !ec.DposContext.IsDpos() || int64(len(votes)) < Option.consensusSize() || total.Cmp(Option.MinStartQuantity) < 0 {
+			//log.Warn("dpos not activated")
 			return nil
 		}
 		candidates := sortableAddresses{}
@@ -82,8 +81,8 @@ func (ec *EpochContext) tryElect(genesis, parent *types.BlockHeader) error {
 			candidates = append(candidates, &sortableAddress{candidate, cnt})
 		}
 		sort.Sort(candidates)
-		if int64(len(candidates)) > maxValidatorSize {
-			candidates = candidates[:maxValidatorSize]
+		if int64(len(candidates)) > Option.MaxValidatorSize {
+			candidates = candidates[:Option.MaxValidatorSize]
 		}
 
 		// shuffle candidates
@@ -158,12 +157,12 @@ func (ec *EpochContext) kickoutValidator(epoch int64) error {
 		return errors.New("no validator could be kickout")
 	}
 
-	epochDuration := epochInterval
+	epochDuration := Option.epochInterval()
 	// First epoch duration may lt epoch interval,
 	// while the first block time wouldn't always align with epoch interval,
 	// so caculate the first epoch duartion with first block time instead of epoch interval,
 	// prevent the validators were kickout incorrectly.
-	if ec.TimeStamp-timeOfFirstBlock < epochInterval {
+	if ec.TimeStamp-timeOfFirstBlock < Option.epochInterval() {
 		epochDuration = ec.TimeStamp - timeOfFirstBlock
 	}
 
@@ -188,7 +187,7 @@ func (ec *EpochContext) kickoutValidator(epoch int64) error {
 		if err := rlp.DecodeBytes(candidate, candidateInfo); err != nil {
 			return err
 		}
-		if cnt < epochDuration/blockInterval/maxValidatorSize/2 {
+		if cnt < epochDuration/Option.BlockInterval/Option.MaxValidatorSize/2 {
 			if candidateInfo.Weight > 0 {
 				candidateInfo.Weight -= 10
 			}
@@ -216,14 +215,14 @@ func (ec *EpochContext) kickoutValidator(epoch int64) error {
 	iter := mtp.NewIterator(ec.DposContext.CandidateTrie().NodeIterator(nil))
 	for iter.Next() {
 		candidateCount++
-		if candidateCount >= needKickoutValidatorCnt+consensusSize {
+		if candidateCount >= needKickoutValidatorCnt+Option.consensusSize() {
 			break
 		}
 	}
 
 	for i, validator := range needKickoutValidators {
-		// ensure candidate count greater than or equal to consensusSize
-		if candidateCount <= consensusSize {
+		// ensure candidate count greater than or equal to Option.consensusSize()
+		if candidateCount <= Option.consensusSize() {
 			log.Info("No more candidate can be kickout", "prevEpochID", epoch, "candidateCount", candidateCount, "needKickoutCount", len(needKickoutValidators)-i)
 			return nil
 		}

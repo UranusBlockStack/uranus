@@ -31,21 +31,31 @@ import (
 	"github.com/UranusBlockStack/uranus/params"
 )
 
+type ITxPool interface {
+	AddAction(a *types.Action)
+}
+
 // Executor is a transactions executor
 type Executor struct {
 	config *params.ChainConfig // Chain configuration options
 	ledger *ledger.Ledger      // ledger
+	tp     ITxPool
 	chain  consensus.IChainReader
 	engine consensus.Engine
 }
 
 // NewExecutor initialises a new Executor.
-func NewExecutor(config *params.ChainConfig, l *ledger.Ledger, engine consensus.Engine) *Executor {
+func NewExecutor(config *params.ChainConfig, l *ledger.Ledger, chain consensus.IChainReader, engine consensus.Engine) *Executor {
 	return &Executor{
 		config: config,
 		ledger: l,
+		chain:  chain,
 		engine: engine,
 	}
+}
+
+func (e *Executor) SetTxPool(tp ITxPool) {
+	e.tp = tp
 }
 
 // ExecBlock execute block
@@ -58,6 +68,8 @@ func (e *Executor) ExecBlock(block *types.Block, statedb *state.StateDB, cfg vm.
 		gp       = new(utils.GasPool).AddGas(block.GasLimit())
 	)
 
+	e.ExecActions(statedb, block.Actions())
+
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions() {
 		statedb.Prepare(tx.Hash(), block.Hash(), i)
@@ -69,8 +81,17 @@ func (e *Executor) ExecBlock(block *types.Block, statedb *state.StateDB, cfg vm.
 		allLogs = append(allLogs, receipt.Logs...)
 	}
 
-	e.engine.Finalize(e.chain, header, statedb, block.Transactions(), receipts, block.DposCtx())
+	e.engine.Finalize(e.chain, header, statedb, block.Transactions(), block.Actions(), receipts, block.DposCtx())
 	return receipts, allLogs, *usedGas, nil
+}
+
+// ExecActions execute actions
+func (e *Executor) ExecActions(statedb *state.StateDB, actions []*types.Action) {
+	for _, a := range actions {
+		lb := statedb.GetLockedBalance(a.Sender)
+		statedb.AddBalance(a.Sender, lb)
+		statedb.SetLockedBalance(a.Sender, utils.Big0)
+	}
 }
 
 // ExecTransaction attempts to execute a transaction to the given state database and uses the input parameters for its environment.
@@ -128,18 +149,16 @@ func (e *Executor) applyDposMessage(dposContext *types.DposContext, tx *types.Tr
 		statedb.SetDelegateTimestamp(from, big.NewInt(time.Now().Unix()))
 		statedb.SubBalance(from, tx.Value())
 		statedb.SetLockedBalance(from, tx.Value())
-		for _, to := range tx.Tos() {
-			dposContext.Delegate(from, *to)
-		}
+		dposContext.Delegate(from, tx.Tos())
 	case types.UnDelegate:
 		statedb.ResetDelegateTimestamp(from)
 		// todo validate tos
-		for _, candidater := range tx.Tos() {
-			dposContext.UnDelegate(from, *candidater)
-		}
+
+		e.addAction(from, tx)
+		dposContext.UnDelegate(from, tx.Tos())
 	case types.Redeem:
 		timestamp := statedb.GetDelegateTimestamp(from)
-		if new(big.Int).Sub(big.NewInt(time.Now().Unix()), timestamp).Cmp(params.DelayDuration) < 0 {
+		if new(big.Int).Sub(big.NewInt(time.Now().Unix()), timestamp).Cmp(e.chain.Config().DelayDuration) < 0 {
 			return false
 		}
 		lockedBalance := statedb.GetLockedBalance(from)
@@ -149,6 +168,7 @@ func (e *Executor) applyDposMessage(dposContext *types.DposContext, tx *types.Tr
 	return true
 }
 
-func (e *Executor) generateDeferredAction() {
-
+func (e *Executor) addAction(sender utils.Address, tx *types.Transaction) {
+	a := types.NewAction(tx.Hash(), sender, big.NewInt(time.Now().Unix()), e.chain.Config().DelayDuration)
+	e.tp.AddAction(a)
 }

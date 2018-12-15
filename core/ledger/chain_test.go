@@ -153,7 +153,7 @@ func TestBlockStorage(t *testing.T) {
 		ExtraData:        []byte("test block"),
 		TransactionsRoot: utils.Hash{},
 		ReceiptsRoot:     utils.Hash{},
-	}, nil, nil)
+	}, nil, nil, nil)
 	if entry := chain.getBlock(block.Hash()); entry != nil {
 		t.Fatalf("Non existent block returned: %v", entry)
 	}

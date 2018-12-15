@@ -55,7 +55,6 @@ func (g Genesis) MarshalJSON() ([]byte, error) {
 	enc.Height = math.HexOrDecimal64(g.Height)
 	enc.GasUsed = math.HexOrDecimal64(g.GasUsed)
 	enc.PreviousHash = g.PreviousHash
-	enc.Validator = g.Validator
 	if g.Alloc != nil {
 		enc.Alloc = make(map[utils.Address]GenesisAccount, len(g.Alloc))
 		for k, v := range g.Alloc {
@@ -78,7 +77,6 @@ func (g *Genesis) UnmarshalJSON(input []byte) error {
 		Height       *math.HexOrDecimal64  `json:"height"`
 		GasUsed      *math.HexOrDecimal64  `json:"gasUsed"`
 		PreviousHash *utils.Hash           `json:"previousHash"`
-		Validator    *utils.Address        `json:"validator"`
 		Alloc        GenesisAlloc          `json:"alloc"`
 	}
 	var dec genesisJ
@@ -121,10 +119,6 @@ func (g *Genesis) UnmarshalJSON(input []byte) error {
 	if dec.PreviousHash != nil {
 		g.PreviousHash = *dec.PreviousHash
 	}
-	if dec.Validator == nil {
-		return errors.New("missing validator")
-	}
-	g.Validator = *dec.Validator
 	if dec.Alloc != nil {
 		g.Alloc = make(GenesisAlloc, len(dec.Alloc))
 		for k, v := range dec.Alloc {

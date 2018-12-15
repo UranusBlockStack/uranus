@@ -25,15 +25,17 @@ import (
 	"github.com/UranusBlockStack/uranus/common/utils"
 )
 
+var (
+	txHash     = utils.HexToHash("0x317b45ef844c4108432a06a4466aca2e11720b6dc1df3e7035a065d02829eca6")
+	sender     = utils.HexToAddress("0x970e8128ab834e8eac17ab8e3812f010678cf791")
+	gen        = big.NewInt(1)
+	delay      = big.NewInt(2)
+	testAction = NewAction(txHash, sender, gen, delay)
+)
+
 func TestActionEncodeAndDecode(t *testing.T) {
-	var (
-		txHash = utils.HexToHash("0x317b45ef844c4108432a06a4466aca2e11720b6dc1df3e7035a065d02829eca6")
-		sender = utils.HexToAddress("0x970e8128ab834e8eac17ab8e3812f010678cf791")
-		gen    = big.NewInt(1)
-		delay  = big.NewInt(2)
-	)
-	exp := NewAction(txHash, sender, gen, delay)
-	actionBytes, err := rlp.EncodeToBytes(exp)
+
+	actionBytes, err := rlp.EncodeToBytes(testAction)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,9 +43,9 @@ func TestActionEncodeAndDecode(t *testing.T) {
 	var act Action
 	rlp.Decode(bytes.NewReader(actionBytes), &act)
 
-	utils.AssertEquals(t, act.Hash(), exp.Hash())
-	utils.AssertEquals(t, act.TxHash, exp.TxHash)
-	utils.AssertEquals(t, act.Sender, exp.Sender)
-	utils.AssertEquals(t, act.GenTimeStamp, exp.GenTimeStamp)
-	utils.AssertEquals(t, act.DelayDur, exp.DelayDur)
+	utils.AssertEquals(t, act.Hash(), testAction.Hash())
+	utils.AssertEquals(t, act.TxHash, testAction.TxHash)
+	utils.AssertEquals(t, act.Sender, testAction.Sender)
+	utils.AssertEquals(t, act.GenTimeStamp, testAction.GenTimeStamp)
+	utils.AssertEquals(t, act.DelayDur, testAction.DelayDur)
 }

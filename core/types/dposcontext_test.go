@@ -17,6 +17,7 @@
 package types
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/UranusBlockStack/uranus/common/db"
@@ -98,7 +99,7 @@ func TestDposContextKickoutCandidate(t *testing.T) {
 		if err := dposContext.BecomeCandidate(candidate); err != nil {
 			t.Fatal(err)
 		}
-		if err := dposContext.Delegate(candidate, candidate); err != nil {
+		if err := dposContext.Delegate(candidate, []*utils.Address{&candidate}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -114,12 +115,22 @@ func TestDposContextKickoutCandidate(t *testing.T) {
 		if err := rlp.DecodeBytes(candidateIter.Value, info); err != nil {
 			t.Fatal(err)
 		}
+		fmt.Println("===>", info.Addr.Hex())
 		candidateMap[info.Addr] = true
 	}
 	voteIter := mtp.NewIterator(dposContext.voteTrie.NodeIterator(nil))
 	voteMap := map[utils.Address]bool{}
 	for voteIter.Next() {
-		voteMap[utils.BytesToAddress(voteIter.Value)] = true
+		voters := new([]*utils.Address)
+
+		if err := rlp.DecodeBytes(voteIter.Value, voters); err != nil {
+			t.Fatal(err)
+		}
+
+		// todo KickoutCandidate faild
+		fmt.Println("=====>", len(*voters), (*(*voters)[0]).Hex())
+
+		voteMap[*(*voters)[0]] = true
 	}
 	for i, candidate := range candidates {
 		delegateIter := mtp.NewIterator(dposContext.delegateTrie.PrefixIterator(candidate.Bytes()))
@@ -158,12 +169,13 @@ func TestDposContextDelegateAndUnDelegate(t *testing.T) {
 	for candidateIter.Next() {
 		candidateMap[string(candidateIter.Value)] = true
 	}
-	if err := dposContext.Delegate(delegator, utils.HexToAddress("0xab")); err != nil && err.Error() != "invalid candidate to delegate" {
+	testaddr := utils.HexToAddress("0xab")
+	if err := dposContext.Delegate(delegator, []*utils.Address{&testaddr}); err != nil && err.Error() != "invalid candidate to delegate" {
 		t.Fatal(err)
 	}
 
 	// delegator delegate to old candidate
-	if err := dposContext.Delegate(delegator, candidate); err != nil {
+	if err := dposContext.Delegate(delegator, []*utils.Address{&candidate}); err != nil {
 		t.Fatal(err)
 	}
 	delegateIter := mtp.NewIterator(dposContext.delegateTrie.PrefixIterator(candidate.Bytes()))
@@ -178,7 +190,7 @@ func TestDposContextDelegateAndUnDelegate(t *testing.T) {
 	}
 
 	// delegator delegate to new candidate
-	if err := dposContext.Delegate(delegator, newCandidate); err != nil {
+	if err := dposContext.Delegate(delegator, []*utils.Address{&newCandidate}); err != nil {
 		t.Fatal(err)
 	}
 	delegateIter = mtp.NewIterator(dposContext.delegateTrie.PrefixIterator(candidate.Bytes()))
@@ -195,17 +207,17 @@ func TestDposContextDelegateAndUnDelegate(t *testing.T) {
 	}
 
 	// delegator undelegate to not exist candidate
-	if err := dposContext.UnDelegate(utils.HexToAddress("0x00"), candidate); err != nil && err.Error() != "mismatch candidate to undelegate" {
+	if err := dposContext.UnDelegate(utils.HexToAddress("0x00"), []*utils.Address{&candidate}); err != nil && err.Error() != "mismatch candidate to undelegate" {
 		t.Fatal(err)
 	}
 
 	// delegator undelegate to old candidate
-	if err := dposContext.UnDelegate(delegator, candidate); err != nil && err.Error() != "mismatch candidate to undelegate" {
+	if err := dposContext.UnDelegate(delegator, []*utils.Address{&candidate}); err != nil && err.Error() != "mismatch candidate to undelegate" {
 		t.Fatal(err)
 	}
 
 	// delegator undelegate to new candidate
-	if err := dposContext.UnDelegate(delegator, newCandidate); err != nil {
+	if err := dposContext.UnDelegate(delegator, []*utils.Address{&newCandidate}); err != nil {
 		t.Fatal(err)
 	}
 	delegateIter = mtp.NewIterator(dposContext.delegateTrie.PrefixIterator(newCandidate.Bytes()))

@@ -34,7 +34,7 @@ func testBlock() *types.Block {
 	tx3 := types.NewTransaction(types.Binary, 3, big.NewInt(333), 3333, big.NewInt(33333), []byte{0x33, 0x33, 0x33}, &add3)
 	txs := []*types.Transaction{tx1, tx2, tx3}
 
-	block := types.NewBlock(&types.BlockHeader{Height: big.NewInt(1)}, txs, nil)
+	block := types.NewBlock(&types.BlockHeader{Height: big.NewInt(1)}, txs, nil, nil)
 	return block
 }
 

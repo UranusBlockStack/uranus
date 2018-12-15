@@ -20,6 +20,7 @@ import (
 	"math/big"
 	"sync/atomic"
 
+	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 )
 
@@ -52,4 +53,19 @@ func (a *Action) Hash() utils.Hash {
 	hash := rlpHash(a)
 	a.hash.Store(hash)
 	return hash
+}
+
+// Actions .
+type Actions []*Action
+
+// Len returns the number of actions in this list.
+func (a Actions) Len() int { return len(a) }
+
+// GetRlp returns the RLP encoding of one action from the list.
+func (a Actions) GetRlp(i int) []byte {
+	bytes, err := rlp.EncodeToBytes(a[i])
+	if err != nil {
+		panic(err)
+	}
+	return bytes
 }

@@ -34,6 +34,7 @@ type Work struct {
 	signer types.Signer
 
 	txs      []*types.Transaction
+	actions  []*types.Action
 	receipts []*types.Receipt
 	gasUsed  *uint64
 	state    *state.StateDB
@@ -51,6 +52,11 @@ func NewWork(blk *types.Block, height uint64, state *state.StateDB, dposContext 
 		signer:      types.Signer{},
 		dposContext: dposContext,
 	}
+}
+
+func (w *Work) applyActions(blockchain consensus.IBlockChain, actions []*types.Action) {
+	blockchain.ExecActions(w.state, actions)
+	w.actions = actions
 }
 
 func (w *Work) applyTransactions(blockchain consensus.IBlockChain, txs *types.TransactionsByPriceAndNonce) error {

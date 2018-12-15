@@ -15,3 +15,37 @@
 // along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
 
 package txpool
+
+import (
+	"math/big"
+	"testing"
+
+	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/core/types"
+)
+
+func TestDeferredList(t *testing.T) {
+	dl := newDeferredList()
+	nilHash := utils.Hash{}
+	nilAddr := utils.Address{}
+	actions := []*types.Action{
+		types.NewAction(nilHash, nilAddr, big.NewInt(0), nil),
+		types.NewAction(nilHash, nilAddr, big.NewInt(1), nil),
+		types.NewAction(nilHash, nilAddr, big.NewInt(3), nil),
+		types.NewAction(nilHash, nilAddr, big.NewInt(4), nil),
+		types.NewAction(nilHash, nilAddr, big.NewInt(2), nil),
+	}
+
+	for _, a := range actions {
+		dl.Put(a)
+	}
+
+	threshold := big.NewInt(3)
+	tmpActions := dl.Cap(threshold)
+	for _, a := range tmpActions {
+		if a.GenTimeStamp.Cmp(threshold) >= 0 {
+			t.Fatalf("generate timestamp:%v must lower: %v \n", a.GenTimeStamp.String(), threshold.String())
+		}
+	}
+
+}

@@ -21,14 +21,30 @@ import (
 	"github.com/UranusBlockStack/uranus/params"
 )
 
+var Option = &option{
+	BlockInterval:    int64(500 * time.Millisecond), // 500 ms
+	BlockRepeat:      12,
+	MaxValidatorSize: 3,
+	MinStartQuantity: big.NewInt(1000),
+}
+
+func (opt *option) consensusSize() int64 {
+	return opt.MaxValidatorSize*2/3 + 1
+}
+
+func (opt *option) epochInterval() int64 {
+	return opt.BlockInterval * opt.BlockRepeat * opt.MaxValidatorSize
+}
+
+type option struct {
+	BlockInterval    int64
+	BlockRepeat      int64
+	MaxValidatorSize int64
+	MinStartQuantity *big.Int
+}
+
 const (
 	extraSeal = 65 // Fixed number of extra-data suffix bytes reserved for signer seal
-
-	blockInterval    = int64(3)
-	blockRepeat      = int64(6)
-	maxValidatorSize = int64(3)
-	consensusSize    = maxValidatorSize*2/3 + 1
-	epochInterval    = blockInterval * blockRepeat * maxValidatorSize
 )
 
 var (
@@ -66,22 +82,22 @@ func NewDpos(chainDb db.Database, db state.Database, signFn SignerFn) *Dpos {
 }
 
 func prevSlot(now int64) int64 {
-	return int64((now-1)/blockInterval) * blockInterval
+	return int64((now-Option.BlockInterval/10)/Option.BlockInterval) * Option.BlockInterval
 }
 
 func nextSlot(now int64) int64 {
-	return int64((now+blockInterval-1)/blockInterval) * blockInterval
+	return int64((now+Option.BlockInterval-Option.BlockInterval/10)/Option.BlockInterval) * Option.BlockInterval
 }
 
 // update counts in MintCntTrie for the miner of newBlock
 func updateMintCnt(parentBlockTime, currentBlockTime int64, validator utils.Address, dposContext *types.DposContext) {
 	currentMintCntTrie := dposContext.MintCntTrie()
-	currentEpoch := parentBlockTime / epochInterval
+	currentEpoch := parentBlockTime / Option.epochInterval()
 	currentEpochBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(currentEpochBytes, uint64(currentEpoch))
 
 	cnt := int64(1)
-	newEpoch := currentBlockTime / epochInterval
+	newEpoch := currentBlockTime / Option.epochInterval()
 	// still during the currentEpochID
 	if currentEpoch == newEpoch {
 		iter := mtp.NewIterator(currentMintCntTrie.NodeIterator(currentEpochBytes))
@@ -149,7 +165,7 @@ func (d *Dpos) Seal(chain consensus.IChainReader, block *types.Block, stop <-cha
 	header.ExtraData = append(header.ExtraData, make([]byte, extraSeal)...)
 	block = block.WithSeal(header)
 
-	now := time.Now().Unix()
+	now := time.Now().UnixNano()
 	delay := nextSlot(now) - now
 	if delay > 0 {
 		select {
@@ -158,7 +174,7 @@ func (d *Dpos) Seal(chain consensus.IChainReader, block *types.Block, stop <-cha
 		case <-time.After(time.Duration(delay) * time.Second):
 		}
 	}
-	header.TimeStamp.SetInt64(time.Now().Unix())
+	header.TimeStamp.SetInt64(time.Now().UnixNano())
 
 	// time's up, sign the block
 	sighash, err := d.signFn(header.Miner, sigHash(header).Bytes())
@@ -233,20 +249,20 @@ func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader) error {
 	curHeader := chain.CurrentBlock().BlockHeader()
 	for d.confirmedBlockHeader.Hash() != curHeader.Hash() &&
 		d.confirmedBlockHeader.Height.Uint64() < curHeader.Height.Uint64() {
-		curEpoch := curHeader.TimeStamp.Int64() / epochInterval
+		curEpoch := curHeader.TimeStamp.Int64() / Option.epochInterval()
 		if curEpoch != epoch {
 			epoch = curEpoch
 			validatorMap = make(map[utils.Address]bool)
 		}
 		// fast return
-		// if block number difference less consensusSize-witnessNum
+		// if block number difference less Option.consensusSize()-witnessNum
 		// there is no need to check block is confirmed
-		if curHeader.Height.Int64()-d.confirmedBlockHeader.Height.Int64() < int64(consensusSize-int64(len(validatorMap))) {
+		if curHeader.Height.Int64()-d.confirmedBlockHeader.Height.Int64() < int64(Option.consensusSize()-int64(len(validatorMap))) {
 			log.Debug("Dpos fast return", "current", curHeader.Height.String(), "confirmed", d.confirmedBlockHeader.Height.String(), "witnessCount", len(validatorMap))
 			return nil
 		}
 		validatorMap[curHeader.Miner] = true
-		if int64(len(validatorMap)) >= consensusSize {
+		if int64(len(validatorMap)) >= Option.consensusSize() {
 			d.confirmedBlockHeader = curHeader
 			if err := d.storeConfirmedBlockHeader(); err != nil {
 				return err
@@ -318,11 +334,10 @@ func (d *Dpos) CheckValidator(lastBlock *types.Block, coinbase utils.Address, no
 	if lastBlock.Time().Int64() >= nextSlot {
 		return ErrMintFutureBlock
 	}
-	if lastBlock.Time().Int64() != prevSlot && nextSlot-now >= 1 {
+	if lastBlock.Time().Int64() != prevSlot && nextSlot-now >= Option.BlockInterval/10 {
 		return ErrWaitForPrevBlock
 	}
-
-	if now%blockInterval != 0 {
+	if now%Option.BlockInterval != 0 {
 		return ErrInvalidMintBlockTime
 	}
 
@@ -346,7 +361,7 @@ func (d *Dpos) CheckValidator(lastBlock *types.Block, coinbase utils.Address, no
 	return nil
 }
 
-func (d *Dpos) Finalize(chain consensus.IChainReader, header *types.BlockHeader, state *state.StateDB, txs []*types.Transaction, receipts []*types.Receipt, dposContext *types.DposContext) (*types.Block, error) {
+func (d *Dpos) Finalize(chain consensus.IChainReader, header *types.BlockHeader, state *state.StateDB, txs []*types.Transaction, actions []*types.Action, receipts []*types.Receipt, dposContext *types.DposContext) (*types.Block, error) {
 	// Accumulate block rewards and commit the final state root
 	state.AddBalance(header.Miner, params.BlockReward)
 	header.StateRoot = state.IntermediateRoot(true)
@@ -372,5 +387,5 @@ func (d *Dpos) Finalize(chain consensus.IChainReader, header *types.BlockHeader,
 		return nil, fmt.Errorf("got error when elect next epoch, err: %v", err)
 	}
 	header.DposContext = dposContext.ToProto()
-	return types.NewBlock(header, txs, receipts), nil
+	return types.NewBlock(header, txs, actions, receipts), nil
 }

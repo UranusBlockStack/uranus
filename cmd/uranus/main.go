@@ -17,6 +17,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -24,6 +25,7 @@ import (
 	"syscall"
 
 	"github.com/UranusBlockStack/uranus/common/log"
+	"github.com/UranusBlockStack/uranus/core/ledger"
 	"github.com/UranusBlockStack/uranus/node"
 	"github.com/UranusBlockStack/uranus/server"
 	"github.com/spf13/cobra"
@@ -108,6 +110,7 @@ func init() {
 
 	// config file
 	falgs.StringVarP(&startConfig.CfgFile, "config", "c", "", "YAML configuration file")
+	falgs.StringVarP(&startConfig.GenesisFile, "genesis", "g", "", "YAML configuration file")
 
 	// TxPoolConfig
 	falgs.Uint64Var(&startConfig.UranusConfig.TxPoolConfig.PriceBump, "txpool_pricebump", startConfig.UranusConfig.TxPoolConfig.PriceBump, "Price bump percentage to replace an already existing transaction")
@@ -202,6 +205,21 @@ func unmarshalCfgFile(startConfig *StartConfig) error {
 	// miner
 	if err := viper.Unmarshal(startConfig.UranusConfig.MinerConfig); err != nil {
 		return err
+	}
+
+	// Make sure we have a valid genesis JSON
+	if len(startConfig.GenesisFile) != 0 {
+		file, err := os.Open(startConfig.GenesisFile)
+		if err != nil {
+			return fmt.Errorf("Failed to read genesis file: %v(%v)", startConfig.GenesisFile, err)
+		}
+		defer file.Close()
+
+		genesis := new(ledger.Genesis)
+		if err := json.NewDecoder(file).Decode(genesis); err != nil {
+			return fmt.Errorf("invalid genesis file: %v(%v)", startConfig.GenesisFile, err)
+		}
+		startConfig.UranusConfig.Genesis = genesis
 	}
 	return nil
 }

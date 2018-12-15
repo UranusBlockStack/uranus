@@ -225,10 +225,12 @@ func (cm *CpuMiner) VerifySeal(chain consensus.IChainReader, header *types.Block
 	}
 	return errors.New("invalid proof-of-work")
 }
-func (cm *CpuMiner) Finalize(chain consensus.IChainReader, header *types.BlockHeader, state *state.StateDB, txs []*types.Transaction, receipts []*types.Receipt, dposContext *types.DposContext) (*types.Block, error) {
+
+// Finalize .
+func (cm *CpuMiner) Finalize(chain consensus.IChainReader, header *types.BlockHeader, state *state.StateDB, txs []*types.Transaction, actions []*types.Action, receipts []*types.Receipt, dposContext *types.DposContext) (*types.Block, error) {
 	// Accumulate block rewards and commit the final state root
 	state.AddBalance(header.Miner, params.BlockReward)
 	header.StateRoot = state.IntermediateRoot(true)
 
-	return types.NewBlock(header, txs, receipts), nil
+	return types.NewBlock(header, txs, actions, receipts), nil
 }

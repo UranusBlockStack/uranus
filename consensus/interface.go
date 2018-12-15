@@ -37,17 +37,19 @@ type Engine interface {
 
 	Seal(chain IChainReader, block *types.Block, stop <-chan struct{}, threads int, updateHashes chan uint64) (*types.Block, error)
 
-	Finalize(chain IChainReader, header *types.BlockHeader, state *state.StateDB, txs []*types.Transaction, receipts []*types.Receipt, dposContext *types.DposContext) (*types.Block, error)
+	Finalize(chain IChainReader, header *types.BlockHeader, state *state.StateDB, txs []*types.Transaction, actions []*types.Action, receipts []*types.Receipt, dposContext *types.DposContext) (*types.Block, error)
 }
 
 type ITxPool interface {
 	Pending() (map[utils.Address]types.Transactions, error)
+	Actions() []*types.Action
 }
 
 type IBlockChain interface {
 	PostEvent(event interface{})
 	GetCurrentInfo() (*types.Block, *state.StateDB, error)
 	WriteBlockWithState(*types.Block, types.Receipts, *state.StateDB) (bool, error)
+	ExecActions(statedb *state.StateDB, actions []*types.Action)
 	ExecTransaction(*utils.Address, *types.DposContext, *utils.GasPool, *state.StateDB, *types.BlockHeader, *types.Transaction, *uint64, vm.Config) (*types.Receipt, uint64, error)
 }
 

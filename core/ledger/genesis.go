@@ -52,7 +52,6 @@ type Genesis struct {
 	Height       uint64              `json:"height"`
 	GasUsed      uint64              `json:"gasUsed"`
 	PreviousHash utils.Hash          `json:"previousHash"`
-	Validator    utils.Address       `json:"validator"`
 	Alloc        GenesisAlloc        `json:"alloc"`
 }
 
@@ -65,7 +64,6 @@ func DefaultGenesis() *Genesis {
 		ExtraData:  extraData,
 		GasLimit:   params.GenesisGasLimit,
 		Difficulty: big.NewInt(1000000),
-		Validator:  utils.HexToAddress(params.GenesisCandidate),
 	}
 }
 
@@ -87,6 +85,9 @@ func SetupGenesis(genesis *Genesis, chain *Chain) (*params.ChainConfig, state.Da
 			return nil, nil, utils.Hash{}, err
 		}
 		return genesis.Config, statedb, block.Hash(), nil
+	}
+	if genesis != nil {
+		log.Warnf("genesis alreay exist, ingore setup genesis")
 	}
 
 	return chain.getChainConfig(stored), state.NewDatabase(chain.db), stored, nil
@@ -111,13 +112,21 @@ func (g *Genesis) Commit(chain *Chain) (*types.Block, state.Database, error) {
 // ToBlock creates the genesis block and writes state.
 func (g *Genesis) ToBlock(chain *Chain) (*types.Block, state.Database) {
 	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(chain.db))
+	for addr, account := range g.Alloc {
+		statedb.AddBalance(addr, account.Balance)
+		statedb.SetCode(addr, account.Code)
+		statedb.SetNonce(addr, account.Nonce)
+		for key, value := range account.Storage {
+			statedb.SetState(addr, key, value)
+		}
+	}
 	root := statedb.IntermediateRoot(false)
 	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), &types.DposContextProto{})
 	if err != nil {
 		panic(err)
 	}
-	dposContext.SetValidators([]utils.Address{g.Validator})
-	validator := g.Validator
+	validator := utils.HexToAddress(params.DefaultChainConfig.GenesisCandidate)
+	dposContext.SetValidators([]utils.Address{validator})
 	dposContext.DelegateTrie().TryUpdate(append(validator.Bytes(), validator.Bytes()...), validator.Bytes())
 	candidateInfo := &types.CandidateInfo{
 		Addr: validator,
@@ -147,5 +156,5 @@ func (g *Genesis) ToBlock(chain *Chain) (*types.Block, state.Database) {
 	statedb.Commit(false)
 	statedb.Database().TrieDB().Commit(root, true)
 
-	return types.NewBlock(head, nil, nil), statedb.Database()
+	return types.NewBlock(head, nil, nil, nil), statedb.Database()
 }
