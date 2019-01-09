@@ -91,6 +91,7 @@ func (s *TypeMuxSubscription) closewait() {
 	s.postMu.Lock()
 	close(s.postC)
 	s.postC = nil
+	s.readC = nil
 	s.postMu.Unlock()
 }
 

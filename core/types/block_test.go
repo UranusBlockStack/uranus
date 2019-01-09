@@ -40,7 +40,7 @@ var (
 		ExtraData:    []byte("test block"),
 		Nonce:        EncodeNonce(uint64(0xa13a5a8c8f2bb1c4)),
 	}
-	testBlock = NewBlock(testHeader, []*Transaction{testTx}, []*Receipt{testReceipt})
+	testBlock = NewBlock(testHeader, []*Transaction{testTx}, []*Action{testAction}, []*Receipt{testReceipt})
 )
 
 func TestBlockEncodeAndDecode(t *testing.T) {
@@ -68,6 +68,7 @@ func TestBlockEncodeAndDecode(t *testing.T) {
 	assert.Equal(t, testBlock.ExtraData(), tmpBlock.ExtraData())
 	assert.Equal(t, testBlock.Nonce(), tmpBlock.Nonce())
 	assert.Equal(t, testBlock.Transactions()[0].Hash(), tmpBlock.Transactions()[0].Hash())
+	assert.Equal(t, tmpBlock.Actions()[0].Hash(), testBlock.Actions()[0].Hash())
 
 }
 

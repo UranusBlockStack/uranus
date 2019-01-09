@@ -14,31 +14,38 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
 
-package rpcapi
+package txpool
 
 import (
-	"context"
+	"math/big"
+	"testing"
 
-	"github.com/UranusBlockStack/uranus/common/crypto"
-	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
 )
 
-// submitTransaction is a helper function that submits tx to txPool and logs a message.
-func submitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (utils.Hash, error) {
-	if err := b.SendTx(ctx, tx); err != nil {
-		return utils.Hash{}, err
+func TestDeferredList(t *testing.T) {
+	dl := newDeferredList()
+	nilHash := utils.Hash{}
+	nilAddr := utils.Address{}
+	actions := []*types.Action{
+		types.NewAction(nilHash, nilAddr, big.NewInt(0), nil),
+		types.NewAction(nilHash, nilAddr, big.NewInt(1), nil),
+		types.NewAction(nilHash, nilAddr, big.NewInt(3), nil),
+		types.NewAction(nilHash, nilAddr, big.NewInt(4), nil),
+		types.NewAction(nilHash, nilAddr, big.NewInt(2), nil),
 	}
-	if tx.Tos() == nil {
-		from, err := tx.Sender(types.Signer{})
-		if err != nil {
-			return utils.Hash{}, err
+
+	for _, a := range actions {
+		dl.Put(a)
+	}
+
+	threshold := big.NewInt(3)
+	tmpActions := dl.Cap(threshold)
+	for _, a := range tmpActions {
+		if a.GenTimeStamp.Cmp(threshold) >= 0 {
+			t.Fatalf("generate timestamp:%v must lower: %v \n", a.GenTimeStamp.String(), threshold.String())
 		}
-		addr := crypto.CreateAddress(from, tx.Nonce())
-		log.Infof("Submitted contract creation hash: %v ,contract address: %v", tx.Hash(), addr)
-	} else {
-		log.Infof("Submitted transaction hash: %v,recipient address: %v", tx.Hash(), tx.Tos())
 	}
-	return tx.Hash(), nil
+
 }

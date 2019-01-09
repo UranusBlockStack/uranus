@@ -55,4 +55,9 @@ func AddCommands() {
 	RootCmd.AddCommand(startMinerCmd)
 	RootCmd.AddCommand(stopMinerCmd)
 	RootCmd.AddCommand(setCoinbaseCmd)
+
+	// dpos command
+	RootCmd.AddCommand(getValidatorsCmd)
+	RootCmd.AddCommand(getVotersCmd)
+	RootCmd.AddCommand(getCandidatesCmd)
 }

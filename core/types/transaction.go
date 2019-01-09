@@ -18,6 +18,8 @@ package types
 
 import (
 	"crypto/ecdsa"
+	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"sync/atomic"
@@ -25,6 +27,27 @@ import (
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/params"
+)
+
+// TxType transaction type
+type TxType uint8
+
+const (
+	Binary TxType = iota
+	LoginCandidate
+	LogoutCandidate
+	Delegate
+	UnDelegate
+	Redeem
+)
+
+var (
+	ErrInvalidSig     = errors.New("invalid transaction v, r, s values")
+	errNoSigner       = errors.New("missing signing methods")
+	ErrInvalidType    = errors.New("invalid transaction type")
+	ErrInvalidAddress = errors.New("invalid transaction payload address")
+	ErrInvalidAction  = errors.New("invalid transaction payload action")
 )
 
 // Transaction transaction
@@ -38,25 +61,27 @@ type Transaction struct {
 }
 
 type txdata struct {
-	Nonce     uint64         `json:"nonce"    gencodec:"required"`
-	GasPrice  *big.Int       `json:"gasPrice" gencodec:"required"`
-	GasLimit  uint64         `json:"gas"      gencodec:"required"`
-	To        *utils.Address `json:"to"       rlp:"nil"`
-	Value     *big.Int       `json:"value"    gencodec:"required"`
-	Payload   []byte         `json:"payload"    gencodec:"required"`
-	Signature []byte         `json:"signature"    gencodec:"required"`
+	Type      TxType           `json:"type"`
+	Nonce     uint64           `json:"nonce"`
+	GasPrice  *big.Int         `json:"gasPrice"`
+	GasLimit  uint64           `json:"gas"`
+	Tos       []*utils.Address `json:"tos" rlp:"nil"`
+	Value     *big.Int         `json:"value"`
+	Payload   []byte           `json:"payload"`
+	Signature []byte           `json:"signature"`
 }
 
 // NewTransaction new transaction
-func NewTransaction(nonce uint64, to *utils.Address, value *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *Transaction {
+func NewTransaction(txType TxType, nonce uint64, value *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, tos ...*utils.Address) *Transaction {
 	if len(data) > 0 {
 		data = utils.CopyBytes(data)
 	}
 	d := txdata{
+		Type:     txType,
 		Nonce:    nonce,
 		GasLimit: gasLimit,
 		GasPrice: new(big.Int),
-		To:       to,
+		Tos:      tos,
 		Value:    new(big.Int),
 		Payload:  data,
 	}
@@ -69,18 +94,46 @@ func NewTransaction(nonce uint64, to *utils.Address, value *big.Int, gasLimit ui
 
 	return &Transaction{data: d}
 }
+
+// Validate Valid the transaction when the type isn't the binary
+func (tx *Transaction) Validate(cfg *params.ChainConfig) error {
+	switch tx.Type() {
+	case Binary:
+		if len(tx.Tos()) > 1 {
+			return errors.New("binary transaction tos need not greater than 1")
+		}
+	case Delegate:
+		if uint64(len(tx.Tos())) > cfg.MaxVotes || tx.Tos() == nil {
+			return fmt.Errorf("tos was required but not greater than %v", cfg.MaxVotes)
+		}
+	case Redeem:
+		fallthrough
+	case UnDelegate:
+		fallthrough
+	case LoginCandidate:
+		fallthrough
+	case LogoutCandidate:
+		if tx.Tos() != nil {
+			return errors.New("LoginCandidate and LogoutCandidate tx.tos wasn't required")
+		}
+	default:
+		return ErrInvalidType
+	}
+	return nil
+}
+
 func (tx *Transaction) Signature() []byte  { return utils.CopyBytes(tx.data.Signature) }
 func (tx *Transaction) Payload() []byte    { return utils.CopyBytes(tx.data.Payload) }
 func (tx *Transaction) Gas() uint64        { return tx.data.GasLimit }
 func (tx *Transaction) GasPrice() *big.Int { return new(big.Int).Set(tx.data.GasPrice) }
 func (tx *Transaction) Value() *big.Int    { return new(big.Int).Set(tx.data.Value) }
 func (tx *Transaction) Nonce() uint64      { return tx.data.Nonce }
-func (tx *Transaction) To() *utils.Address {
-	if tx.data.To == nil {
+func (tx *Transaction) Type() TxType       { return tx.data.Type }
+func (tx *Transaction) Tos() []*utils.Address {
+	if tx.data.Tos == nil {
 		return nil
 	}
-	to := *tx.data.To
-	return &to
+	return tx.data.Tos
 }
 
 // Cost returns value + gasprice * gaslimit.

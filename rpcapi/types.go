@@ -85,18 +85,19 @@ func (bn BlockHeight) Int64() int64 {
 }
 
 type RPCTransaction struct {
-	BlockHash        utils.Hash     `json:"blockHash"`
-	BlockHeight      *utils.Big     `json:"blockHeight"`
-	From             utils.Address  `json:"from"`
-	Gas              utils.Uint64   `json:"gas"`
-	GasPrice         *utils.Big     `json:"gasPrice"`
-	Hash             utils.Hash     `json:"hash"`
-	Input            utils.Bytes    `json:"input"`
-	Nonce            utils.Uint64   `json:"nonce"`
-	To               *utils.Address `json:"to"`
-	TransactionIndex utils.Uint     `json:"transactionIndex"`
-	Value            *utils.Big     `json:"value"`
-	Signature        utils.Bytes    `json:"signature"`
+	BlockHash        utils.Hash       `json:"blockHash"`
+	BlockHeight      *utils.Big       `json:"blockHeight"`
+	Type             utils.Uint64     `json:"type"`
+	From             utils.Address    `json:"from"`
+	Gas              utils.Uint64     `json:"gas"`
+	GasPrice         *utils.Big       `json:"gasPrice"`
+	Hash             utils.Hash       `json:"hash"`
+	Input            utils.Bytes      `json:"input"`
+	Nonce            utils.Uint64     `json:"nonce"`
+	Tos              []*utils.Address `json:"tos"`
+	TransactionIndex utils.Uint       `json:"transactionIndex"`
+	Value            *utils.Big       `json:"value"`
+	Signature        utils.Bytes      `json:"signature"`
 }
 
 // newRPCTransaction returns a transaction that will serialize to the RPC representation
@@ -105,12 +106,13 @@ func newRPCTransaction(tx *types.Transaction, blockHash utils.Hash, blockHeight 
 
 	result := &RPCTransaction{
 		From:      from,
+		Type:      utils.Uint64(tx.Type()),
 		Gas:       utils.Uint64(tx.Gas()),
 		GasPrice:  (*utils.Big)(tx.GasPrice()),
 		Hash:      tx.Hash(),
 		Input:     utils.Bytes(tx.Payload()),
 		Nonce:     utils.Uint64(tx.Nonce()),
-		To:        tx.To(),
+		Tos:       tx.Tos(),
 		Value:     (*utils.Big)(tx.Value()),
 		Signature: utils.Bytes(tx.Signature()),
 	}

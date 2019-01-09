@@ -22,7 +22,7 @@ import (
 	"github.com/UranusBlockStack/uranus/common/fdlimit"
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/utils"
-	"github.com/UranusBlockStack/uranus/consensus/pow"
+	"github.com/UranusBlockStack/uranus/consensus/miner"
 	"github.com/UranusBlockStack/uranus/core/ledger"
 	"github.com/UranusBlockStack/uranus/core/txpool"
 	"github.com/UranusBlockStack/uranus/node"
@@ -54,8 +54,8 @@ func defaultUranusConfig() *server.UranusConfig {
 	}
 }
 
-func defaultMinerConifg() *pow.Config {
-	return &pow.Config{
+func defaultMinerConifg() *miner.Config {
+	return &miner.Config{
 		CoinBaseAddr: utils.Address{}.Hex(),
 		MinerThreads: 1,
 		ExtraData:    params.VersionWithCommit(params.GitCommit()),

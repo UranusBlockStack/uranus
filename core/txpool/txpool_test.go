@@ -173,7 +173,7 @@ func TestTransactionNegativeValue(t *testing.T) {
 	pool, key := setupTxPool()
 	defer pool.Stop()
 	add := utils.Address{}
-	tx := types.NewTransaction(0, &add, big.NewInt(-1), 100, big.NewInt(1), nil)
+	tx := types.NewTransaction(types.Binary, 0, big.NewInt(-1), 100, big.NewInt(1), nil, &add)
 	tx.SignTx(types.Signer{}, key)
 	from, _ := deriveSender(tx)
 	pool.currentState.AddBalance(from, big.NewInt(1))
@@ -229,11 +229,11 @@ func TestTransactionDoubleNonce(t *testing.T) {
 
 	signer := types.Signer{}
 	to := utils.Address{}
-	tx1 := types.NewTransaction(0, &to, big.NewInt(100), 100000, big.NewInt(1), nil)
+	tx1 := types.NewTransaction(types.Binary, 0, big.NewInt(100), 100000, big.NewInt(1), nil, &to)
 	tx1.SignTx(signer, key)
-	tx2 := types.NewTransaction(0, &to, big.NewInt(100), 1000000, big.NewInt(2), nil)
+	tx2 := types.NewTransaction(types.Binary, 0, big.NewInt(100), 1000000, big.NewInt(2), nil, &to)
 	tx2.SignTx(signer, key)
-	tx3 := types.NewTransaction(0, &to, big.NewInt(100), 1000000, big.NewInt(1), nil)
+	tx3 := types.NewTransaction(types.Binary, 0, big.NewInt(100), 1000000, big.NewInt(1), nil, &to)
 	tx3.SignTx(signer, key)
 
 	// Add the first two transaction, ensure higher priced stays only

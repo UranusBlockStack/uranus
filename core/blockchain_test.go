@@ -16,26 +16,19 @@
 
 package core
 
-import (
-	"testing"
+// func TestTheLastBlock(t *testing.T) {
+// 	cpum := cpuminer.NewCpuMiner()
+// 	_, blockchain, err := newLegitimate(cpum, 0)
+// 	if err != nil {
+// 		t.Fatalf("failed to create pristine chain: %v", err)
+// 	}
+// 	defer blockchain.Stop()
 
-	"github.com/UranusBlockStack/uranus/consensus/pow/cpuminer"
-	"github.com/stretchr/testify/assert"
-)
+// 	blocks := makeBlocks(blockchain.CurrentBlock(), 1, cpum, blockchain.GetDB(), 0)
 
-func TestTheLastBlock(t *testing.T) {
-	cpum := cpuminer.NewCpuMiner()
-	_, blockchain, err := newLegitimate(cpum, 0)
-	if err != nil {
-		t.Fatalf("failed to create pristine chain: %v", err)
-	}
-	defer blockchain.Stop()
+// 	if _, err := blockchain.InsertChain(blocks); err != nil {
+// 		t.Fatalf("Failed to insert block: %v", err)
+// 	}
 
-	blocks := makeBlocks(blockchain.CurrentBlock(), 1, cpum, blockchain.GetDB(), 0)
-
-	if _, err := blockchain.InsertChain(blocks); err != nil {
-		t.Fatalf("Failed to insert block: %v", err)
-	}
-
-	assert.Equal(t, blocks[len(blocks)-1].Hash().Hex(), blockchain.GetHeadBlockHash().Hex())
-}
+// 	assert.Equal(t, blocks[len(blocks)-1].Hash().Hex(), blockchain.GetHeadBlockHash().Hex())
+// }

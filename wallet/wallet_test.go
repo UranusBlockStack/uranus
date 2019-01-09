@@ -146,7 +146,7 @@ func TestSignTx(t *testing.T) {
 		t.Fatal(err)
 	}
 	to := utils.Address{}
-	tx := types.NewTransaction(0, &to, big.NewInt(100), 1000, big.NewInt(100), nil)
+	tx := types.NewTransaction(types.Binary, 0, big.NewInt(100), 1000, big.NewInt(100), nil, &to)
 
 	signTx, err := w.SignTx(account.Address, tx, "test")
 	if err != nil {

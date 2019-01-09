@@ -58,6 +58,7 @@ type Trie struct {
 	db           *Database
 	root         node
 	originalRoot utils.Hash
+	prefix       []byte
 
 	// Cache generation values.
 	// cachegen increases by one with each commit operation.
@@ -75,6 +76,15 @@ func (t *Trie) SetCacheLimit(l uint16) {
 // newFlag returns the cache flag value for a newly created node.
 func (t *Trie) newFlag() nodeFlag {
 	return nodeFlag{dirty: true, gen: t.cachegen}
+}
+
+func NewWithPrefix(root utils.Hash, prefix []byte, db *Database) (*Trie, error) {
+	trie, err := New(root, db)
+	if err != nil {
+		return nil, err
+	}
+	trie.prefix = prefix
+	return trie, nil
 }
 
 // New creates a trie with an existing root node from db.
@@ -104,7 +114,19 @@ func New(root utils.Hash, db *Database) (*Trie, error) {
 // NodeIterator returns an iterator that returns nodes of the trie. Iteration starts at
 // the key after the given start key.
 func (t *Trie) NodeIterator(start []byte) NodeIterator {
+	if t.prefix != nil {
+		start = append(t.prefix, start...)
+	}
 	return newNodeIterator(t, start)
+}
+
+// PrefixIterator returns an iterator that returns nodes of the trie which has the prefix path specificed
+// Iteration starts at the key after the given start key.
+func (t *Trie) PrefixIterator(prefix []byte) NodeIterator {
+	if t.prefix != nil {
+		prefix = append(t.prefix, prefix...)
+	}
+	return newPrefixIterator(t, prefix)
 }
 
 // Get returns the value for key stored in the trie.
@@ -121,6 +143,9 @@ func (t *Trie) Get(key []byte) []byte {
 // The value bytes must not be modified by the caller.
 // If a node was not found in the database, a MissingNodeError is returned.
 func (t *Trie) TryGet(key []byte) ([]byte, error) {
+	if t.prefix != nil {
+		key = append(t.prefix, key...)
+	}
 	key = keybytesToHex(key)
 	value, newroot, didResolve, err := t.tryGet(t.root, key, 0)
 	if err == nil && didResolve {
@@ -188,6 +213,9 @@ func (t *Trie) Update(key, value []byte) {
 //
 // If a node was not found in the database, a MissingNodeError is returned.
 func (t *Trie) TryUpdate(key, value []byte) error {
+	if t.prefix != nil {
+		key = append(t.prefix, key...)
+	}
 	k := keybytesToHex(key)
 	if len(value) != 0 {
 		_, n, err := t.insert(t.root, nil, k, valueNode(value))
@@ -284,6 +312,9 @@ func (t *Trie) Delete(key []byte) {
 // TryDelete removes any existing value for key from the trie.
 // If a node was not found in the database, a MissingNodeError is returned.
 func (t *Trie) TryDelete(key []byte) error {
+	if t.prefix != nil {
+		key = append(t.prefix, key...)
+	}
 	k := keybytesToHex(key)
 	_, n, err := t.delete(t.root, nil, k)
 	if err != nil {
@@ -450,6 +481,21 @@ func (t *Trie) Commit(onleaf LeafCallback) (root utils.Hash, err error) {
 	hash, cached, err := t.hashRoot(t.db, onleaf)
 	if err != nil {
 		return utils.Hash{}, err
+	}
+	t.root = cached
+	t.cachegen++
+	return utils.BytesToHash(hash.(hashNode)), nil
+}
+
+// CommitTo writes all nodes to the given database.
+// Nodes are stored with their sha3 hash as the key.
+func (t *Trie) CommitTo(db *Database) (root utils.Hash, err error) {
+	if t.db == nil {
+		panic("commit called on trie with nil database")
+	}
+	hash, cached, err := t.hashRoot(db, nil)
+	if err != nil {
+		return (utils.Hash{}), err
 	}
 	t.root = cached
 	t.cachegen++

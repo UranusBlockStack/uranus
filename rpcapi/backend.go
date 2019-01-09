@@ -70,4 +70,6 @@ type Backend interface {
 	Start(int32) error
 	Stop() error
 	SetCoinbase(utils.Address) error
+
+	GetConfirmedBlockNumber() (*big.Int, error)
 }

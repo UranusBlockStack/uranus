@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/UranusBlockStack/uranus/consensus/pow"
+	"github.com/UranusBlockStack/uranus/consensus/miner"
 	"github.com/UranusBlockStack/uranus/core/ledger"
 	"github.com/UranusBlockStack/uranus/core/txpool"
 )
@@ -44,7 +44,7 @@ type UranusConfig struct {
 	TxPoolConfig *txpool.Config
 
 	// miner config
-	MinerConfig *pow.Config
+	MinerConfig *miner.Config
 }
 
 func (c UranusConfig) String() string {

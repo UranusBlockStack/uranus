@@ -55,14 +55,20 @@ type BlockChain struct {
 	chainBlockFeed      feed.Feed
 	chainBlockscription feed.Subscription
 	validator           *blockValidator.Validator
-	executor            *exec.Executor
-	chainmu             sync.RWMutex
-	quit                chan struct{} // blockchain quit channel
+
+	sideBlockFeed      feed.Feed
+	SideBlockscription feed.Subscription
+
+	executor *exec.Executor
+	engine   consensus.Engine
+
+	chainmu sync.RWMutex
+	quit    chan struct{} // blockchain quit channel
 }
 
 // NewBlockChain returns a fully initialised block chain using information available in the database.
-func NewBlockChain(cfg *ledger.Config, chainCfg *params.ChainConfig, db db.Database, engine consensus.Engine, vmCfg *vm.Config) (*BlockChain, error) {
-	stateCache := state.NewDatabase(db)
+func NewBlockChain(cfg *ledger.Config, chainCfg *params.ChainConfig, statedb state.Database, db db.Database, engine consensus.Engine, vmCfg *vm.Config) (*BlockChain, error) {
+	stateCache := statedb
 	ledger := ledger.New(cfg, db, func(hash utils.Hash) bool {
 		_, err := stateCache.OpenTrie(hash)
 		return err == nil
@@ -73,9 +79,10 @@ func NewBlockChain(cfg *ledger.Config, chainCfg *params.ChainConfig, db db.Datab
 		stateCache: stateCache,
 		Ledger:     ledger,
 		validator:  blockValidator.New(ledger, engine),
-		executor:   exec.NewExecutor(chainCfg, ledger, engine),
+		engine:     engine,
 		quit:       make(chan struct{}),
 	}
+	bc.executor = exec.NewExecutor(chainCfg, ledger, bc, engine)
 
 	// check chain before blockchian service start.
 	if err := bc.preCheck(); err != nil {
@@ -84,6 +91,10 @@ func NewBlockChain(cfg *ledger.Config, chainCfg *params.ChainConfig, db db.Datab
 
 	go bc.loop()
 	return bc, nil
+}
+
+func (bc *BlockChain) SetAddActionInterface(tp exec.ITxPool) {
+	bc.executor.SetTxPool(tp)
 }
 
 func (bc *BlockChain) preCheck() error {
@@ -147,13 +158,19 @@ func (bc *BlockChain) processBlocks() {
 			log.Errorf("inster chain err :%v", err)
 			continue
 		}
-		bc.chainBlockFeed.Send(event)
+		bc.PostEvent(event)
 	}
 
 }
 
 func (bc *BlockChain) PostEvent(event interface{}) {
-	bc.chainBlockFeed.Send(event)
+	switch ev := event.(type) {
+	case feed.BlockAndLogsEvent:
+		bc.chainBlockFeed.Send(ev)
+
+	case feed.ForkBlockEvent:
+		bc.sideBlockFeed.Send(ev)
+	}
 }
 
 func (bc *BlockChain) InsertChain(blocks types.Blocks) (int, error) {
@@ -177,13 +194,13 @@ func (bc *BlockChain) InsertChain(blocks types.Blocks) (int, error) {
 		} else {
 			return n, err
 		}
-		bc.chainBlockFeed.Send(event)
+		bc.PostEvent(event)
 	}
 	return n, nil
 }
 
 func (bc *BlockChain) insertChain(block *types.Block) (interface{}, []*types.Log, error) {
-	err := bc.validator.ValidateHeader(block.BlockHeader(), bc.config, true)
+	err := bc.validator.ValidateHeader(bc, block.BlockHeader(), true)
 	if err == nil {
 		err = bc.validator.ValidateTxs(block)
 	}
@@ -245,6 +262,14 @@ func (bc *BlockChain) execBlock(block *types.Block) (types.Receipts, []*types.Lo
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
+	dposContext, err := types.NewDposContextFromProto(state.Database().TrieDB(), parent.BlockHeader().DposContext)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	block.DposContext = dposContext
+
 	// Process block using the parent state as reference point.
 	receipts, logs, usedGas, err := bc.executor.ExecBlock(block, state, *bc.vmConfig)
 	if err != nil {
@@ -260,9 +285,15 @@ func (bc *BlockChain) execBlock(block *types.Block) (types.Receipts, []*types.Lo
 
 // ExecTransaction execute transaction and return receipts
 func (bc *BlockChain) ExecTransaction(author *utils.Address,
+	dposcontext *types.DposContext,
 	gp *utils.GasPool, statedb *state.StateDB, header *types.BlockHeader,
 	tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
-	return bc.executor.ExecTransaction(author, gp, statedb, header, tx, usedGas, cfg)
+	return bc.executor.ExecTransaction(author, dposcontext, gp, statedb, header, tx, usedGas, cfg)
+}
+
+// ExecActions execute actions
+func (bc *BlockChain) ExecActions(statedb *state.StateDB, actions []*types.Action) {
+	bc.executor.ExecActions(statedb, actions)
 }
 
 //WriteBlockWithState write the block to the chain and get the status.
@@ -287,6 +318,10 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts types.Rec
 	}
 
 	triedb := bc.stateCache.TrieDB()
+
+	if _, err := block.DposContext.CommitTo(triedb); err != nil {
+		return false, err
+	}
 
 	if err := triedb.Commit(root, false); err != nil {
 		return false, err
@@ -420,4 +455,14 @@ func (bc *BlockChain) StateAt(root utils.Hash) (*state.StateDB, error) {
 func (bc *BlockChain) SubscribeChainBlockEvent(ch chan<- feed.BlockAndLogsEvent) feed.Subscription {
 	bc.chainBlockscription = bc.chainBlockFeed.Subscribe(ch)
 	return bc.chainBlockscription
+}
+
+// SubscribeSideBlockEvent registers a subscription of Blockfeed.
+func (bc *BlockChain) SubscribeSideBlockEvent(ch chan<- feed.ForkBlockEvent) feed.Subscription {
+	bc.SideBlockscription = bc.sideBlockFeed.Subscribe(ch)
+	return bc.SideBlockscription
+}
+
+func (bc *BlockChain) Config() *params.ChainConfig {
+	return bc.config
 }

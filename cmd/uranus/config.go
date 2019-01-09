@@ -24,7 +24,8 @@ import (
 
 // StartConfig cmd start uranus config
 type StartConfig struct {
-	CfgFile      string `mapstructure:"datadir"`
+	CfgFile      string
+	GenesisFile  string `mapstructure:"genesis"`
 	LogConfig    *log.Config
 	NodeConfig   *node.Config
 	UranusConfig *server.UranusConfig

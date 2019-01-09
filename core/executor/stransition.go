@@ -79,11 +79,11 @@ func ExecStateTransition(evm *vm.EVM, tx *types.Transaction, gp *utils.GasPool) 
 }
 
 // to returns the recipient of the message.
-func (st *StateTransition) to() utils.Address {
-	if st.tx == nil || st.tx.To() == nil /* contract creation */ {
-		return utils.Address{}
+func (st *StateTransition) tos() []*utils.Address {
+	if st.tx == nil || st.tx.Tos() == nil /* contract creation */ {
+		return nil
 	}
-	return *st.tx.To()
+	return st.tx.Tos()
 }
 
 func (st *StateTransition) useGas(amount uint64) error {
@@ -126,7 +126,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		return
 	}
 	sender := vm.AccountRef(st.from)
-	contractCreation := st.tx.To() == nil
+	contractCreation := st.tx.Tos() == nil
 
 	// Pay intrinsic gas
 	gas, err := txpool.IntrinsicGas(st.data, contractCreation)
@@ -146,7 +146,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	} else {
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(st.from, st.state.GetNonce(sender.Address())+1)
-		ret, st.gas, vmerr = evm.Call(sender, st.to(), st.data, st.gas, st.value)
+		ret, st.gas, vmerr = evm.Call(sender, *st.tos()[0], st.data, st.gas, st.value)
 	}
 	if vmerr != nil {
 		log.Debugf("VM returned with err: %v ", vmerr)

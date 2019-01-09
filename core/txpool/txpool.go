@@ -49,11 +49,14 @@ type TxPool struct {
 	tmpState     *state.ManagedState // Pending state tracking virtual nonces
 	curMaxGas    uint64              // Current gas limit for transaction caps
 
-	pending   map[utils.Address]*txList   // All currently processable transactions
-	queue     map[utils.Address]*txList   // Queued but non-processable transactions
-	beats     map[utils.Address]time.Time // Last heartbeat from each known account
-	txs       *allTxs                     // All transactions cache
-	priceList *priceList                  // All transactions sorted by price
+	pending map[utils.Address]*txList   // All currently processable transactions
+	queue   map[utils.Address]*txList   // Queued but non-processable transactions
+	beats   map[utils.Address]time.Time // Last heartbeat from each known account
+
+	dList *deferredList
+
+	txs       *allTxs    // All transactions cache
+	priceList *priceList // All transactions sorted by price
 
 	mu sync.RWMutex
 	wg sync.WaitGroup // for shutdown sync
@@ -81,6 +84,7 @@ func New(config *Config, chainconfig *params.ChainConfig, chain blockChainHelper
 	tp.queue = make(map[utils.Address]*txList)
 	tp.beats = make(map[utils.Address]time.Time)
 	tp.txs = newallTxs()
+	tp.dList = newDeferredList()
 	tp.chainBlockCh = make(chan feed.BlockAndLogsEvent, 10)
 	tp.gasPrice = new(big.Int).SetUint64(config.PriceLimit)
 	tp.priceList = newpriceList(tp.txs)
@@ -126,6 +130,8 @@ func (tp *TxPool) loop() {
 		case ev := <-tp.chainBlockCh:
 			if ev.Block != nil {
 				tp.mu.Lock()
+
+				tp.dList.Remove(ev.Block.Actions())
 				tp.resetTxpoolState(block, ev.Block)
 				block = ev.Block
 				tp.mu.Unlock()
@@ -312,6 +318,12 @@ func (tp *TxPool) Pending() (map[utils.Address]types.Transactions, error) {
 	return pending, nil
 }
 
+// Actions get actions
+func (tp *TxPool) Actions() []*types.Action {
+	now := big.NewInt(time.Now().Unix())
+	return tp.dList.Cap(new(big.Int).Sub(now, tp.chainconfig.DelayDuration))
+}
+
 // validateTx checks whether a transaction is valid according to the consensus
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (tp *TxPool) validateTx(tx *types.Transaction) error {
@@ -346,7 +358,7 @@ func (tp *TxPool) validateTx(tx *types.Transaction) error {
 	if tp.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
 		return ErrInsufficientFunds
 	}
-	intrGas, err := IntrinsicGas(tx.Payload(), tx.To() == nil)
+	intrGas, err := IntrinsicGas(tx.Payload(), tx.Tos() == nil)
 	if err != nil {
 		return err
 	}
@@ -399,7 +411,7 @@ func (tp *TxPool) add(tx *types.Transaction) (bool, error) {
 		tp.txs.Add(tx)
 		tp.priceList.Put(tx)
 
-		log.Warnf("Pooled new executable transaction hash: %v, from: %v, to: %v", hash, from, tx.To())
+		log.Warnf("Pooled new executable transaction hash: %v, from: %v, to: %v", hash, from, tx.Tos())
 
 		go tp.txFeed.Send(feed.NewTxsEvent{Txs: types.Transactions{tx}})
 
@@ -411,7 +423,7 @@ func (tp *TxPool) add(tx *types.Transaction) (bool, error) {
 		return false, err
 	}
 
-	log.Warnf("Pooled new future transaction hash: %v, from: %v ,to: %v", hash, from, tx.To())
+	log.Warnf("Pooled new future transaction hash: %v, from: %v ,to: %v", hash, from, tx.Tos())
 	return replace, nil
 }
 
@@ -473,6 +485,10 @@ func (tp *TxPool) promoteTx(addr utils.Address, hash utils.Hash, tx *types.Trans
 	tp.tmpState.SetNonce(addr, tx.Nonce()+1)
 
 	return true
+}
+
+func (tp *TxPool) AddAction(a *types.Action) {
+	tp.dList.Put(a)
 }
 
 func (tp *TxPool) AddTx(tx *types.Transaction) error {

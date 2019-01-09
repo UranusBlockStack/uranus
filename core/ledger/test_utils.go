@@ -29,12 +29,12 @@ func testBlock() *types.Block {
 	add2 := utils.BytesToAddress([]byte{0x22})
 	add3 := utils.BytesToAddress([]byte{0x33})
 
-	tx1 := types.NewTransaction(1, &add1, big.NewInt(111), 1111, big.NewInt(11111), []byte{0x11, 0x11, 0x11})
-	tx2 := types.NewTransaction(2, &add2, big.NewInt(222), 2222, big.NewInt(22222), []byte{0x22, 0x22, 0x22})
-	tx3 := types.NewTransaction(3, &add3, big.NewInt(333), 3333, big.NewInt(33333), []byte{0x33, 0x33, 0x33})
+	tx1 := types.NewTransaction(types.Binary, 1, big.NewInt(111), 1111, big.NewInt(11111), []byte{0x11, 0x11, 0x11}, &add1)
+	tx2 := types.NewTransaction(types.Binary, 2, big.NewInt(222), 2222, big.NewInt(22222), []byte{0x22, 0x22, 0x22}, &add2)
+	tx3 := types.NewTransaction(types.Binary, 3, big.NewInt(333), 3333, big.NewInt(33333), []byte{0x33, 0x33, 0x33}, &add3)
 	txs := []*types.Transaction{tx1, tx2, tx3}
 
-	block := types.NewBlock(&types.BlockHeader{Height: big.NewInt(1)}, txs, nil)
+	block := types.NewBlock(&types.BlockHeader{Height: big.NewInt(1)}, txs, nil, nil)
 	return block
 }
 

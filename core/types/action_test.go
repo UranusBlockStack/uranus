@@ -14,29 +14,39 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
 
-package ledger
+package types
 
 import (
+	"bytes"
+	"math/big"
 	"testing"
 
-	"github.com/UranusBlockStack/uranus/common/db"
+	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
-	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRewindChain(t *testing.T) {
-	stateCache := state.NewDatabase(db.NewMemDatabase())
-	ledger := New(&Config{}, db.NewMemDatabase(), func(hash utils.Hash) bool {
-		_, err := stateCache.OpenTrie(hash)
-		return err == nil
-	})
-	genesisBlock, _ := DefaultGenesis().ToBlock(ledger.chain)
-	DefaultGenesis().Commit(ledger.chain)
+var (
+	txHash     = utils.HexToHash("0x317b45ef844c4108432a06a4466aca2e11720b6dc1df3e7035a065d02829eca6")
+	sender     = utils.HexToAddress("0x970e8128ab834e8eac17ab8e3812f010678cf791")
+	gen        = big.NewInt(1)
+	delay      = big.NewInt(2)
+	testAction = NewAction(txHash, sender, gen, delay)
+)
 
-	ledger.CheckLastBlock(genesisBlock)
+func TestActionEncodeAndDecode(t *testing.T) {
 
-	block := ledger.GetBlockByHeight(0)
+	actionBytes, err := rlp.EncodeToBytes(testAction)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	assert.Equal(t, genesisBlock.Hash(), block.Hash())
+	var act Action
+	rlp.Decode(bytes.NewReader(actionBytes), &act)
+
+	assert.Equal(t, act.Hash(), testAction.Hash())
+	assert.Equal(t, act.TxHash, testAction.TxHash)
+	assert.Equal(t, act.Sender, testAction.Sender)
+	assert.Equal(t, act.GenTimeStamp, testAction.GenTimeStamp)
+	assert.Equal(t, act.DelayDur, testAction.DelayDur)
 }

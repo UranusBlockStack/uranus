@@ -46,7 +46,7 @@ type Config struct {
 	MaxAcceptConns int
 	Name           string
 	NetworkID      uint64
-	BootNodeStrs   []string
+	BootNodeStrs   []string `mapstructure:"p2p-bootnodes"`
 	BootNodes      []*discover.Node
 	ListenAddr     string `mapstructure:"p2p-listenaddr"`
 	Protocols      []*Protocol

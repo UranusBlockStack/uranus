@@ -97,7 +97,7 @@ func (s Signer) Hash(tx *Transaction) utils.Hash {
 		tx.data.Nonce,
 		tx.data.GasPrice,
 		tx.data.GasLimit,
-		tx.data.To,
+		tx.data.Tos,
 		tx.data.Value,
 		tx.data.Payload,
 	})

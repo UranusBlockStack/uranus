@@ -17,14 +17,15 @@
 package server
 
 import (
+	"encoding/json"
 	"sync"
-
-	"github.com/UranusBlockStack/uranus/server/forecast"
 
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/consensus"
-	"github.com/UranusBlockStack/uranus/consensus/pow"
+	"github.com/UranusBlockStack/uranus/consensus/dpos"
+	"github.com/UranusBlockStack/uranus/consensus/miner"
+	"github.com/UranusBlockStack/uranus/consensus/pow/cpuminer"
 	"github.com/UranusBlockStack/uranus/core"
 	"github.com/UranusBlockStack/uranus/core/ledger"
 	"github.com/UranusBlockStack/uranus/core/txpool"
@@ -35,6 +36,7 @@ import (
 	"github.com/UranusBlockStack/uranus/params"
 	"github.com/UranusBlockStack/uranus/rpc"
 	"github.com/UranusBlockStack/uranus/rpcapi"
+	"github.com/UranusBlockStack/uranus/server/forecast"
 	"github.com/UranusBlockStack/uranus/wallet"
 )
 
@@ -43,7 +45,8 @@ type Uranus struct {
 	config      *UranusConfig
 	chainConfig *params.ChainConfig
 
-	miner      *pow.UMiner
+	miner      *miner.UMiner
+	engine     consensus.Engine
 	blockchain *core.BlockChain
 	txPool     *txpool.TxPool
 	chainDb    db.Database // Block chain database
@@ -66,10 +69,13 @@ func New(ctx *node.Context, config *UranusConfig) (*Uranus, error) {
 	}
 
 	// Setup genesis block
-	chainCfg, _, err := ledger.SetupGenesis(config.Genesis, ledger.NewChain(chainDb))
+	chainCfg, statedb, _, err := ledger.SetupGenesis(config.Genesis, ledger.NewChain(chainDb))
 	if err != nil {
 		return nil, err
 	}
+
+	cjson, _ := json.Marshal(chainCfg)
+	log.Infof("chain config %v", string(cjson))
 
 	uranus := &Uranus{
 		config:       config,
@@ -80,25 +86,37 @@ func New(ctx *node.Context, config *UranusConfig) (*Uranus, error) {
 
 	uranus.wallet = wallet.NewWallet(ctx.ResolvePath("keystore"))
 
+	// engine
+	cpu := cpuminer.NewCpuMiner()
+	_ = cpu
+	dpos.Option.BlockInterval = chainCfg.BlockInterval
+	dpos.Option.BlockRepeat = chainCfg.BlockRepeat
+	dpos.Option.MaxValidatorSize = chainCfg.MaxValidatorSize
+	dpos.Option.MinStartQuantity = chainCfg.MinStartQuantity
+	dpos := dpos.NewDpos(chainDb, statedb, uranus.wallet.SignHash)
+
 	// blockchain
 	log.Debugf("Initialised chain configuration: %v", chainCfg)
-	uranus.blockchain, err = core.NewBlockChain(config.LedgerConfig, uranus.chainConfig, chainDb, nil, &vm.Config{})
+	uranus.blockchain, err = core.NewBlockChain(config.LedgerConfig, uranus.chainConfig, statedb, chainDb, dpos, &vm.Config{})
 	if err != nil {
 		return nil, err
 	}
 	// txpool
 	uranus.txPool = txpool.New(config.TxPoolConfig, uranus.chainConfig, uranus.blockchain)
 
+	uranus.blockchain.SetAddActionInterface(uranus.txPool)
+
 	mux := &feed.TypeMux{}
 	// miner
-	uranus.miner = pow.NewUranusMiner(mux, uranus.chainConfig, checkMinerConfig(uranus.config.MinerConfig, uranus.wallet), &MinerBakend{u: uranus})
+	uranus.miner = miner.NewUranusMiner(mux, uranus.chainConfig, checkMinerConfig(uranus.config.MinerConfig, uranus.wallet), &MinerBakend{u: uranus}, dpos, uranus.chainDb)
+	uranus.engine = dpos
+	//dpos.MintLoop(uranus.miner, uranus.blockchain)
 
 	// api
 	uranus.uranusAPI = &APIBackend{u: uranus}
 	uranus.uranusAPI.gp = forecast.NewForecast(uranus.uranusAPI.BlockByHeight, forecast.DefaultConfig)
 
-	var miner consensus.Engine
-	uranus.protocolManager, _ = node.NewProtocolManager(mux, uranus.chainConfig, uranus.txPool, uranus.blockchain, uranus.chainDb, miner)
+	uranus.protocolManager, _ = node.NewProtocolManager(mux, uranus.chainConfig, uranus.txPool, uranus.blockchain, uranus.chainDb, uranus.engine)
 
 	return uranus, nil
 }
@@ -140,6 +158,11 @@ func (u *Uranus) APIs() []rpc.API {
 			Namespace: "BlockChain",
 			Version:   "0.0.1",
 			Service:   rpcapi.NewBlockChainAPI(u.uranusAPI),
+		},
+		{
+			Namespace: "Dpos",
+			Version:   "0.0.1",
+			Service:   rpcapi.NewDposAPI(u.uranusAPI),
 		},
 	}
 }

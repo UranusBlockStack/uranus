@@ -21,10 +21,15 @@ import (
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
 	"github.com/UranusBlockStack/uranus/core/vm"
+	"github.com/UranusBlockStack/uranus/params"
 )
 
 type MinerBakend struct {
 	u *Uranus
+}
+
+func (m *MinerBakend) Actions() []*types.Action {
+	return m.u.txPool.Actions()
 }
 
 // Pending returns txpool pending transactions
@@ -46,9 +51,26 @@ func (m *MinerBakend) WriteBlockWithState(block *types.Block, receipts types.Rec
 	return m.u.blockchain.WriteBlockWithState(block, receipts, state)
 }
 
+func (m *MinerBakend) ExecActions(statedb *state.StateDB, actions []*types.Action) {
+	m.u.blockchain.ExecActions(statedb, actions)
+}
+
 // ExecTransaction exectue transaction return receipt
-func (m *MinerBakend) ExecTransaction(author *utils.Address,
+func (m *MinerBakend) ExecTransaction(author *utils.Address, dposcontext *types.DposContext,
 	gp *utils.GasPool, statedb *state.StateDB, header *types.BlockHeader,
 	tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
-	return m.u.blockchain.ExecTransaction(author, gp, statedb, header, tx, usedGas, cfg)
+	return m.u.blockchain.ExecTransaction(author, dposcontext, gp, statedb, header, tx, usedGas, cfg)
+}
+
+func (m *MinerBakend) Config() *params.ChainConfig {
+	return m.u.blockchain.Config()
+}
+func (m *MinerBakend) CurrentBlock() *types.Block {
+	return m.u.blockchain.CurrentBlock()
+}
+func (m *MinerBakend) GetBlockByHeight(height uint64) *types.Block {
+	return m.u.blockchain.GetBlockByHeight(height)
+}
+func (m *MinerBakend) GetBlockByHash(hash utils.Hash) *types.Block {
+	return m.u.blockchain.GetBlockByHash(hash)
 }

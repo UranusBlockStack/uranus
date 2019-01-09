@@ -25,6 +25,8 @@ import (
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/math"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/consensus"
+	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
 	"github.com/UranusBlockStack/uranus/params"
 )
@@ -34,17 +36,13 @@ var (
 )
 
 type CpuMiner struct {
-	quit chan struct{}
-	mu   sync.Mutex
 }
 
 func NewCpuMiner() *CpuMiner {
-	return &CpuMiner{
-		quit: make(chan struct{}),
-	}
+	return &CpuMiner{}
 }
 
-func (cm *CpuMiner) Mine(block *types.Block, stop <-chan struct{}, threads int, updateHashes chan uint64) (*types.Block, error) {
+func (cm *CpuMiner) Seal(chain consensus.IChainReader, block *types.Block, stop <-chan struct{}, threads int, updateHashes chan uint64) (*types.Block, error) {
 	// Create a runner and the multiple search threads it directs
 	abort := make(chan struct{})
 	found := make(chan *types.Block)
@@ -68,7 +66,7 @@ func (cm *CpuMiner) Mine(block *types.Block, stop <-chan struct{}, threads int, 
 		}
 		go func(id int, nonce, max uint64) {
 			defer pend.Done()
-			cm.MineBlock(block, id, nonce, max, abort, found, updateHashes)
+			cm.mine(block, id, nonce, max, abort, found, updateHashes)
 		}(i, seed, max)
 	}
 	// Wait until sealing is terminated or a nonce is found
@@ -88,7 +86,7 @@ func (cm *CpuMiner) Mine(block *types.Block, stop <-chan struct{}, threads int, 
 	return result, nil
 }
 
-func (cm *CpuMiner) MineBlock(block *types.Block, id int, seed uint64, max uint64, abort chan struct{}, found chan *types.Block, updateHashes chan uint64) {
+func (cm *CpuMiner) mine(block *types.Block, id int, seed uint64, max uint64, abort chan struct{}, found chan *types.Block, updateHashes chan uint64) {
 	var nonce = seed
 	var hashInt big.Int
 	var caltimes = uint64(0)
@@ -99,8 +97,6 @@ miner:
 		select {
 		case <-abort:
 			log.Info("nonce finding aborted")
-			break miner
-		case <-cm.quit:
 			break miner
 		default:
 			caltimes++
@@ -131,17 +127,19 @@ miner:
 	}
 }
 
-func (cm *CpuMiner) Stop() {
-	close(cm.quit)
-}
-
 // GetMiningTarget returns the mining target for the specified difficulty.
 func GetMiningTarget(difficulty *big.Int) *big.Int {
 	return new(big.Int).Div(maxUint256, difficulty)
 }
 
-// GetDifficult adjust difficult by parent info
-func GetDifficult(time uint64, parentHeader *types.BlockHeader) *big.Int {
+// Author returning the header's miner as the proof-of-work verified author of the block.
+func (cm *CpuMiner) Author(header *types.BlockHeader) (utils.Address, error) {
+	return header.Miner, nil
+}
+
+// CalcDifficulty returns the difficulty that a new block should have when created at time
+// given the parent block's time and difficulty.
+func (cm *CpuMiner) CalcDifficulty(config *params.ChainConfig, time uint64, parentHeader *types.BlockHeader) *big.Int {
 	// diff = parentDiff + parentDiff / 1024 * max (1 - (blockTime - parentTime) / 10, -99)
 	parentDifficult := parentHeader.Difficulty
 	parentTime := parentHeader.TimeStamp.Uint64()
@@ -168,19 +166,57 @@ func GetDifficult(time uint64, parentHeader *types.BlockHeader) *big.Int {
 	return result
 }
 
-// Author returning the header's miner as the proof-of-work verified author of the block.
-func (cm *CpuMiner) Author(header *types.BlockHeader) (utils.Address, error) {
-	return header.Miner, nil
-}
+// func (cm *CpuMiner) VerifyHeader(chain consensus.IChainReader, header *types.BlockHeader) error {
+// 	if header == nil || header.Height == nil {
+// 		return consensus.ErrUnknownBlock
+// 	}
+// 	// Short circuit if the header is known, or it's parent not
+// 	if chain.GetBlockByHash(header.Hash()) != nil {
+// 		return nil
+// 	}
+// 	parent := chain.GetBlockByHash(header.PreviousHash)
+// 	if parent == nil {
+// 		return consensus.ErrUnknownAncestor
+// 	}
 
-// CalcDifficulty returns the difficulty that a new block should have when created at time
-// given the parent block's time and difficulty.
-func (cm *CpuMiner) CalcDifficulty(config *params.ChainConfig, time uint64, parent *types.BlockHeader) *big.Int {
-	return GetDifficult(time, parent)
-}
+// 	if header.TimeStamp.Cmp(big.NewInt(time.Now().Unix())) > 0 {
+// 		return consensus.ErrFutureBlock
+// 	}
+// 	parentHeader := parent.BlockHeader()
+// 	// Verify the block's difficulty based in it's timestamp and parent's difficulty
+// 	expected := cm.CalcDifficulty(chain.Config(), header.TimeStamp.Uint64(), parentHeader)
+// 	if expected.Cmp(header.Difficulty) != 0 {
+// 		return fmt.Errorf("invalid difficulty: have %v, want %v", header.Difficulty, expected)
+// 	}
+// 	// Verify that the gas limit is <= 2^63-1
+// 	if big.NewInt(int64(header.GasLimit)).Cmp(math.MaxBig63) > 0 {
+// 		return fmt.Errorf("invalid gasLimit: have %v, max %v", header.GasLimit, math.MaxBig63)
+// 	}
+// 	// Verify that the gasUsed is <= gasLimit
+// 	if big.NewInt(int64(header.GasUsed)).Cmp(big.NewInt(int64(header.GasLimit))) > 0 {
+// 		return fmt.Errorf("invalid gasUsed: have %v, gasLimit %v", header.GasUsed, header.GasLimit)
+// 	}
+
+// 	// Verify that the gas limit remains within allowed bounds
+// 	diff := new(big.Int).Set(big.NewInt(int64(parentHeader.GasLimit)))
+// 	diff = diff.Sub(diff, big.NewInt(int64(header.GasLimit)))
+// 	diff.Abs(diff)
+
+// 	limit := new(big.Int).Set(big.NewInt(int64(parentHeader.GasLimit)))
+// 	limit = limit.Div(limit, big.NewInt(int64(params.GasLimitBoundDivisor)))
+
+// 	if diff.Cmp(limit) >= 0 || big.NewInt(int64(header.GasLimit)).Cmp(big.NewInt(int64(params.MinGasLimit))) < 0 {
+// 		return fmt.Errorf("invalid gas limit: have %v, want %v += %v", header.GasLimit, parentHeader.GasLimit, limit)
+// 	}
+
+// 	if diff := new(big.Int).Sub(header.Height, parentHeader.Height); diff.Cmp(big.NewInt(1)) != 0 {
+// 		return consensus.ErrInvalidNumber
+// 	}
+// 	return nil
+// }
 
 // VerifySeal  checking whether the given block satisfies the PoW difficulty requirements.
-func (cm *CpuMiner) VerifySeal(header *types.BlockHeader) error {
+func (cm *CpuMiner) VerifySeal(chain consensus.IChainReader, header *types.BlockHeader) error {
 	var hashInt big.Int
 	hash := header.Hash()
 	hashInt.SetBytes(hash.Bytes())
@@ -188,4 +224,13 @@ func (cm *CpuMiner) VerifySeal(header *types.BlockHeader) error {
 		return nil
 	}
 	return errors.New("invalid proof-of-work")
+}
+
+// Finalize .
+func (cm *CpuMiner) Finalize(chain consensus.IChainReader, header *types.BlockHeader, state *state.StateDB, txs []*types.Transaction, actions []*types.Action, receipts []*types.Receipt, dposContext *types.DposContext) (*types.Block, error) {
+	// Accumulate block rewards and commit the final state root
+	state.AddBalance(header.Miner, params.BlockReward)
+	header.StateRoot = state.IntermediateRoot(true)
+
+	return types.NewBlock(header, txs, actions, receipts), nil
 }

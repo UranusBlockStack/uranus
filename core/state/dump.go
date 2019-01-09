@@ -26,12 +26,14 @@ import (
 )
 
 type DumpAccount struct {
-	Balance  string            `json:"balance"`
-	Nonce    uint64            `json:"nonce"`
-	Root     string            `json:"root"`
-	CodeHash string            `json:"codeHash"`
-	Code     string            `json:"code"`
-	Storage  map[string]string `json:"storage"`
+	Balance           string            `json:"balance"`
+	LockedBalance     string            `json:"lockedBalance"`
+	DelegateTimestamp string            `json:"delegateTimestamp"`
+	Nonce             uint64            `json:"nonce"`
+	Root              string            `json:"root"`
+	CodeHash          string            `json:"codeHash"`
+	Code              string            `json:"code"`
+	Storage           map[string]string `json:"storage"`
 }
 
 type Dump struct {
@@ -39,15 +41,15 @@ type Dump struct {
 	Accounts map[string]DumpAccount `json:"accounts"`
 }
 
-func (self *StateDB) RawDump() Dump {
+func (s *StateDB) RawDump() Dump {
 	dump := Dump{
-		Root:     fmt.Sprintf("%x", self.trie.Hash()),
+		Root:     fmt.Sprintf("%x", s.trie.Hash()),
 		Accounts: make(map[string]DumpAccount),
 	}
 
-	it := mtp.NewIterator(self.trie.NodeIterator(nil))
+	it := mtp.NewIterator(s.trie.NodeIterator(nil))
 	for it.Next() {
-		addr := self.trie.GetKey(it.Key)
+		addr := s.trie.GetKey(it.Key)
 		var data Account
 		if err := rlp.DecodeBytes(it.Value, &data); err != nil {
 			panic(err)
@@ -55,24 +57,26 @@ func (self *StateDB) RawDump() Dump {
 
 		obj := newObject(nil, utils.BytesToAddress(addr), data)
 		account := DumpAccount{
-			Balance:  data.Balance.String(),
-			Nonce:    data.Nonce,
-			Root:     utils.BytesToHex(data.Root[:]),
-			CodeHash: utils.BytesToHex(data.CodeHash),
-			Code:     utils.BytesToHex(obj.Code(self.db)),
-			Storage:  make(map[string]string),
+			Balance:           data.Balance.String(),
+			LockedBalance:     data.LockedBalance.String(),
+			DelegateTimestamp: data.DelegateTimestamp.String(),
+			Nonce:             data.Nonce,
+			Root:              utils.BytesToHex(data.Root[:]),
+			CodeHash:          utils.BytesToHex(data.CodeHash),
+			Code:              utils.BytesToHex(obj.Code(s.db)),
+			Storage:           make(map[string]string),
 		}
-		storageIt := mtp.NewIterator(obj.getTrie(self.db).NodeIterator(nil))
+		storageIt := mtp.NewIterator(obj.getTrie(s.db).NodeIterator(nil))
 		for storageIt.Next() {
-			account.Storage[utils.BytesToHex(self.trie.GetKey(storageIt.Key))] = utils.BytesToHex(storageIt.Value)
+			account.Storage[utils.BytesToHex(s.trie.GetKey(storageIt.Key))] = utils.BytesToHex(storageIt.Value)
 		}
 		dump.Accounts[utils.BytesToHex(addr)] = account
 	}
 	return dump
 }
 
-func (self *StateDB) Dump() []byte {
-	json, err := json.MarshalIndent(self.RawDump(), "", "    ")
+func (s *StateDB) Dump() []byte {
+	json, err := json.MarshalIndent(s.RawDump(), "", "    ")
 	if err != nil {
 		fmt.Println("dump err", err)
 	}

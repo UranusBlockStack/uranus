@@ -56,19 +56,21 @@ func (n *MinerNonce) UnmarshalText(input []byte) error {
 
 // BlockHeader represents a block header in blockchain.
 type BlockHeader struct {
-	PreviousHash     utils.Hash    `json:"previousHash"       gencodec:"required"`
-	Miner            utils.Address `json:"miner"            gencodec:"required"`
-	StateRoot        utils.Hash    `json:"stateRoot"        gencodec:"required"`
-	TransactionsRoot utils.Hash    `json:"transactionsRoot" gencodec:"required"`
-	ReceiptsRoot     utils.Hash    `json:"receiptsRoot"     gencodec:"required"`
-	LogsBloom        bloom.Bloom   `json:"logsBloom"        gencodec:"required"`
-	Difficulty       *big.Int      `json:"difficulty"       gencodec:"required"`
-	Height           *big.Int      `json:"height"           gencodec:"required"`
-	GasLimit         uint64        `json:"gasLimit"         gencodec:"required"`
-	GasUsed          uint64        `json:"gasUsed"          gencodec:"required"`
-	TimeStamp        *big.Int      `json:"timestamp"        gencodec:"required"`
-	ExtraData        []byte        `json:"extraData"        gencodec:"required"`
-	Nonce            MinerNonce    `json:"nonce"            gencodec:"required"`
+	PreviousHash     utils.Hash        `json:"previousHash"`
+	Miner            utils.Address     `json:"miner"`
+	StateRoot        utils.Hash        `json:"stateRoot"`
+	ActionsRoot      utils.Hash        `json:"actonsroot"`
+	TransactionsRoot utils.Hash        `json:"transactionsRoot"`
+	ReceiptsRoot     utils.Hash        `json:"receiptsRoot"`
+	DposContext      *DposContextProto `json:"dposContext" rlp:"nil"`
+	LogsBloom        bloom.Bloom       `json:"logsBloom"`
+	Difficulty       *big.Int          `json:"difficulty"`
+	Height           *big.Int          `json:"height"`
+	GasLimit         uint64            `json:"gasLimit"`
+	GasUsed          uint64            `json:"gasUsed" `
+	TimeStamp        *big.Int          `json:"timestamp"`
+	ExtraData        []byte            `json:"extraData"`
+	Nonce            MinerNonce        `json:"nonce"`
 }
 
 // Hash returns the block hash of the header
@@ -82,6 +84,7 @@ func (h *BlockHeader) HashNoNonce() utils.Hash {
 		h.PreviousHash,
 		h.Miner,
 		h.StateRoot,
+		h.ActionsRoot,
 		h.TransactionsRoot,
 		h.ReceiptsRoot,
 		h.LogsBloom,
@@ -115,12 +118,18 @@ func CopyBlockHeader(h *BlockHeader) *BlockHeader {
 		cpy.ExtraData = make([]byte, len(h.ExtraData))
 		copy(cpy.ExtraData, h.ExtraData)
 	}
+	// add dposContextProto to header
+	cpy.DposContext = &DposContextProto{}
+	if h.DposContext != nil {
+		cpy.DposContext = h.DposContext
+	}
 	return &cpy
 }
 
 // Block represents an entire block in the blockchain.
 type Block struct {
 	header       *BlockHeader
+	actions      []*Action
 	transactions []*Transaction
 
 	// caches
@@ -130,10 +139,11 @@ type Block struct {
 	// These fields are used to track inter-peer block relay.
 	ReceivedAt   time.Time
 	ReceivedFrom interface{}
+	DposContext  *DposContext
 }
 
 // NewBlock creates a new block.
-func NewBlock(header *BlockHeader, txs []*Transaction, receipts []*Receipt) *Block {
+func NewBlock(header *BlockHeader, txs []*Transaction, actions []*Action, receipts []*Receipt) *Block {
 	b := &Block{header: CopyBlockHeader(header)}
 
 	if len(txs) == 0 {
@@ -151,6 +161,14 @@ func NewBlock(header *BlockHeader, txs []*Transaction, receipts []*Receipt) *Blo
 		b.header.LogsBloom = CreateBloom(receipts)
 	}
 
+	if len(actions) == 0 {
+		b.header.ActionsRoot = DeriveRootHash(Actions(actions))
+	} else {
+		b.header.ActionsRoot = DeriveRootHash(Actions(actions))
+		b.actions = make(Actions, len(actions))
+		copy(b.actions, actions)
+	}
+
 	return b
 }
 
@@ -162,6 +180,7 @@ func NewBlockWithBlockHeader(header *BlockHeader) *Block {
 type rlpBlock struct {
 	BlockHeader *BlockHeader
 	Txs         []*Transaction
+	Actions     []*Action
 }
 
 // EncodeRLP implements rlp.Encoder
@@ -169,6 +188,7 @@ func (b *Block) EncodeRLP(w io.Writer) error {
 	return rlp.Encode(w, rlpBlock{
 		BlockHeader: b.header,
 		Txs:         b.transactions,
+		Actions:     b.actions,
 	})
 }
 
@@ -179,7 +199,7 @@ func (b *Block) DecodeRLP(s *rlp.Stream) error {
 	if err := s.Decode(rb); err != nil {
 		return err
 	}
-	b.header, b.transactions = rb.BlockHeader, rb.Txs
+	b.header, b.transactions, b.actions = rb.BlockHeader, rb.Txs, rb.Actions
 	b.size.Store(utils.StorageSize(rlp.ListSize(size)))
 	return nil
 }
@@ -193,6 +213,17 @@ func (b *Block) Transaction(hash utils.Hash) *Transaction {
 	}
 	return nil
 }
+
+func (b *Block) Actions() Actions { return b.actions }
+func (b *Block) Action(hash utils.Hash) *Action {
+	for _, Action := range b.actions {
+		if Action.Hash() == hash {
+			return Action
+		}
+	}
+	return nil
+}
+
 func (b *Block) Height() *big.Int             { return new(big.Int).Set(b.header.Height) }
 func (b *Block) GasLimit() uint64             { return b.header.GasLimit }
 func (b *Block) GasUsed() uint64              { return b.header.GasUsed }
@@ -202,11 +233,13 @@ func (b *Block) Nonce() uint64                { return binary.BigEndian.Uint64(b
 func (b *Block) Bloom() bloom.Bloom           { return b.header.LogsBloom }
 func (b *Block) Miner() utils.Address         { return b.header.Miner }
 func (b *Block) StateRoot() utils.Hash        { return b.header.StateRoot }
+func (b *Block) ActionRoot() utils.Hash       { return b.header.ActionsRoot }
 func (b *Block) PreviousHash() utils.Hash     { return b.header.PreviousHash }
 func (b *Block) TransactionsRoot() utils.Hash { return b.header.TransactionsRoot }
 func (b *Block) ReceiptsRoot() utils.Hash     { return b.header.ReceiptsRoot }
 func (b *Block) ExtraData() []byte            { return utils.CopyBytes(b.header.ExtraData) }
 func (b *Block) BlockHeader() *BlockHeader    { return CopyBlockHeader(b.header) }
+func (b *Block) DposCtx() *DposContext        { return b.DposContext }
 
 // Hash returns the keccak256 hash of b's header.
 func (b *Block) Hash() utils.Hash {
@@ -218,6 +251,7 @@ func (b *Block) Hash() utils.Hash {
 	return hash
 }
 
+// HashNoNonce hash without nonce
 func (b *Block) HashNoNonce() utils.Hash {
 	return b.header.HashNoNonce()
 }
@@ -240,12 +274,20 @@ func (b *Block) WithTxs(txs []*Transaction) *Block {
 	return b
 }
 
+// WithActions  a block with the given actions data.
+func (b *Block) WithActions(actions []*Action) *Block {
+	b.actions = actions
+	return b
+}
+
 // WithSeal returns a new block with the data from b but the header replaced with the sealed one.
 func (b *Block) WithSeal(header *BlockHeader) *Block {
-	cpy := *header
+	cpy := CopyBlockHeader(header)
 	return &Block{
-		header:       &cpy,
+		header:       cpy,
 		transactions: b.transactions,
+		actions:      b.actions,
+		DposContext:  b.DposContext,
 	}
 }
 

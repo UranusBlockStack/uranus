@@ -17,6 +17,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -25,6 +26,7 @@ import (
 
 	cmdutils "github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/UranusBlockStack/uranus/common/log"
+	"github.com/UranusBlockStack/uranus/core/ledger"
 	"github.com/UranusBlockStack/uranus/node"
 	"github.com/UranusBlockStack/uranus/server"
 	"github.com/spf13/cobra"
@@ -93,7 +95,7 @@ func init() {
 	falgs := RootCmd.Flags()
 
 	// log
-	falgs.StringVar(&startConfig.LogConfig.Level, "log_level", "debug", "Logging verbosity: debug, info, warn, error, fatal, panic")
+	falgs.StringVar(&startConfig.LogConfig.Level, "log_level", "info", "Logging verbosity: debug, info, warn, error, fatal, panic")
 	falgs.StringVar(&startConfig.LogConfig.Format, "log_format", "text", "Logging format: text,json.")
 
 	// node
@@ -103,12 +105,13 @@ func init() {
 	falgs.StringArrayVar(&startConfig.NodeConfig.Cors, "node_rpccors", startConfig.NodeConfig.Cors, "HTTP and RPC accept cross origin requests")
 
 	// p2p
-	falgs.StringVar(&startConfig.NodeConfig.P2P.ListenAddr, "p2p_listenaddr", startConfig.NodeConfig.P2P.ListenAddr, "p2p listening url")
+	falgs.StringVar(&startConfig.NodeConfig.P2P.ListenAddr, "p2p_listenaddr", startConfig.NodeConfig.P2P.ListenAddr, "p2p listening port")
 	falgs.IntVar(&startConfig.NodeConfig.P2P.MaxPeers, "p2p_maxpeers", startConfig.NodeConfig.P2P.MaxPeers, "maximum number of network peers")
 	// falgs.StringArrayVar(&startConfig.NodeConfig.P2P.BootNodeStrs, "p2p_bootnodes", startConfig.NodeConfig.P2P.BootNodeStrs, "comma separated enode URLs for P2P discovery bootstrap")
 
 	// config file
 	falgs.StringVarP(&startConfig.CfgFile, "config", "c", "", "YAML configuration file")
+	falgs.StringVarP(&startConfig.GenesisFile, "genesis", "g", "", "YAML configuration file")
 
 	// TxPoolConfig
 	falgs.Uint64Var(&startConfig.UranusConfig.TxPoolConfig.PriceBump, "txpool_pricebump", startConfig.UranusConfig.TxPoolConfig.PriceBump, "Price bump percentage to replace an already existing transaction")
@@ -201,7 +204,25 @@ func unmarshalCfgFile(startConfig *StartConfig) error {
 	}
 
 	// miner
-	return viper.Unmarshal(startConfig.UranusConfig.MinerConfig)
+	if err := viper.Unmarshal(startConfig.UranusConfig.MinerConfig); err != nil {
+		return err
+	}
+
+	// Make sure we have a valid genesis JSON
+	if len(startConfig.GenesisFile) != 0 {
+		file, err := os.Open(startConfig.GenesisFile)
+		if err != nil {
+			return fmt.Errorf("Failed to read genesis file: %v(%v)", startConfig.GenesisFile, err)
+		}
+		defer file.Close()
+
+		genesis := new(ledger.Genesis)
+		if err := json.NewDecoder(file).Decode(genesis); err != nil {
+			return fmt.Errorf("invalid genesis file: %v(%v)", startConfig.GenesisFile, err)
+		}
+		startConfig.UranusConfig.Genesis = genesis
+	}
+	return nil
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.

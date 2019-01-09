@@ -80,3 +80,25 @@ func TestPriceHeap(t *testing.T) {
 		assert.Equal(t, sortPns[i].price, pn.price)
 	}
 }
+
+func TestTimeHeap(t *testing.T) {
+	var th timeHeap
+
+	array := []*timeActionHash{
+		&timeActionHash{timestamp: big.NewInt(0)},
+		&timeActionHash{timestamp: big.NewInt(2)},
+		&timeActionHash{timestamp: big.NewInt(4)},
+		&timeActionHash{timestamp: big.NewInt(5)},
+		&timeActionHash{timestamp: big.NewInt(3)},
+		&timeActionHash{timestamp: big.NewInt(1)},
+	}
+	for _, v := range array {
+		th.Push(v)
+	}
+
+	sort.Sort(th)
+
+	for i := 0; i < len(array); i++ {
+		assert.Equal(t, uint64(len(array)-1-i), th.Pop().(*timeActionHash).timestamp.Uint64())
+	}
+}

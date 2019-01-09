@@ -27,6 +27,7 @@ import (
 	"strings"
 	"testing"
 	"testing/quick"
+	"time"
 
 	check "gopkg.in/check.v1"
 
@@ -47,6 +48,10 @@ func TestUpdateLeaks(t *testing.T) {
 		addr := utils.BytesToAddress([]byte{i})
 		state.AddBalance(addr, big.NewInt(int64(11*i)))
 		state.SetNonce(addr, uint64(42*i))
+
+		state.SetLockedBalance(addr, big.NewInt(int64(41*i)))
+		state.SetDelegateTimestamp(addr, big.NewInt(time.Now().Unix()))
+
 		if i%2 == 0 {
 			state.SetState(addr, utils.BytesToHash([]byte{i, i, i}), utils.BytesToHash([]byte{i, i, i, i}))
 		}
@@ -74,6 +79,9 @@ func TestIntermediateLeaks(t *testing.T) {
 	modify := func(state *StateDB, addr utils.Address, i, tweak byte) {
 		state.SetBalance(addr, big.NewInt(int64(11*i)+int64(tweak)))
 		state.SetNonce(addr, uint64(42*i+tweak))
+		state.SetLockedBalance(addr, big.NewInt(int64(41*i)+int64(tweak)))
+		state.SetDelegateTimestamp(addr, big.NewInt(time.Now().Unix()))
+
 		if i%2 == 0 {
 			state.SetState(addr, utils.Hash{i, i, i, 0}, utils.Hash{})
 			state.SetState(addr, utils.Hash{i, i, i, tweak}, utils.Hash{i, i, i, i, tweak})
@@ -127,6 +135,8 @@ func TestCopy(t *testing.T) {
 	for i := byte(0); i < 255; i++ {
 		obj := orig.GetOrNewStateObject(utils.BytesToAddress([]byte{i}))
 		obj.AddBalance(big.NewInt(int64(i)))
+		obj.LockBalance(big.NewInt(int64(i)))
+
 		orig.updateStateObject(obj)
 	}
 	orig.Finalise(false)
@@ -139,7 +149,10 @@ func TestCopy(t *testing.T) {
 		copyObj := copy.GetOrNewStateObject(utils.BytesToAddress([]byte{i}))
 
 		origObj.AddBalance(big.NewInt(2 * int64(i)))
+		origObj.LockBalance(big.NewInt(2 * int64(i)))
+
 		copyObj.AddBalance(big.NewInt(3 * int64(i)))
+		copyObj.LockBalance(big.NewInt(3 * int64(i)))
 
 		orig.updateStateObject(origObj)
 		copy.updateStateObject(copyObj)
@@ -163,6 +176,12 @@ func TestCopy(t *testing.T) {
 		}
 		if want := big.NewInt(4 * int64(i)); copyObj.Balance().Cmp(want) != 0 {
 			t.Errorf("copy obj %d: balance mismatch: have %v, want %v", i, copyObj.Balance(), want)
+		}
+		if want := big.NewInt(2 * int64(i)); origObj.LockedBalance().Cmp(want) != 0 {
+			t.Errorf("orig obj %d: locked balance mismatch: have %v, want %v", i, origObj.LockedBalance(), want)
+		}
+		if want := big.NewInt(3 * int64(i)); copyObj.LockedBalance().Cmp(want) != 0 {
+			t.Errorf("copy obj %d: locked balance mismatch: have %v, want %v", i, copyObj.LockedBalance(), want)
 		}
 	}
 }
@@ -224,6 +243,19 @@ func newTestAction(addr utils.Address, r *rand.Rand) testAction {
 			name: "SetNonce",
 			fn: func(a testAction, s *StateDB) {
 				s.SetNonce(addr, uint64(a.args[0]))
+			},
+			args: make([]int64, 1),
+		},
+		{
+			name: "SetLockedBalance",
+			fn: func(a testAction, s *StateDB) {
+				s.SetLockedBalance(addr, big.NewInt(a.args[0]))
+			},
+			args: make([]int64, 1),
+		}, {
+			name: "SetDelegateTimestamp",
+			fn: func(a testAction, s *StateDB) {
+				s.SetDelegateTimestamp(addr, big.NewInt(a.args[0]))
 			},
 			args: make([]int64, 1),
 		},
@@ -376,6 +408,8 @@ func (test *snapshotTest) checkEqual(state, checkstate *StateDB) error {
 		checkeq("HasSuicided", state.HasSuicided(addr), checkstate.HasSuicided(addr))
 		checkeq("GetBalance", state.GetBalance(addr), checkstate.GetBalance(addr))
 		checkeq("GetNonce", state.GetNonce(addr), checkstate.GetNonce(addr))
+		checkeq("GetLockedBalance", state.GetLockedBalance(addr), checkstate.GetLockedBalance(addr))
+		checkeq("GetDelegateTimestamp", state.GetDelegateTimestamp(addr), checkstate.GetDelegateTimestamp(addr))
 		checkeq("GetCode", state.GetCode(addr), checkstate.GetCode(addr))
 		checkeq("GetCodeHash", state.GetCodeHash(addr), checkstate.GetCodeHash(addr))
 		checkeq("GetCodeSize", state.GetCodeSize(addr), checkstate.GetCodeSize(addr))
@@ -427,11 +461,19 @@ func TestCopyOfCopy(t *testing.T) {
 	sdb, _ := New(utils.Hash{}, NewDatabase(ldb.NewMemDatabase()))
 	addr := utils.HexToAddress("aaaa")
 	sdb.SetBalance(addr, big.NewInt(42))
+	sdb.SetLockedBalance(addr, big.NewInt(41))
 
 	if got := sdb.Copy().GetBalance(addr).Uint64(); got != 42 {
 		t.Fatalf("1st copy fail, expected 42, got %v", got)
 	}
 	if got := sdb.Copy().Copy().GetBalance(addr).Uint64(); got != 42 {
+		t.Fatalf("2nd copy fail, expected 42, got %v", got)
+	}
+
+	if got := sdb.Copy().GetLockedBalance(addr).Uint64(); got != 41 {
+		t.Fatalf("1st copy fail, expected 42, got %v", got)
+	}
+	if got := sdb.Copy().Copy().GetLockedBalance(addr).Uint64(); got != 41 {
 		t.Fatalf("2nd copy fail, expected 42, got %v", got)
 	}
 }

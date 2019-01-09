@@ -46,11 +46,6 @@ func New(cachecfg *Config, db db.Database, hasState func(hash utils.Hash) bool) 
 	}
 }
 
-// GenesisCommit put genesis block in to chain
-func (l *Ledger) GenesisCommit(genesis *Genesis) (*types.Block, error) {
-	return genesis.Commit(l.chain)
-}
-
 // CheckLastBlock check the last block is right or reset chain with genesis block.
 func (l *Ledger) CheckLastBlock(genesis *types.Block) *types.Block {
 	// Restore the last known head block

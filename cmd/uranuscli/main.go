@@ -21,6 +21,7 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -32,8 +33,12 @@ var RootCmd = &cobra.Command{
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-
 	},
+}
+
+func init() {
+	utils.EnvParse()
+	RootCmd.PersistentFlags().StringVarP(&coreURL, "curl", "c", *defaultCoreURL, "uranus server URL.")
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.

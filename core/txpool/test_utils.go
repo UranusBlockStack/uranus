@@ -43,7 +43,7 @@ type testBlockChain struct {
 func (bc *testBlockChain) CurrentBlock() *types.Block {
 	return types.NewBlock(&types.BlockHeader{
 		GasLimit: bc.gasLimit,
-	}, nil, nil)
+	}, nil, nil, nil)
 }
 
 func (bc *testBlockChain) GetBlock(hash utils.Hash) *types.Block {
@@ -64,7 +64,7 @@ func transaction(nonce uint64, gaslimit uint64, key *ecdsa.PrivateKey) *types.Tr
 
 func pricedTransaction(nonce uint64, gaslimit uint64, gasprice *big.Int, key *ecdsa.PrivateKey) *types.Transaction {
 	add := utils.Address{}
-	tx := types.NewTransaction(nonce, &add, big.NewInt(100), gaslimit, gasprice, nil)
+	tx := types.NewTransaction(types.Binary, nonce, big.NewInt(100), gaslimit, gasprice, nil, &add)
 	tx.SignTx(types.Signer{}, key)
 	return tx
 }

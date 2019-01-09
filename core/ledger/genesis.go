@@ -21,11 +21,23 @@ import (
 	"math/big"
 
 	"github.com/UranusBlockStack/uranus/common/log"
+	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
 	"github.com/UranusBlockStack/uranus/params"
 )
+
+// GenesisAlloc specifies the initial state that is part of the genesis block.
+type GenesisAlloc map[utils.Address]GenesisAccount
+
+// GenesisAccount is an account in the state of the genesis block.
+type GenesisAccount struct {
+	Code    []byte                    `json:"code,omitempty"`
+	Storage map[utils.Hash]utils.Hash `json:"storage,omitempty"`
+	Balance *big.Int                  `json:"balance" gencodec:"required"`
+	Nonce   uint64                    `json:"nonce,omitempty"`
+}
 
 // Genesis specifies the header fields, state of a genesis block.
 type Genesis struct {
@@ -40,6 +52,7 @@ type Genesis struct {
 	Height       uint64              `json:"height"`
 	GasUsed      uint64              `json:"gasUsed"`
 	PreviousHash utils.Hash          `json:"previousHash"`
+	Alloc        GenesisAlloc        `json:"alloc"`
 }
 
 // DefaultGenesis returns the nurans main net genesis block.
@@ -55,9 +68,9 @@ func DefaultGenesis() *Genesis {
 }
 
 //SetupGenesis The returned chain configuration is never nil.
-func SetupGenesis(genesis *Genesis, chain *Chain) (*params.ChainConfig, utils.Hash, error) {
+func SetupGenesis(genesis *Genesis, chain *Chain) (*params.ChainConfig, state.Database, utils.Hash, error) {
 	if genesis != nil && genesis.Config == nil {
-		return nil, utils.Hash{}, errGenesisNoConfig
+		return nil, nil, utils.Hash{}, errGenesisNoConfig
 	}
 	stored := chain.getLegitimateHash(0)
 	if (stored == utils.Hash{}) {
@@ -67,21 +80,24 @@ func SetupGenesis(genesis *Genesis, chain *Chain) (*params.ChainConfig, utils.Ha
 		} else {
 			log.Info("Writing custom genesis block")
 		}
-		block, err := genesis.Commit(chain)
+		block, statedb, err := genesis.Commit(chain)
 		if err != nil {
-			return nil, utils.Hash{}, err
+			return nil, nil, utils.Hash{}, err
 		}
-		return genesis.Config, block.Hash(), nil
+		return genesis.Config, statedb, block.Hash(), nil
+	}
+	if genesis != nil {
+		log.Warnf("genesis alreay exist, ingore setup genesis")
 	}
 
-	return chain.getChainConfig(stored), stored, nil
+	return chain.getChainConfig(stored), state.NewDatabase(chain.db), stored, nil
 }
 
 // Commit writes the block and state of a genesis specification to the database.
-func (g *Genesis) Commit(chain *Chain) (*types.Block, error) {
-	block := g.ToBlock(chain)
+func (g *Genesis) Commit(chain *Chain) (*types.Block, state.Database, error) {
+	block, statedb := g.ToBlock(chain)
 	if block.Height().Sign() != 0 {
-		return nil, fmt.Errorf("can't commit genesis block with Height > 0")
+		return nil, statedb, fmt.Errorf("can't commit genesis block with Height > 0")
 	}
 	chain.putTd(block.Hash(), g.Difficulty)
 	chain.putBlock(block)
@@ -89,13 +105,36 @@ func (g *Genesis) Commit(chain *Chain) (*types.Block, error) {
 	chain.putLegitimateHash(block.Height().Uint64(), block.Hash())
 	chain.putHeadBlockHash(block.Hash())
 	chain.putChainConfig(block.Hash(), g.Config)
-	return block, nil
+
+	return block, statedb, nil
 }
 
 // ToBlock creates the genesis block and writes state.
-func (g *Genesis) ToBlock(chain *Chain) *types.Block {
+func (g *Genesis) ToBlock(chain *Chain) (*types.Block, state.Database) {
 	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(chain.db))
-	root := statedb.IntermediateRoot(true)
+	for addr, account := range g.Alloc {
+		statedb.AddBalance(addr, account.Balance)
+		statedb.SetCode(addr, account.Code)
+		statedb.SetNonce(addr, account.Nonce)
+		for key, value := range account.Storage {
+			statedb.SetState(addr, key, value)
+		}
+	}
+	root := statedb.IntermediateRoot(false)
+	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), &types.DposContextProto{})
+	if err != nil {
+		panic(err)
+	}
+	validator := utils.HexToAddress(params.DefaultChainConfig.GenesisCandidate)
+	dposContext.SetValidators([]utils.Address{validator})
+	dposContext.DelegateTrie().TryUpdate(append(validator.Bytes(), validator.Bytes()...), validator.Bytes())
+	candidateInfo := &types.CandidateInfo{
+		Addr: validator,
+	}
+	val, _ := rlp.EncodeToBytes(candidateInfo)
+	dposContext.CandidateTrie().TryUpdate(validator.Bytes(), val)
+
+	dposContextProto := dposContext.ToProto()
 	head := &types.BlockHeader{
 		Height:       new(big.Int).SetUint64(g.Height),
 		Nonce:        types.EncodeNonce(g.Nonce),
@@ -107,8 +146,15 @@ func (g *Genesis) ToBlock(chain *Chain) *types.Block {
 		Difficulty:   g.Difficulty,
 		Miner:        g.Miner,
 		StateRoot:    root,
+		DposContext:  dposContextProto,
 	}
-	statedb.Commit(true)
+
+	// add dposcontext
+	if _, err := dposContext.CommitTo(statedb.Database().TrieDB()); err != nil {
+		panic(err)
+	}
+	statedb.Commit(false)
 	statedb.Database().TrieDB().Commit(root, true)
-	return types.NewBlock(head, nil, nil)
+
+	return types.NewBlock(head, nil, nil, nil), statedb.Database()
 }

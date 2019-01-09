@@ -48,12 +48,12 @@ func newLegitimate(engine consensus.Engine, n int) (db.Database, *BlockChain, er
 		return nil, nil, err
 	}
 
-	genesis, err := new(ledger.Genesis).Commit(ledger.NewChain(ldb))
+	genesis, statedb, err := new(ledger.Genesis).Commit(ledger.NewChain(ldb))
 	if err != nil {
 		return ldb, nil, err
 	}
 
-	bc, err := NewBlockChain(nil, params.TestChainConfig, ldb, engine, &vm.Config{})
+	bc, err := NewBlockChain(nil, params.TestChainConfig, statedb, ldb, engine, &vm.Config{})
 	if err != nil {
 		return ldb, bc, err
 	}
@@ -99,7 +99,7 @@ func generateChainBlocks(config *params.ChainConfig, parent *types.Block, engine
 	blocks, receipts := make(types.Blocks, n), make([]types.Receipts, n)
 	genblock := func(i int, parent *types.Block, statedb *state.StateDB) (*types.Block, types.Receipts) {
 
-		blockchain, err := NewBlockChain(nil, config, db, engine, &vm.Config{})
+		blockchain, err := NewBlockChain(nil, config, statedb.Database(), db, engine, &vm.Config{})
 		if err != nil {
 			panic(err)
 		}
@@ -113,7 +113,7 @@ func generateChainBlocks(config *params.ChainConfig, parent *types.Block, engine
 			header.StateRoot = statedb.IntermediateRoot(false)
 		}
 
-		block := types.NewBlock(header, nil, nil)
+		block := types.NewBlock(header, nil, nil, nil)
 
 		// Write state changes to db
 		root, err := statedb.Commit(true)
