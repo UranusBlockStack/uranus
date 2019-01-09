@@ -53,7 +53,6 @@ func TestTxEncodeAndDecode(t *testing.T) {
 	}
 
 	assert.Equal(t, testTx.Nonce(), tmpTx.Nonce())
-	assert.Equal(t, testTx.To().Hex(), tmpTx.To().Hex())
 	assert.Equal(t, testTx.Value().Int64(), tmpTx.Value().Int64())
 	assert.Equal(t, testTx.Gas(), tmpTx.Gas())
 	assert.Equal(t, testTx.GasPrice().Int64(), tmpTx.GasPrice().Int64())

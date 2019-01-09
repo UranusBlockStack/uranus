@@ -17,6 +17,7 @@
 package main
 
 import (
+	cmdutils "github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/spf13/cobra"
 )
@@ -27,10 +28,10 @@ var getValidatorsCmd = &cobra.Command{
 	Long:  `Returns the list of dpos validators by height.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		req := getBlockheight(args[0])
+		req := cmdutils.GetBlockheight(args[0])
 		result := []utils.Address{}
-		ClientCall("Dpos.GetValidators", req, &result)
-		printJSONList(result)
+		cmdutils.ClientCall("Dpos.GetValidators", req, &result)
+		cmdutils.PrintJSONList(result)
 	},
 }
 
@@ -40,10 +41,10 @@ var getVotersCmd = &cobra.Command{
 	Long:  `Returns the list of dpos voters by height.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		req := getBlockheight(args[0])
+		req := cmdutils.GetBlockheight(args[0])
 		result := make(map[utils.Address]utils.Big)
-		ClientCall("Dpos.GetVoters", req, &result)
-		printJSON(result)
+		cmdutils.ClientCall("Dpos.GetVoters", req, &result)
+		cmdutils.PrintJSON(result)
 	},
 }
 
@@ -53,9 +54,9 @@ var getCandidatesCmd = &cobra.Command{
 	Long:  `Returns the list of dpos candidates by height.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		req := getBlockheight(args[0])
+		req := cmdutils.GetBlockheight(args[0])
 		result := []utils.Address{}
-		ClientCall("Dpos.GetCandidates", req, &result)
-		printJSONList(result)
+		cmdutils.ClientCall("Dpos.GetCandidates", req, &result)
+		cmdutils.PrintJSONList(result)
 	},
 }

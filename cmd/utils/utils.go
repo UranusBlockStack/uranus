@@ -36,18 +36,18 @@ import (
 )
 
 var (
-	coreURL        string
-	defaultCoreURL = utils.EnvString("URANUS_URL", "http://localhost:8000")
+	CoreURL        string
+	DefaultCoreURL = utils.EnvString("URANUS_URL", "http://localhost:8000")
 	urlPrefix      = "http://"
 )
 
 // MustRPCClient Wraper rpc's client
 func MustRPCClient() *urpc.Client {
-	if !strings.HasPrefix(coreURL, urlPrefix) {
-		coreURL = urlPrefix + coreURL
+	if !strings.HasPrefix(CoreURL, urlPrefix) {
+		CoreURL = urlPrefix + CoreURL
 	}
 
-	client, err := urpc.DialHTTP(coreURL)
+	client, err := urpc.DialHTTP(CoreURL)
 	if err != nil {
 		jww.ERROR.Println(err)
 		os.Exit(1)

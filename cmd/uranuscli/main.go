@@ -21,6 +21,7 @@ import (
 	"os"
 	"runtime"
 
+	cmdutils "github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/spf13/cobra"
 )
@@ -38,7 +39,7 @@ var RootCmd = &cobra.Command{
 
 func init() {
 	utils.EnvParse()
-	RootCmd.PersistentFlags().StringVarP(&coreURL, "curl", "c", *defaultCoreURL, "uranus server URL.")
+	RootCmd.PersistentFlags().StringVarP(&cmdutils.CoreURL, "curl", "c", *cmdutils.DefaultCoreURL, "uranus server URL.")
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.
