@@ -22,6 +22,7 @@ import (
 
 // Common errors.
 var (
+	ErrLDBNotFound     = errors.New("leveldb: not found")
 	ErrNoGenesis       = errors.New("Genesis not found in chain")
 	errGenesisNoConfig = errors.New("genesis has no chain configuration")
 )

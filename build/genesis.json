@@ -1,7 +1,7 @@
 {
 	"config": {
 		"chainId": 1,
-		"blockInterval": 500000000,
+		"blockInterval": 3000000000,
 		"blockRepeat": 12,
 		"epchoValidators": 3,
 		"candiate": "0x970e8128ab834e8eac17ab8e3812f010678cf791",
@@ -20,6 +20,8 @@
 	"gasUsed": "0x0",
 	"previousHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 	"alloc": {
-		"0x970e8128ab834e8eac17ab8e3812f010678cf791": {"balance":121312321}
+		"0x970e8128ab834e8eac17ab8e3812f010678cf791": {
+			"balance":"0x1431e0fae6d72100000000000"
+		}
 	}
 }

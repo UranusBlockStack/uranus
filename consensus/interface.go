@@ -27,8 +27,9 @@ import (
 	"github.com/UranusBlockStack/uranus/params"
 )
 
+// Engine TODO
 type Engine interface {
-	Author(header *types.BlockHeader) (utils.Address, error)
+	Author(header *types.BlockHeader) (utils.Address, error) //Delete
 	CalcDifficulty(config *params.ChainConfig, time uint64, parent *types.BlockHeader) *big.Int
 
 	VerifySeal(chain IChainReader, header *types.BlockHeader) error

@@ -46,18 +46,21 @@ type Processor interface {
 
 // BlockChain manages chain imports, reverts, chain reorganisations.
 type BlockChain struct {
+	config   *params.ChainConfig
+	vmConfig *vm.Config
+
 	*ledger.Ledger
-	config              *params.ChainConfig
-	vmConfig            *vm.Config
-	genesisBlock        *types.Block
-	currentBlock        atomic.Value
-	stateCache          state.Database // State database to reuse between imports (contains state cache)
+
+	genesisBlock *types.Block
+	currentBlock atomic.Value
+
+	stateCache state.Database // State database to reuse between imports (contains state cache)
+	validator  *blockValidator.Validator
+
 	chainBlockFeed      feed.Feed
 	chainBlockscription feed.Subscription
-	validator           *blockValidator.Validator
-
-	sideBlockFeed      feed.Feed
-	SideBlockscription feed.Subscription
+	sideBlockFeed       feed.Feed
+	SideBlockscription  feed.Subscription
 
 	executor *exec.Executor
 	engine   consensus.Engine
@@ -129,9 +132,7 @@ func (bc *BlockChain) loop() {
 		case <-futureTimer.C:
 			bc.processBlocks()
 		case <-bc.quit:
-			if bc.chainBlockscription != nil {
-				bc.chainBlockscription.Unsubscribe()
-			}
+			bc.chainBlockscription.Unsubscribe()
 			log.Info("blockchain service stop.")
 			return
 		}
@@ -151,6 +152,7 @@ func (bc *BlockChain) processBlocks() {
 	blocks := bc.GetFutureBlock()
 	// sort by number
 	sort.Sort(blocks)
+
 	for _, b := range blocks {
 		// insert future block one by one.
 		event, _, err := bc.insertChain(b)
@@ -183,7 +185,7 @@ func (bc *BlockChain) InsertChain(blocks types.Blocks) (int, error) {
 		}
 	}
 
-	var n int
+	n := 0
 	for _, blk := range blocks {
 		if bc.HasBlock(blk.Hash()) {
 			continue
@@ -316,7 +318,6 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts types.Rec
 	if err != nil {
 		return false, err
 	}
-
 	triedb := bc.stateCache.TrieDB()
 
 	if _, err := block.DposContext.CommitTo(triedb); err != nil {
@@ -343,10 +344,12 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts types.Rec
 			}
 			status = true
 		}
+
 	}
 
 	bc.WriteBlockAndReceipts(block, receipts)
-	if !status && !reorg {
+
+	if !status && reorg {
 		// Set new head.
 		bc.WriteLegitimateHashAndHeadBlockHash(block.Height().Uint64(), block.Hash())
 		bc.currentBlock.Store(block)

@@ -21,6 +21,7 @@ import (
 	"math/big"
 
 	"github.com/UranusBlockStack/uranus/common/log"
+	"github.com/UranusBlockStack/uranus/common/math"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/state"
@@ -35,7 +36,7 @@ type GenesisAlloc map[utils.Address]GenesisAccount
 type GenesisAccount struct {
 	Code    []byte                    `json:"code,omitempty"`
 	Storage map[utils.Hash]utils.Hash `json:"storage,omitempty"`
-	Balance *big.Int                  `json:"balance" gencodec:"required"`
+	Balance math.HexOrDecimal256      `json:"balance" gencodec:"required"`
 	Nonce   uint64                    `json:"nonce,omitempty"`
 }
 
@@ -113,7 +114,7 @@ func (g *Genesis) Commit(chain *Chain) (*types.Block, state.Database, error) {
 func (g *Genesis) ToBlock(chain *Chain) (*types.Block, state.Database) {
 	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(chain.db))
 	for addr, account := range g.Alloc {
-		statedb.AddBalance(addr, account.Balance)
+		statedb.AddBalance(addr, (*big.Int)(&account.Balance))
 		statedb.SetCode(addr, account.Code)
 		statedb.SetNonce(addr, account.Nonce)
 		for key, value := range account.Storage {

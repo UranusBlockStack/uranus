@@ -19,9 +19,11 @@ package ledger
 import "github.com/UranusBlockStack/uranus/common/utils"
 
 var (
-	// prefix
+	// key
+	keyDBVersion   = []byte("DBVersion")
 	keyChainConfig = []byte("chainConfig")
 	keyLegitimate  = []byte("legitimate")
+	keyLastHeader  = []byte("LastHeader")
 	keyLastBlock   = []byte("LastBlock")
 
 	keyTD = func(hash utils.Hash) []byte { return append([]byte("td"), hash.Bytes()...) }

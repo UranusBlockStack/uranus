@@ -78,7 +78,6 @@ func TestServer(t *testing.T) {
 	}
 	server := NewServer()
 	server.Register(new(Arith))
-
 	go NewHTTPServer(server, []string{"*"}).Serve(listener)
 	// curl -X POST  -d '{"id": 1, "method": "Arith.Multiply", "params":[{"A":1, "B":3}]}' http://localhost:8000/
 

@@ -73,7 +73,7 @@ func (c *Chain) HasHeader(blockHash utils.Hash) bool {
 
 func (c *Chain) getHeader(blockHash utils.Hash) *types.BlockHeader {
 	data, err := c.db.Get(keyHeader(blockHash))
-	if err != nil {
+	if err != nil && err != ErrLDBNotFound {
 		log.Fatalf("Failed to get header RLP hash: %v, err: %v", blockHash, err)
 	}
 	if len(data) == 0 {
@@ -81,7 +81,7 @@ func (c *Chain) getHeader(blockHash utils.Hash) *types.BlockHeader {
 	}
 	header := new(types.BlockHeader)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
-		log.Fatalf("Invalid block header RLP hash: %v, err: %v", blockHash, err)
+		log.Errorf("Invalid block header RLP hash: %v, err: %v", blockHash, err)
 		return nil
 	}
 	return header
@@ -121,7 +121,7 @@ func (c *Chain) hastransactions(txHash utils.Hash) bool {
 
 func (c *Chain) getTransactions(txHash utils.Hash) types.StorageTxs {
 	data, err := c.db.Get(keyTxHashs(txHash))
-	if err != nil {
+	if err != nil && err != ErrLDBNotFound {
 		log.Fatalf("Failed to get transactions hashs RLP hash: %v, err: %v", txHash, err)
 	}
 	if len(data) == 0 {
@@ -145,7 +145,7 @@ func (c *Chain) getTransactions(txHash utils.Hash) types.StorageTxs {
 
 func (c *Chain) getTransaction(txHash utils.Hash) *types.StorageTx {
 	data, err := c.db.Get(keyTransacton(txHash))
-	if err != nil {
+	if err != nil && err != ErrLDBNotFound {
 		log.Fatalf("Failed to get transaction RLP hash: %v, err: %v", txHash, err)
 	}
 	if len(data) == 0 {
@@ -190,7 +190,7 @@ func (c *Chain) putTransaction(txHash, blockHash utils.Hash, txIndex, blockHeigh
 
 func (c *Chain) deleteTransactions(blockHash utils.Hash) {
 	data, err := c.db.Get(keyTxHashs(blockHash))
-	if err != nil {
+	if err != nil && err != ErrLDBNotFound {
 		log.Fatalf("Failed to get transactions hashs RLP hash: %v,err: %v", blockHash, err)
 	}
 	if len(data) == 0 {
@@ -221,7 +221,7 @@ func (c *Chain) deleteTransaction(txHash utils.Hash) {
 
 func (c *Chain) getReceipts(blockHash utils.Hash) types.Receipts {
 	data, err := c.db.Get(keyTxHashs(blockHash))
-	if err != nil {
+	if err != nil && err != ErrLDBNotFound {
 		log.Fatalf("Failed to get transactions hashs RLP hash: %v,err: %v", blockHash, err)
 	}
 	if len(data) == 0 {
@@ -246,7 +246,7 @@ func (c *Chain) getReceipts(blockHash utils.Hash) types.Receipts {
 func (c *Chain) getReceipt(txHash utils.Hash) *types.Receipt {
 	// Retrieve the flattened receipt slice
 	data, err := c.db.Get(keyReceipt(txHash))
-	if err != nil {
+	if err != nil && err != ErrLDBNotFound {
 		log.Fatalf("Failed to get receipts RLP hash: %v,err: %v", txHash, err)
 	}
 	if len(data) == 0 {
@@ -262,7 +262,7 @@ func (c *Chain) getReceipt(txHash utils.Hash) *types.Receipt {
 
 func (c *Chain) putReceipts(blockHash utils.Hash, receipts types.Receipts) {
 	data, err := c.db.Get(keyTxHashs(blockHash))
-	if err != nil {
+	if err != nil && err != ErrLDBNotFound {
 		log.Fatalf("Failed to get transactions hashs RLP hash: %v,err: %v", blockHash, err)
 	}
 	if len(data) == 0 {
@@ -292,7 +292,7 @@ func (c *Chain) putReceipt(txHash utils.Hash, receipt *types.ReceiptForStorage) 
 
 func (c *Chain) deleteReceipts(blockHash utils.Hash) {
 	data, err := c.db.Get(keyTxHashs(blockHash))
-	if err != nil {
+	if err != nil && err != ErrLDBNotFound {
 		log.Fatalf("Failed to get transactions hashs RLP hash: %v,err: %v", blockHash, err)
 	}
 	if len(data) == 0 {
@@ -320,7 +320,7 @@ func (c *Chain) deleteReceipt(txHash utils.Hash) {
 
 func (c *Chain) getTd(blockHash utils.Hash) *big.Int {
 	data, err := c.db.Get(keyTD(blockHash))
-	if err != nil {
+	if err != nil && err != ErrLDBNotFound {
 		log.Fatalf("Failed to get td RLP block hash: %v,err: %v", blockHash, err)
 	}
 	if len(data) == 0 {
@@ -382,10 +382,7 @@ func (c *Chain) getHeaderHeight(blockHash utils.Hash) *uint64 {
 }
 
 func (c *Chain) getHeadBlockHash() utils.Hash {
-	data, err := c.db.Get(keyLastBlock)
-	if err != nil {
-		log.Fatalf("Failed to get last block's hash err: %v", err)
-	}
+	data, _ := c.db.Get(keyLastBlock)
 	if len(data) == 0 {
 		return utils.Hash{}
 	}

@@ -280,7 +280,7 @@ func (m *UMiner) prepareNewBlock() error {
 		Miner:        m.coinbase,
 		Height:       height.Add(height, big.NewInt(1)),
 		TimeStamp:    big.NewInt(timestamp),
-		GasLimit:     types.CalcGasLimit(parent),
+		GasLimit:     calcGasLimit(parent),
 		Difficulty:   difficult,
 		ExtraData:    m.extraData,
 	}
@@ -312,7 +312,7 @@ func (m *UMiner) prepareNewBlock() error {
 		return fmt.Errorf("failed to apply transaction %s", err)
 	}
 
-	log.Infof("committing a new task to engine, height: %v, difficult: %v", header.Height, header.Difficulty)
+	log.Debugf("committing a new task to engine, height: %v, difficult: %v", header.Height, header.Difficulty)
 	m.PushWork(m.currentWork)
 	return nil
 }

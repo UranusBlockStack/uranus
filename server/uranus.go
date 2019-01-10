@@ -20,9 +20,11 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/UranusBlockStack/uranus/consensus"
+	"github.com/UranusBlockStack/uranus/server/forecast"
+
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/log"
-	"github.com/UranusBlockStack/uranus/consensus"
 	"github.com/UranusBlockStack/uranus/consensus/dpos"
 	"github.com/UranusBlockStack/uranus/consensus/miner"
 	"github.com/UranusBlockStack/uranus/consensus/pow/cpuminer"
@@ -36,7 +38,6 @@ import (
 	"github.com/UranusBlockStack/uranus/params"
 	"github.com/UranusBlockStack/uranus/rpc"
 	"github.com/UranusBlockStack/uranus/rpcapi"
-	"github.com/UranusBlockStack/uranus/server/forecast"
 	"github.com/UranusBlockStack/uranus/wallet"
 )
 
