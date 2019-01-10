@@ -328,6 +328,9 @@ func (tp *TxPool) Actions() []*types.Action {
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (tp *TxPool) validateTx(tx *types.Transaction) error {
 	// Heuristic limit, reject transactions over 32KB to prevent DOS attacks
+	if err := tx.Validate(tp.chainconfig); err != nil {
+		return err
+	}
 	if tx.Size() > 32*1024 {
 		return ErrOversizedData
 	}

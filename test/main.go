@@ -97,13 +97,13 @@ func main() {
 	for addr, priv := range producers {
 		val := new(big.Int).Div(issueValue, big.NewInt(2))
 		// reg producers
-		txReg := types.NewTransaction(types.LoginCandidate, 0, big.NewInt(0), gasLimit, gasPrice, nil, []*utils.Address{}...)
+		txReg := types.NewTransaction(types.LoginCandidate, 0, big.NewInt(0), gasLimit, gasPrice, nil)
 		txReg.SignTx(signer, priv)
 		sendrawtransaction(txReg)
 
 		if i%2 > 0 {
 			// unreg
-			txUnReg := types.NewTransaction(types.LogoutCandidate, 1, big.NewInt(0), gasLimit, gasPrice, nil, []*utils.Address{}...)
+			txUnReg := types.NewTransaction(types.LogoutCandidate, 1, big.NewInt(0), gasLimit, gasPrice, nil)
 			sendrawtransaction(txUnReg)
 		} else {
 			txVote := types.NewTransaction(types.Delegate, 1, val, gasLimit, gasPrice, nil, validateProducers...)
@@ -145,7 +145,7 @@ func main() {
 					nonce++
 
 					// // unvote
-					// txUnvote := types.NewTransaction(types.UnDelegate, nonce, big.NewInt(0), gasLimit, gasPrice, nil, validateProducers[:n*1/3]...)
+					// txUnvote := types.NewTransaction(types.UnDelegate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
 					// txUnvote.SignTx(signer, priv)
 					// sendrawtransaction(txUnvote)
 					// nonce++

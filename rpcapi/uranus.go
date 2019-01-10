@@ -162,7 +162,7 @@ func (args *SendTxArgs) toTransaction() *types.Transaction {
 		input = *args.Data
 	}
 	if args.Tos == nil {
-		return types.NewTransaction(types.TxType(args.TxType), uint64(*args.Nonce), (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input, nil)
+		return types.NewTransaction(types.TxType(args.TxType), uint64(*args.Nonce), (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
 	}
 	return types.NewTransaction(types.TxType(args.TxType), uint64(*args.Nonce), (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input, args.Tos...)
 }

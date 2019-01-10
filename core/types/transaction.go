@@ -113,8 +113,8 @@ func (tx *Transaction) Validate(cfg *params.ChainConfig) error {
 	case LoginCandidate:
 		fallthrough
 	case LogoutCandidate:
-		if tx.Tos() != nil {
-			return errors.New("LoginCandidate and LogoutCandidate tx.tos wasn't required")
+		if len(tx.Tos()) != 0 {
+			return errors.New("LoginCandidate、LogoutCandidate、UnDelegate tx.tos wasn't required")
 		}
 	default:
 		return ErrInvalidType
