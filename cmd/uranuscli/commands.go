@@ -60,4 +60,6 @@ func AddCommands() {
 	RootCmd.AddCommand(getValidatorsCmd)
 	RootCmd.AddCommand(getVotersCmd)
 	RootCmd.AddCommand(getCandidatesCmd)
+	RootCmd.AddCommand(getDelegatorsCmd)
+	RootCmd.AddCommand(getConfirmedBlockNumberCmd)
 }

@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/erick785/uranus/common/crypto"
-	"github.com/erick785/uranus/common/rlp"
-	"github.com/erick785/uranus/common/utils"
-	"github.com/erick785/uranus/core/types"
-	urpc "github.com/erick785/uranus/rpc"
+	"github.com/UranusBlockStack/uranus/common/crypto"
+	"github.com/UranusBlockStack/uranus/common/rlp"
+	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/core/types"
+	urpc "github.com/UranusBlockStack/uranus/rpc"
 )
 
 var (

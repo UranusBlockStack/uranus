@@ -19,6 +19,7 @@ package main
 import (
 	cmdutils "github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/rpcapi"
 	"github.com/spf13/cobra"
 )
 
@@ -58,5 +59,33 @@ var getCandidatesCmd = &cobra.Command{
 		result := []utils.Address{}
 		cmdutils.ClientCall("Dpos.GetCandidates", req, &result)
 		cmdutils.PrintJSONList(result)
+	},
+}
+
+var getDelegatorsCmd = &cobra.Command{
+	Use:   "getDelegators <height> <candidate>",
+	Short: "Returns the list of dpos delegators by height.",
+	Long:  `Returns the list of dpos delegators by height.`,
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		req := rpcapi.CandidateArgs{
+			Number:    cmdutils.GetBlockheight(args[0]),
+			Candidate: utils.HexToAddress(cmdutils.IsHexAddr(args[1])),
+		}
+		result := []utils.Address{}
+		cmdutils.ClientCall("Dpos.GetDelegators", req, &result)
+		cmdutils.PrintJSONList(result)
+	},
+}
+
+var getConfirmedBlockNumberCmd = &cobra.Command{
+	Use:   "getConfirmedBlockNumber ",
+	Short: "Returns the confirmed block height.",
+	Long:  `Returns the confirmed block height.`,
+	Args:  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		result := new(utils.Big)
+		cmdutils.ClientCall("Dpos.GetConfirmedBlockNumber", nil, &result)
+		cmdutils.PrintJSON(result)
 	},
 }

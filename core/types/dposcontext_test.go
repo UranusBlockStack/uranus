@@ -17,7 +17,6 @@
 package types
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/UranusBlockStack/uranus/common/db"
@@ -116,7 +115,6 @@ func TestDposContextKickoutCandidate(t *testing.T) {
 		if err := rlp.DecodeBytes(candidateIter.Value, info); err != nil {
 			t.Fatal(err)
 		}
-		fmt.Println("===>", info.Addr.Hex())
 		candidateMap[info.Addr] = true
 	}
 	voteIter := mtp.NewIterator(dposContext.voteTrie.NodeIterator(nil))
@@ -127,9 +125,6 @@ func TestDposContextKickoutCandidate(t *testing.T) {
 		if err := rlp.DecodeBytes(voteIter.Value, voters); err != nil {
 			t.Fatal(err)
 		}
-
-		// todo KickoutCandidate faild
-		fmt.Println("=====>", len(*voters), (*(*voters)[0]).Hex())
 
 		voteMap[*(*voters)[0]] = true
 	}
@@ -171,7 +166,7 @@ func TestDposContextDelegateAndUnDelegate(t *testing.T) {
 		candidateMap[string(candidateIter.Value)] = true
 	}
 	testaddr := utils.HexToAddress("0xab")
-	if err := dposContext.Delegate(delegator, []*utils.Address{&testaddr}); err != nil && err.Error() != "invalid candidate to delegate" {
+	if err := dposContext.Delegate(delegator, []*utils.Address{&testaddr}); err != nil && err.Error() != "invalid candidate 0x00000000000000000000000000000000000000AB to delegate" {
 		t.Fatal(err)
 	}
 
@@ -208,12 +203,7 @@ func TestDposContextDelegateAndUnDelegate(t *testing.T) {
 	}
 
 	// delegator undelegate to not exist candidate
-	if err := dposContext.UnDelegate(utils.HexToAddress("0x00")); err != nil && err.Error() != "mismatch candidate to undelegate" {
-		t.Fatal(err)
-	}
-
-	// delegator undelegate to old candidate
-	if err := dposContext.UnDelegate(delegator); err != nil && err.Error() != "mismatch candidate to undelegate" {
+	if err := dposContext.UnDelegate(utils.HexToAddress("0x00")); err != nil && err.Error() != "invalid candidate to undelegate" {
 		t.Fatal(err)
 	}
 

@@ -18,6 +18,7 @@ package types
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/UranusBlockStack/uranus/common/crypto/sha3"
@@ -337,6 +338,10 @@ func (d *DposContext) UnDelegate(delegatorAddr utils.Address) error {
 	oldCandidate, err := d.voteTrie.TryGet(delegator)
 	if err != nil {
 		return err
+	}
+
+	if oldCandidate == nil {
+		return errors.New("invalid candidate to undelegate")
 	}
 
 	oldCandidateAddrs := []*utils.Address{}

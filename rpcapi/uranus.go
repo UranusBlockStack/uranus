@@ -114,12 +114,17 @@ type SendTxArgs struct {
 	Value      *utils.Big
 	Nonce      *utils.Uint64
 	Data       *utils.Bytes
-	TxType     uint8
+	TxType     *utils.Uint64
 	Passphrase string
 }
 
 // check is a helper function that fills in default values for unspecified tx fields.
 func (args *SendTxArgs) check(ctx context.Context, b Backend) error {
+	if args.TxType == nil {
+		args.TxType = new(utils.Uint64)
+		*(*uint64)(args.Gas) = uint64(types.Binary)
+	}
+
 	if args.Gas == nil {
 		args.Gas = new(utils.Uint64)
 		*(*uint64)(args.Gas) = 90000
@@ -151,7 +156,8 @@ func (args *SendTxArgs) check(ctx context.Context, b Backend) error {
 		if len(input) == 0 {
 			return errors.New(`contract creation without any data provided`)
 		}
-		args.Value = new(utils.Big)
+		args.TxType = new(utils.Uint64)
+		*(*uint64)(args.Gas) = uint64(types.Binary)
 	}
 	return nil
 }
@@ -162,9 +168,9 @@ func (args *SendTxArgs) toTransaction() *types.Transaction {
 		input = *args.Data
 	}
 	if args.Tos == nil {
-		return types.NewTransaction(types.TxType(args.TxType), uint64(*args.Nonce), (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+		return types.NewTransaction(types.TxType(uint64(*args.TxType)), uint64(*args.Nonce), (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
 	}
-	return types.NewTransaction(types.TxType(args.TxType), uint64(*args.Nonce), (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input, args.Tos...)
+	return types.NewTransaction(types.TxType(uint64(*args.TxType)), uint64(*args.Nonce), (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input, args.Tos...)
 }
 
 // SignAndSendTransaction sign and send transaction .

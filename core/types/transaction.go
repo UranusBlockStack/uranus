@@ -31,7 +31,7 @@ import (
 )
 
 // TxType transaction type
-type TxType uint8
+type TxType uint64
 
 const (
 	Binary TxType = iota
