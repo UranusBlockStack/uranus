@@ -23,6 +23,15 @@ all:
 	@go install ./cmd/uranuscli
 	go build ./cmd/uranuscli
 	mv uranuscli ./build
+win:
+	@go install ./cmd/uranus
+	go build ./cmd/uranus
+	@move /y uranus.exe ./build >NUL
+
+	@go install ./cmd/uranuscli
+	go build ./cmd/uranuscli
+	@move /y uranuscli.exe ./build >NUL
+	@dir .\build\uranus*
 run:
 	@./build/uranus
 stop:
