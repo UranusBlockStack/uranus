@@ -18,7 +18,6 @@ package types
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 
 	"github.com/UranusBlockStack/uranus/common/crypto/sha3"
@@ -299,7 +298,7 @@ func (d *DposContext) Delegate(delegatorAddr utils.Address, candidateAddrs []*ut
 			return err
 		}
 		if candidateInTrie == nil {
-			return errors.New("invalid candidate to delegate")
+			return fmt.Errorf("invalid candidate %v to delegate", candidateAddr)
 		}
 	}
 
@@ -333,32 +332,11 @@ func (d *DposContext) Delegate(delegatorAddr utils.Address, candidateAddrs []*ut
 	return d.voteTrie.TryUpdate(delegator, candidate)
 }
 
-func (d *DposContext) UnDelegate(delegatorAddr utils.Address, candidateAddrs []*utils.Address) error {
+func (d *DposContext) UnDelegate(delegatorAddr utils.Address) error {
 	delegator := delegatorAddr.Bytes()
-	for _, candidateAddr := range candidateAddrs {
-		candidate := candidateAddr.Bytes()
-		// the candidate must be candidate
-		candidateInTrie, err := d.candidateTrie.TryGet(candidate)
-		if err != nil {
-			return err
-		}
-		if candidateInTrie == nil {
-			return errors.New("invalid candidate to undelegate")
-		}
-	}
-
-	candidate, err := rlp.EncodeToBytes(candidateAddrs)
-	if err != nil {
-		return err
-	}
-
 	oldCandidate, err := d.voteTrie.TryGet(delegator)
 	if err != nil {
 		return err
-	}
-
-	if len(candidateAddrs) != 0 && !bytes.Equal(candidate, oldCandidate) {
-		return errors.New("mismatch candidate to undelegate")
 	}
 
 	oldCandidateAddrs := []*utils.Address{}

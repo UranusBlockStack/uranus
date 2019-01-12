@@ -208,17 +208,17 @@ func TestDposContextDelegateAndUnDelegate(t *testing.T) {
 	}
 
 	// delegator undelegate to not exist candidate
-	if err := dposContext.UnDelegate(utils.HexToAddress("0x00"), []*utils.Address{&candidate}); err != nil && err.Error() != "mismatch candidate to undelegate" {
+	if err := dposContext.UnDelegate(utils.HexToAddress("0x00")); err != nil && err.Error() != "mismatch candidate to undelegate" {
 		t.Fatal(err)
 	}
 
 	// delegator undelegate to old candidate
-	if err := dposContext.UnDelegate(delegator, []*utils.Address{&candidate}); err != nil && err.Error() != "mismatch candidate to undelegate" {
+	if err := dposContext.UnDelegate(delegator); err != nil && err.Error() != "mismatch candidate to undelegate" {
 		t.Fatal(err)
 	}
 
 	// delegator undelegate to new candidate
-	if err := dposContext.UnDelegate(delegator, []*utils.Address{&newCandidate}); err != nil {
+	if err := dposContext.UnDelegate(delegator); err != nil {
 		t.Fatal(err)
 	}
 	delegateIter = mtp.NewIterator(dposContext.delegateTrie.PrefixIterator(newCandidate.Bytes()))

@@ -4,14 +4,15 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"os"
 	"sync"
 	"time"
 
-	"github.com/UranusBlockStack/uranus/common/crypto"
-	"github.com/UranusBlockStack/uranus/common/rlp"
-	"github.com/UranusBlockStack/uranus/common/utils"
-	"github.com/UranusBlockStack/uranus/core/types"
-	urpc "github.com/UranusBlockStack/uranus/rpc"
+	"github.com/erick785/uranus/common/crypto"
+	"github.com/erick785/uranus/common/rlp"
+	"github.com/erick785/uranus/common/utils"
+	"github.com/erick785/uranus/core/types"
+	urpc "github.com/erick785/uranus/rpc"
 )
 
 var (
@@ -48,7 +49,7 @@ func main() {
 	issuePrivHex := "289c2857d4598e37fb9647507e47a309d6133539bf21a8b9cb6df88fd5232032"
 	issuerNonce := uint64(0)
 	issueValue := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(100000000))
-	producersSize := 21
+	producersSize := 1
 	votersSize := 1
 	gasLimit := uint64(21000)
 	gasPrice := big.NewInt(10000000000)
@@ -104,14 +105,20 @@ func main() {
 		if i%2 > 0 {
 			// unreg
 			txUnReg := types.NewTransaction(types.LogoutCandidate, 1, big.NewInt(0), gasLimit, gasPrice, nil)
+			txUnReg.SignTx(signer, priv)
 			sendrawtransaction(txUnReg)
 		} else {
+			naddr := utils.BytesToAddress(addr.Bytes())
+			validateProducers = append(validateProducers, &naddr)
 			txVote := types.NewTransaction(types.Delegate, 1, val, gasLimit, gasPrice, nil, validateProducers...)
 			txVote.SignTx(signer, priv)
 			sendrawtransaction(txVote)
-			validateProducers = append(validateProducers, &addr)
 		}
+		i++
 	}
+
+	time.Sleep(6 * time.Second)
+
 	wg := &sync.WaitGroup{}
 	wg.Add(wokers)
 	cnt := len(tps) / wokers
@@ -144,11 +151,14 @@ func main() {
 					sendrawtransaction(txVote)
 					nonce++
 
-					// // unvote
-					// txUnvote := types.NewTransaction(types.UnDelegate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
-					// txUnvote.SignTx(signer, priv)
-					// sendrawtransaction(txUnvote)
-					// nonce++
+					// unvote
+					txUnvote := types.NewTransaction(types.UnDelegate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
+					txUnvote.SignTx(signer, priv)
+					sendrawtransaction(txUnvote)
+					nonce++
+
+					time.Sleep(10 * time.Second)
+					os.Exit(0)
 				}
 			}
 		}(ttps)

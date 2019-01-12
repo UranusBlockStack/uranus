@@ -41,13 +41,13 @@ func TestGenGenesis(t *testing.T) {
 	s := `{
 		"alloc": {
 			"0xde1e758511a7c67e7db93d1c23c1060a21db4615": {
-			  "balance": 1000
+			  "balance": "0x1000"
 			},
 			"0x27dc8de9e9a1cb673543bd5fce89e83af09e228f": {
-				"balance": 1100
+				"balance": "0x1100"
 			},
 			"0xd64a66c28a6ae5150af5e7c34696502793b91ae7": {
-			"balance": 900
+			"balance": "0x9000"
 			}
 		},
 		"config": {
