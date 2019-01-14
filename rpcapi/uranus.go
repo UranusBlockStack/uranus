@@ -122,7 +122,7 @@ type SendTxArgs struct {
 func (args *SendTxArgs) check(ctx context.Context, b Backend) error {
 	if args.TxType == nil {
 		args.TxType = new(utils.Uint64)
-		*(*uint64)(args.Gas) = uint64(types.Binary)
+		*(*uint64)(args.TxType) = uint64(types.Binary)
 	}
 
 	if args.Gas == nil {
