@@ -13,6 +13,7 @@ import (
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
 	urpc "github.com/UranusBlockStack/uranus/rpc"
+	"github.com/UranusBlockStack/uranus/rpcapi"
 )
 
 var (
@@ -44,6 +45,26 @@ func sendrawtransaction(tx *types.Transaction) {
 	fmt.Println(fmt.Sprintf("%6d", cnt), "sendrawtransaction hash", result.String())
 }
 
+func getnonce(addr utils.Address) uint64 {
+	client, err := urpc.DialHTTP(rpchost)
+	if err != nil {
+		fmt.Println("getnonce diahttp err", err)
+		panic(err)
+	}
+
+	latest := rpcapi.BlockHeight(-1)
+	req := &rpcapi.GetNonceArgs{}
+	req.Address = addr
+	req.BlockHeight = &latest
+	result := new(utils.Uint64)
+	if err := client.Call("Uranus.GetNonce", req, &result); err != nil {
+		fmt.Println("getnonce call err", err)
+		panic(err)
+	}
+	//fmt.Println("getnonce", addr, uint64(*result))
+	return uint64(*result)
+}
+
 func main() {
 	signer := types.Signer{}
 	issuePrivHex := "289c2857d4598e37fb9647507e47a309d6133539bf21a8b9cb6df88fd5232032"
@@ -59,6 +80,7 @@ func main() {
 	issuerPriv, _ := crypto.HexToECDSA(issuePrivHex)
 	issuer := crypto.PubkeyToAddress(issuerPriv.PublicKey)
 	fmt.Println("issuer", issuer)
+	issuerNonce = getnonce(issuer)
 
 	transfers := []*utils.Address{}
 	// generate producers
