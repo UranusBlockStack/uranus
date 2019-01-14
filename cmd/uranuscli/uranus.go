@@ -83,8 +83,8 @@ var getNonceCmd = &cobra.Command{
 }
 var getCodeCmd = &cobra.Command{
 	Use:   "getCode <address> [height]",
-	Short: "returns nonce for the given address.",
-	Long:  `returns nonce for the given address.`,
+	Short: "returns contract code for the given contract address.",
+	Long:  `returns contract code for the given contract address.`,
 	Args:  cobra.RangeArgs(1, 2),
 	Run: func(cmd *cobra.Command, args []string) {
 		result := new(utils.Bytes)

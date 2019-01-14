@@ -175,6 +175,7 @@ func (e *Executor) applyDposMessage(dposContext *types.DposContext, tx *types.Tr
 		statedb.AddBalance(from, lockedBalance)
 		statedb.UnLockBalance(from)
 	}
+	statedb.SetNonce(from, tx.Nonce()+1)
 	return nil, gas, false, nil
 }
 
