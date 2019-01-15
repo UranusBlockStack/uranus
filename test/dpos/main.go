@@ -1,8 +1,9 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
-	"math"
 	"math/big"
 	"time"
 
@@ -64,56 +65,53 @@ func getnonce(addr utils.Address) uint64 {
 }
 
 func main() {
+	// 1. generate producers
+	// 2. transfer producers
+	// 3. vote producers
+	// 4. dpos starting
 	signer := types.Signer{}
 	issuePrivHex := "289c2857d4598e37fb9647507e47a309d6133539bf21a8b9cb6df88fd5232032"
 	issuerNonce := uint64(0)
-	issueValue := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(100))
+	issueValue := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(100000000))
+	producersSize := 5
 	gasLimit := uint64(21000)
 	gasPrice := big.NewInt(10000000000)
-	epchos := math.MaxInt64
-
 	// issuer
 	issuerPriv, _ := crypto.HexToECDSA(issuePrivHex)
 	issuer := crypto.PubkeyToAddress(issuerPriv.PublicKey)
 	fmt.Println("issuer", issuer)
 	issuerNonce = getnonce(issuer)
 
-	for i := 0; i < epchos; i++ {
+	// generate producers
+	producers := map[utils.Address]*ecdsa.PrivateKey{}
+	for i := 0; i < producersSize; i++ {
 		priv, _ := crypto.GenerateKey()
 		addr := crypto.PubkeyToAddress(priv.PublicKey)
+		producers[addr] = priv
+		fmt.Println("producer", crypto.PubkeyToAddress(priv.PublicKey), hex.EncodeToString(crypto.ByteFromECDSA(priv)))
+	}
 
-		//transfer
+	// transfer producers
+	for addr := range producers {
 		txTransfer := types.NewTransaction(types.Binary, issuerNonce, issueValue, gasLimit, gasPrice, nil, []*utils.Address{&addr}...)
 		txTransfer.SignTx(signer, issuerPriv)
 		sendrawtransaction(txTransfer)
 		issuerNonce++
+	}
+	issuerNonce--
 
-		// sleep for miner, insufficient funds for gas * price + value
-		time.Sleep(6 * time.Second)
+	time.Sleep(6 * time.Second)
 
-		nonce := uint64(0)
-		// reg producers
-		txReg := types.NewTransaction(types.LoginCandidate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
-		txReg.SignTx(signer, priv)
-		sendrawtransaction(txReg)
-		nonce++
-
-		// vote
-		txVote := types.NewTransaction(types.Delegate, nonce, new(big.Int).Div(issueValue, big.NewInt(2)), gasLimit, gasPrice, nil, []*utils.Address{&addr}...)
+	// vote producers
+	validateProducers := []*utils.Address{}
+	for addr, priv := range producers {
+		val := new(big.Int).Div(issueValue, big.NewInt(2))
+		naddr := utils.BytesToAddress(addr.Bytes())
+		validateProducers = append(validateProducers, &naddr)
+		txVote := types.NewTransaction(types.Delegate, 1, val, gasLimit, gasPrice, nil, validateProducers...)
 		txVote.SignTx(signer, priv)
 		sendrawtransaction(txVote)
-		nonce++
-
-		// unvote
-		txUnvote := types.NewTransaction(types.UnDelegate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
-		txUnvote.SignTx(signer, priv)
-		sendrawtransaction(txUnvote)
-		nonce++
-
-		// unreg
-		txUnReg := types.NewTransaction(types.LogoutCandidate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
-		txUnReg.SignTx(signer, priv)
-		sendrawtransaction(txUnReg)
-		nonce++
 	}
+
+	// dpos staring
 }

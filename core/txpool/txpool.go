@@ -17,6 +17,7 @@
 package txpool
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"math/big"
@@ -347,6 +348,9 @@ func (tp *TxPool) validateTx(tx *types.Transaction) error {
 	if err != nil {
 		return ErrInvalidSender
 	}
+	if tx.Type() == types.LogoutCandidate && bytes.Compare(from.Bytes(), utils.HexToAddress(tp.chainconfig.GenesisCandidate).Bytes()) == 0 {
+		return fmt.Errorf("genesis candidate not allow logout")
+	}
 	// Drop transactions under our own minimal accepted gas price
 	if tp.gasPrice.Cmp(tx.GasPrice()) > 0 {
 		return ErrUnderPriced
@@ -361,7 +365,7 @@ func (tp *TxPool) validateTx(tx *types.Transaction) error {
 	if tp.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
 		return ErrInsufficientFunds
 	}
-	intrGas, err := IntrinsicGas(tx.Payload(), tx.Tos() == nil)
+	intrGas, err := IntrinsicGas(tx.Payload(), len(tx.Tos()) == 0 && tx.Type() == types.Binary)
 	if err != nil {
 		return err
 	}

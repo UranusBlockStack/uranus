@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
-	"os"
 	"sync"
 	"time"
 
@@ -66,15 +65,18 @@ func getnonce(addr utils.Address) uint64 {
 }
 
 func main() {
+	// 1. generate addresses
+	// 2. transfer addresses
+	// 3. worker
+	// 4. transfer reg vote unvote unreg
 	signer := types.Signer{}
 	issuePrivHex := "289c2857d4598e37fb9647507e47a309d6133539bf21a8b9cb6df88fd5232032"
 	issuerNonce := uint64(0)
 	issueValue := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(100000000))
-	producersSize := 1
-	votersSize := 1
 	gasLimit := uint64(21000)
 	gasPrice := big.NewInt(10000000000)
-	wokers := 1
+	tpsSize := 10
+	wokers := 5
 
 	// issuer
 	issuerPriv, _ := crypto.HexToECDSA(issuePrivHex)
@@ -82,31 +84,17 @@ func main() {
 	fmt.Println("issuer", issuer)
 	issuerNonce = getnonce(issuer)
 
-	transfers := []*utils.Address{}
-	// generate producers
-	producers := map[utils.Address]*ecdsa.PrivateKey{}
-	for i := 0; i < producersSize; i++ {
-		priv, _ := crypto.GenerateKey()
-		addr := crypto.PubkeyToAddress(priv.PublicKey)
-		producers[addr] = priv
-		transfers = append(transfers, &addr)
-	}
-
-	// generate voters
+	// generate addresses
 	tps := []*ecdsa.PrivateKey{}
-	voters := map[utils.Address]*ecdsa.PrivateKey{}
-	for i := 0; i < votersSize; i++ {
+	for i := 0; i < tpsSize; i++ {
 		priv, _ := crypto.GenerateKey()
-		addr := crypto.PubkeyToAddress(priv.PublicKey)
-		voters[addr] = priv
-		transfers = append(transfers, &addr)
 		tps = append(tps, priv)
 	}
 
-	// transfers
-	for _, addr := range transfers {
-		// transfer
-		txTransfer := types.NewTransaction(types.Binary, issuerNonce, issueValue, gasLimit, gasPrice, nil, []*utils.Address{addr}...)
+	// transfer addresses
+	for _, priv := range tps {
+		addr := crypto.PubkeyToAddress(priv.PublicKey)
+		txTransfer := types.NewTransaction(types.Binary, issuerNonce, issueValue, gasLimit, gasPrice, nil, []*utils.Address{&addr}...)
 		txTransfer.SignTx(signer, issuerPriv)
 		sendrawtransaction(txTransfer)
 		issuerNonce++
@@ -114,50 +102,29 @@ func main() {
 	issuerNonce--
 
 	time.Sleep(6 * time.Second)
-	// reg & unreg producer
-	i := 0
-	validateProducers := []*utils.Address{}
-	for addr, priv := range producers {
-		val := new(big.Int).Div(issueValue, big.NewInt(2))
-		// reg producers
-		txReg := types.NewTransaction(types.LoginCandidate, 0, big.NewInt(0), gasLimit, gasPrice, nil)
-		txReg.SignTx(signer, priv)
-		sendrawtransaction(txReg)
 
-		if i%2 > 0 {
-			// unreg
-			txUnReg := types.NewTransaction(types.LogoutCandidate, 1, big.NewInt(0), gasLimit, gasPrice, nil)
-			txUnReg.SignTx(signer, priv)
-			sendrawtransaction(txUnReg)
-		} else {
-			naddr := utils.BytesToAddress(addr.Bytes())
-			validateProducers = append(validateProducers, &naddr)
-			txVote := types.NewTransaction(types.Delegate, 1, val, gasLimit, gasPrice, nil, validateProducers...)
-			txVote.SignTx(signer, priv)
-			sendrawtransaction(txVote)
-		}
-		i++
-	}
-
-	time.Sleep(6 * time.Second)
-
+	// workes
 	wg := &sync.WaitGroup{}
 	wg.Add(wokers)
 	cnt := len(tps) / wokers
 	for i := 0; i < wokers; i++ {
 		f := i * cnt
 		t := (i + 1) * cnt
-		if t > len(tps) {
-			t = len(tps)
-		}
 		ttps := tps[f:t]
 		go func(tps []*ecdsa.PrivateKey) {
 			defer wg.Done()
 			nonce := uint64(0)
 			for {
 				for _, priv := range tps {
+					selAddr := crypto.PubkeyToAddress(priv.PublicKey)
 					tpriv, _ := crypto.GenerateKey()
 					addr := crypto.PubkeyToAddress(tpriv.PublicKey)
+
+					// unreg
+					txReg := types.NewTransaction(types.LoginCandidate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
+					txReg.SignTx(signer, priv)
+					sendrawtransaction(txReg)
+					nonce++
 
 					val := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(10))
 					// transfer
@@ -166,9 +133,8 @@ func main() {
 					sendrawtransaction(txTransfer)
 					nonce++
 
-					n := len(validateProducers)
 					// vote
-					txVote := types.NewTransaction(types.Delegate, nonce, new(big.Int).Div(val, big.NewInt(2)), gasLimit, gasPrice, nil, validateProducers[:n*2/3]...)
+					txVote := types.NewTransaction(types.Delegate, nonce, val, gasLimit, gasPrice, nil, []*utils.Address{&selAddr}...)
 					txVote.SignTx(signer, priv)
 					sendrawtransaction(txVote)
 					nonce++
@@ -179,8 +145,11 @@ func main() {
 					sendrawtransaction(txUnvote)
 					nonce++
 
-					time.Sleep(10 * time.Second)
-					os.Exit(0)
+					// unreg
+					txUnReg := types.NewTransaction(types.LogoutCandidate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
+					txUnReg.SignTx(signer, priv)
+					sendrawtransaction(txUnReg)
+					nonce++
 				}
 			}
 		}(ttps)
