@@ -130,7 +130,8 @@ func (g *Genesis) ToBlock(chain *Chain) (*types.Block, state.Database) {
 	dposContext.SetValidators([]utils.Address{validator})
 	dposContext.DelegateTrie().TryUpdate(append(validator.Bytes(), validator.Bytes()...), validator.Bytes())
 	candidateInfo := &types.CandidateInfo{
-		Addr: validator,
+		Addr:   validator,
+		Weight: 100,
 	}
 	val, _ := rlp.EncodeToBytes(candidateInfo)
 	dposContext.CandidateTrie().TryUpdate(validator.Bytes(), val)

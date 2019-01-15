@@ -67,7 +67,7 @@ func getnonce(addr utils.Address) uint64 {
 func main() {
 	// 1. generate producers
 	// 2. transfer producers
-	// 3. vote producers
+	// 3. reg & vote producers
 	// 4. dpos starting
 	signer := types.Signer{}
 	issuePrivHex := "289c2857d4598e37fb9647507e47a309d6133539bf21a8b9cb6df88fd5232032"
@@ -103,15 +103,18 @@ func main() {
 	time.Sleep(6 * time.Second)
 
 	// vote producers
-	validateProducers := []*utils.Address{}
 	for addr, priv := range producers {
+		nonce := uint64(0)
+		txReg := types.NewTransaction(types.LoginCandidate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
+		txReg.SignTx(signer, priv)
+		sendrawtransaction(txReg)
+		nonce++
+
 		val := new(big.Int).Div(issueValue, big.NewInt(2))
-		naddr := utils.BytesToAddress(addr.Bytes())
-		validateProducers = append(validateProducers, &naddr)
-		txVote := types.NewTransaction(types.Delegate, 1, val, gasLimit, gasPrice, nil, validateProducers...)
+		txVote := types.NewTransaction(types.Delegate, nonce, val, gasLimit, gasPrice, nil, []*utils.Address{&addr, &issuer}...)
 		txVote.SignTx(signer, priv)
 		sendrawtransaction(txVote)
+		nonce++
 	}
-
 	// dpos staring
 }

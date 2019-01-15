@@ -72,7 +72,7 @@ func (ec *EpochContext) tryElect(genesis, parent *types.BlockHeader) error {
 		if err != nil {
 			return err
 		}
-		if !ec.DposContext.IsDpos() || int64(len(votes)) < Option.consensusSize() || total.Cmp(Option.MinStartQuantity) < 0 {
+		if int64(len(votes)) < Option.consensusSize() || total.Cmp(Option.MinStartQuantity) < 0 {
 			//log.Warn("dpos not activated")
 			return nil
 		}
@@ -100,7 +100,7 @@ func (ec *EpochContext) tryElect(genesis, parent *types.BlockHeader) error {
 		epochTrie, _ := types.NewEpochTrie(utils.Hash{}, ec.DposContext.DB())
 		ec.DposContext.SetEpoch(epochTrie)
 		ec.DposContext.SetValidators(sortedValidators)
-		log.Infof("Come to new epoch prevEpoch %v nextEpoch %v", i, i+1)
+		log.Infof("Come to new epoch prevEpoch %v nextEpoch %v, validators %v", i, i+1, sortedValidators)
 	}
 	return nil
 }

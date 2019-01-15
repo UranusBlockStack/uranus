@@ -244,7 +244,7 @@ func (m *UMiner) GenerateBlocks(work *Work, quit <-chan struct{}) {
 		block.DposContext = work.dposContext
 		work.Block = block
 		if result, err := m.engine.Seal(m.uranus, work.Block, quit, int(m.threads), m.updateHashes); result != nil {
-			log.Infof("Successfully sealed new block number: %v, hash: %v, diff: %v", result.Height(), result.Hash(), result.Difficulty())
+			log.Infof("Successfully sealed new block number: %v, hash: %v, diff: %v, txs: %v", result.Height(), result.Hash(), result.Difficulty(), len(block.Transactions()))
 			m.recvCh <- &Result{work, result}
 		} else {
 			if err != nil {
@@ -429,10 +429,9 @@ func (m *UMiner) mintLoop() {
 				switch err {
 				case dpos.ErrWaitForPrevBlock,
 					dpos.ErrMintFutureBlock,
-					dpos.ErrInvalidMintBlockTime:
+					dpos.ErrInvalidMintBlockTime,
+					dpos.ErrInvalidBlockValidator:
 					log.Debugf("Failed to mint the block, while %v", err)
-				case dpos.ErrInvalidBlockValidator:
-					log.Warnf("Failed to mint the block, while %v", err)
 				default:
 					log.Errorf("Failed to mint the block, err %v", err)
 				}
