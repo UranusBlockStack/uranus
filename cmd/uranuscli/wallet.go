@@ -91,3 +91,17 @@ var importRawKeyCmd = &cobra.Command{
 		cmdutils.PrintJSON(result)
 	},
 }
+
+var exportRawKeyCmd = &cobra.Command{
+	Use:   "exportRawKey <address> <passphrase>",
+	Short: "export raw PrivateKey as hex string.",
+	Long:  `export raw PrivateKey as hex string.`,
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		var result string
+		cmdutils.ClientCall("Wallet.ExportRawKey", rpcapi.ExportRawKeyArgs{
+			Address:    utils.HexToAddress(cmdutils.IsHexAddr(args[0])),
+			Passphrase: args[1]}, &result)
+		cmdutils.PrintJSON(result)
+	},
+}

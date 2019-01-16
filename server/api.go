@@ -190,6 +190,11 @@ func (api *APIBackend) ImportRawKey(privkey string, passphrase string) (utils.Ad
 	return api.u.wallet.ImportRawKey(privkey, passphrase)
 }
 
+// ExportRawKey return key hex.
+func (api *APIBackend) ExportRawKey(addr utils.Address, passphrase string) (string, error) {
+	return api.u.wallet.ExportRawKey(addr, passphrase)
+}
+
 // SuggestGasPrice suggest gas price
 func (api *APIBackend) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	return api.gp.SuggestPrice(ctx)

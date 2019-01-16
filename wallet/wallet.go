@@ -97,6 +97,22 @@ func (w *Wallet) ImportRawKey(privkey string, passphrase string) (utils.Address,
 	return account.Address, nil
 }
 
+// ExportRawKey returns key hex.
+func (w *Wallet) ExportRawKey(addr utils.Address, passphrase string) (string, error) {
+	// check if key exist
+	fileName := filepath.Join(w.ks.keyStoreDir, addr.Hex()+keyFileSuffix)
+	if !utils.FileExists(fileName) {
+		return "", ErrNoMatch
+	}
+
+	account, err := w.ks.GetKey(addr, fileName, passphrase)
+	if err != nil {
+		return "", err
+	}
+
+	return utils.BytesToHex(crypto.ByteFromECDSA(account.PrivateKey)), nil
+}
+
 // NewAccount creates a new account
 func (w *Wallet) NewAccount(passphrase string) (Account, error) {
 	account, err := genNewAccount()

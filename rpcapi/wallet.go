@@ -100,3 +100,19 @@ func (w *WalletAPI) ImportRawKey(args ImportRawKeyArgs, reply *utils.Address) er
 	*reply = addr
 	return nil
 }
+
+type ExportRawKeyArgs struct {
+	Address    utils.Address
+	Passphrase string
+}
+
+// ExportRawKey  returns key hex.
+func (w *WalletAPI) ExportRawKey(args ExportRawKeyArgs, reply *string) error {
+	hex, err := w.b.ExportRawKey(args.Address, args.Passphrase)
+	if err != nil {
+		return nil
+	}
+
+	*reply = hex
+	return nil
+}

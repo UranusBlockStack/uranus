@@ -55,6 +55,8 @@ type Backend interface {
 	SignTx(addr utils.Address, tx *types.Transaction, passphrase string) (*types.Transaction, error)
 	Accounts() (wallet.Accounts, error)
 	ImportRawKey(privkey string, passphrase string) (utils.Address, error)
+	ExportRawKey(addr utils.Address, passphrase string) (string, error)
+
 	// forecast backend
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 	// evm

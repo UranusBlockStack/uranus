@@ -25,6 +25,7 @@ func AddCommands() {
 	RootCmd.AddCommand(updateAccountCmd)
 	RootCmd.AddCommand(listAccountsCmd)
 	RootCmd.AddCommand(importRawKeyCmd)
+	RootCmd.AddCommand(exportRawKeyCmd)
 
 	// admin command
 	RootCmd.AddCommand(listPeersCmd)
