@@ -89,3 +89,15 @@ var getConfirmedBlockNumberCmd = &cobra.Command{
 		cmdutils.PrintJSON(result)
 	},
 }
+
+var getBFTConfirmedBlockNumberCmd = &cobra.Command{
+	Use:   "GetBFTConfirmedBlockNumber ",
+	Short: "Returns the bft confirmed block height.",
+	Long:  `Returns the bft confirmed block height.`,
+	Args:  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		result := new(utils.Big)
+		cmdutils.ClientCall("Dpos.GetBFTConfirmedBlockNumber", nil, &result)
+		cmdutils.PrintJSON(result)
+	},
+}

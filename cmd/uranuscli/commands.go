@@ -62,4 +62,5 @@ func AddCommands() {
 	RootCmd.AddCommand(getCandidatesCmd)
 	RootCmd.AddCommand(getDelegatorsCmd)
 	RootCmd.AddCommand(getConfirmedBlockNumberCmd)
+	RootCmd.AddCommand(getBFTConfirmedBlockNumberCmd)
 }

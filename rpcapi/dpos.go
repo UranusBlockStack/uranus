@@ -189,3 +189,13 @@ func (api *DposAPI) GetConfirmedBlockNumber(ignore string, reply *utils.Big) err
 	*reply = *(*utils.Big)(n)
 	return nil
 }
+
+// GetConfirmedBlockNumber retrieves the latest irreversible block
+func (api *DposAPI) GetBFTConfirmedBlockNumber(ignore string, reply *utils.Big) error {
+	n, err := api.b.GetBFTConfirmedBlockNumber()
+	if err != nil {
+		return err
+	}
+	*reply = *(*utils.Big)(n)
+	return nil
+}

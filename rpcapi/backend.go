@@ -71,5 +71,7 @@ type Backend interface {
 	Stop() error
 	SetCoinbase(utils.Address) error
 
+	// dpos
 	GetConfirmedBlockNumber() (*big.Int, error)
+	GetBFTConfirmedBlockNumber() (*big.Int, error)
 }
