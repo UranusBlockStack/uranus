@@ -26,19 +26,17 @@ import (
 	"time"
 
 	"github.com/UranusBlockStack/uranus/common/db"
-
-	"github.com/UranusBlockStack/uranus/consensus"
-	"github.com/UranusBlockStack/uranus/core/txpool"
-	"github.com/UranusBlockStack/uranus/feed"
-	"github.com/UranusBlockStack/uranus/node/protocols"
-	"github.com/UranusBlockStack/uranus/p2p/discover"
-
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"github.com/UranusBlockStack/uranus/consensus"
 	"github.com/UranusBlockStack/uranus/core"
+	"github.com/UranusBlockStack/uranus/core/txpool"
 	"github.com/UranusBlockStack/uranus/core/types"
+	"github.com/UranusBlockStack/uranus/feed"
+	"github.com/UranusBlockStack/uranus/node/protocols"
 	"github.com/UranusBlockStack/uranus/p2p"
+	"github.com/UranusBlockStack/uranus/p2p/discover"
 	"github.com/UranusBlockStack/uranus/params"
 )
 
@@ -58,6 +56,7 @@ const (
 	BlocksMsg                                 //1006
 	NewBlockMsg                               //1007
 	GetBlockHashesFromNumberMsg               //1008
+	ConfirmedMsg                              //1009
 )
 
 type statusData struct {
@@ -185,7 +184,7 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	pm.txsSub = pm.txpool.SubscribeNewTxsEvent(pm.txsCh)
 	go pm.txBroadcastLoop()
 
-	pm.minedBlockSub = pm.eventMux.Subscribe(feed.NewMinedBlockEvent{})
+	pm.minedBlockSub = pm.eventMux.Subscribe(feed.NewMinedBlockEvent{}, feed.NewConfirmedEvent{})
 	go pm.minedBroadcastLoop()
 
 	go pm.syncer()
@@ -440,11 +439,23 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			p.MarkTransaction(tx.Hash())
 		}
 		pm.txpool.AddTxs(txs)
-
+	case ConfirmedMsg:
+		confirmed := types.Confirmed{}
+		if err := msg.DecodePayload(&confirmed); err != nil {
+			return fmt.Errorf("msg %v: %v", msg, err)
+		}
+		pm.eventMux.Post(confirmed)
+		pm.BroadcastConfirmed(&confirmed)
 	default:
 		return fmt.Errorf("invalide message %v", msg.Code)
 	}
 	return nil
+}
+
+func (pm *ProtocolManager) BroadcastConfirmed(confirmed *types.Confirmed) {
+	for _, peer := range pm.peers.PeersWithoutConfirmed(confirmed.Hash()) {
+		peer.SendConfirmed(confirmed)
+	}
 }
 
 func (pm *ProtocolManager) BroadcastBlock(block *types.Block, propagate bool) {
@@ -493,6 +504,8 @@ func (pm *ProtocolManager) minedBroadcastLoop() {
 		case feed.NewMinedBlockEvent:
 			pm.BroadcastBlock(ev.Block, true)
 			pm.BroadcastBlock(ev.Block, false)
+		case feed.NewConfirmedEvent:
+			pm.BroadcastConfirmed(ev.Confirmed)
 		}
 	}
 }

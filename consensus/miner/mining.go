@@ -159,6 +159,7 @@ func (m *UMiner) Start() error {
 	// 	return err
 	// }
 
+	m.SetCoinBase(m.coinbase)
 	log.Info("Miner is started.")
 	return nil
 }
@@ -327,6 +328,9 @@ func (m *UMiner) SetCoinBase(addr utils.Address) {
 	m.mu.Lock()
 	m.coinbase = addr
 	m.mu.Unlock()
+	if dpos, ok := m.engine.(*dpos.Dpos); ok {
+		dpos.SetCoinBase(m.coinbase)
+	}
 	//m.prepareNewBlock()
 }
 

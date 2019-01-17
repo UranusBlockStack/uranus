@@ -54,20 +54,22 @@ type peer struct {
 	td   *big.Int
 	lock sync.RWMutex
 
-	existedTxs    *set.Set
-	existedBlocks *set.Set
-	quit          chan struct{}
+	existedTxs       *set.Set
+	existedBlocks    *set.Set
+	existedConfirmed *set.Set
+	quit             chan struct{}
 }
 
 func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 	return &peer{
-		Peer:          p,
-		version:       version,
-		rw:            rw,
-		id:            fmt.Sprintf("%x", p.ID().Bytes()[:8]),
-		existedTxs:    set.New(),
-		existedBlocks: set.New(),
-		quit:          make(chan struct{}),
+		Peer:             p,
+		version:          version,
+		rw:               rw,
+		id:               fmt.Sprintf("%x", p.ID().Bytes()[:8]),
+		existedTxs:       set.New(),
+		existedBlocks:    set.New(),
+		existedConfirmed: set.New(),
+		quit:             make(chan struct{}),
 	}
 }
 
@@ -121,6 +123,13 @@ func (p *peer) MarkTransaction(hash utils.Hash) {
 	p.existedTxs.Add(hash)
 }
 
+func (p *peer) MarkConfirmed(hash utils.Hash) {
+	for p.existedConfirmed.Size() >= maxExistedTxs {
+		p.existedConfirmed.Pop()
+	}
+	p.existedConfirmed.Add(hash)
+}
+
 func (p *peer) SendTransactions(txs types.Transactions) error {
 	for _, tx := range txs {
 		p.existedTxs.Add(tx.Hash())
@@ -141,6 +150,11 @@ func (p *peer) SendNewBlockHashes(hashes []utils.Hash) error {
 		p.existedBlocks.Add(hash)
 	}
 	return p2p.SendMessage(p.rw, NewBlockHashesMsg, hashes)
+}
+
+func (p *peer) SendConfirmed(confirmed *types.Confirmed) error {
+	p.existedConfirmed.Add(confirmed.Hash())
+	return p2p.SendMessage(p.rw, ConfirmedMsg, confirmed)
 }
 
 func (p *peer) SendNewBlock(block *types.Block, td *big.Int) error {

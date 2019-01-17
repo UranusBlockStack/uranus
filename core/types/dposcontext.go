@@ -21,11 +21,43 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/crypto/sha3"
 	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 )
+
+type Confirmed struct {
+	BlockHeight uint64        // confirmed
+	BlockHash   utils.Hash    // confirmed
+	Address     utils.Address // producer
+	Signature   []byte        // signature
+}
+
+// Hash returns the hash to be signed by the sender.
+func (c *Confirmed) Hash() utils.Hash {
+	return rlpHash([]interface{}{
+		c.BlockHeight,
+		c.BlockHash,
+		c.Address,
+	})
+}
+
+// IsValidate returns the validate
+func (c *Confirmed) IsValidate() bool {
+	hash := c.Hash()
+	pub, err := crypto.EcrecoverToByte(hash[:], c.Signature)
+	if err != nil {
+		return false
+	}
+	if len(pub) == 0 || pub[0] != 4 {
+		return false
+	}
+	var addr utils.Address
+	copy(addr[:], crypto.Keccak256(pub[1:])[12:])
+	return bytes.Compare(c.Address.Bytes(), addr.Bytes()) == 0
+}
 
 type DposContext struct {
 	epochTrie     *mtp.Trie

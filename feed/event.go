@@ -26,6 +26,8 @@ import (
 	"github.com/UranusBlockStack/uranus/core/types"
 )
 
+type NewConfirmedEvent struct{ Confirmed *types.Confirmed }
+
 type NewTxsEvent struct{ Txs []*types.Transaction }
 
 type ForkBlockEvent struct{ Block *types.Block }

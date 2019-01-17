@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 	"time"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
@@ -18,7 +19,9 @@ import (
 	"github.com/UranusBlockStack/uranus/consensus"
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
+	"github.com/UranusBlockStack/uranus/feed"
 	"github.com/UranusBlockStack/uranus/params"
+	lru "github.com/hashicorp/golang-lru"
 )
 
 var Option = &option{
@@ -58,27 +61,53 @@ var (
 	ErrNilBlockHeader             = errors.New("nil block header returned")
 )
 var (
-	timeOfFirstBlock      = int64(0)
-	confirmedBlockHead    = []byte("confirmed-block-head")
-	bftconfirmedBlockHead = []byte("bft-confirmed-block-head")
+	timeOfFirstBlock   = int64(0)
+	confirmedBlockHead = []byte("confirmed-block-head")
 )
 
 type SignerFn func(utils.Address, []byte) ([]byte, error)
 type Dpos struct {
-	chainDb                 db.Database
-	db                      state.Database
-	signFn                  SignerFn
-	confirmedBlockHeader    *types.BlockHeader
-	bftConfirmedBlockHeader *types.BlockHeader
+	eventMux             *feed.TypeMux
+	chainDb              db.Database
+	db                   state.Database
+	signFn               SignerFn
+	confirmedBlockHeader *types.BlockHeader
+	bftConfirmeds        *lru.Cache
+	coinbase             utils.Address
 }
 
-func NewDpos(chainDb db.Database, db state.Database, signFn SignerFn) *Dpos {
+func NewDpos(eventMux *feed.TypeMux, chainDb db.Database, db state.Database, signFn SignerFn) *Dpos {
 	d := &Dpos{
-		chainDb: chainDb,
-		db:      db,
-		signFn:  signFn,
+		eventMux: eventMux,
+		chainDb:  chainDb,
+		db:       db,
+		signFn:   signFn,
 	}
 	return d
+}
+func (dpos *Dpos) Init(chain consensus.IChainReader) {
+	go func() {
+		dpos.bftConfirmeds, _ = lru.New(int(chain.Config().MaxValidatorSize))
+		sub := dpos.eventMux.Subscribe(types.Confirmed{})
+		for ev := range sub.Chan() {
+			switch ev.Data.(type) {
+			case types.Confirmed:
+				confirmed := ev.Data.(types.Confirmed)
+				dpos.handleConfirmed(chain, &confirmed)
+			default:
+			}
+		}
+	}()
+}
+
+func (dpos *Dpos) handleConfirmed(chain consensus.IChainReader, confirmed *types.Confirmed) {
+	if confirmed.IsValidate() {
+		if blk := chain.GetBlockByHeight(confirmed.BlockHeight); blk != nil && bytes.Compare(blk.Hash().Bytes(), confirmed.BlockHash.Bytes()) == 0 {
+			dpos.bftConfirmeds.Add(confirmed.Address, confirmed.BlockHeight)
+		}
+	} else {
+		// TODO
+	}
 }
 
 func prevSlot(now int64) int64 {
@@ -182,7 +211,12 @@ func (d *Dpos) Seal(chain consensus.IChainReader, block *types.Block, stop <-cha
 		return nil, err
 	}
 	header.ExtraData = append(header.ExtraData[len(header.ExtraData)-extraSeal:], sighash...)
+	d.updateConfirmedBlockHeader(chain, block.DposCtx().IsDpos())
 	return block.WithSeal(header), nil
+}
+
+func (d *Dpos) SetCoinBase(addr utils.Address) {
+	d.coinbase = addr
 }
 
 func (d *Dpos) Author(header *types.BlockHeader) (utils.Address, error) {
@@ -229,10 +263,10 @@ func (d *Dpos) VerifySeal(chain consensus.IChainReader, header *types.BlockHeade
 	if bytes.Compare(validator.Bytes(), header.Miner.Bytes()) != 0 {
 		return ErrInvalidBlockValidator
 	}
-	return d.updateConfirmedBlockHeader(chain)
+	return d.updateConfirmedBlockHeader(chain, epochContext.DposContext.IsDpos())
 }
 
-func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader) error {
+func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader, dpos bool) error {
 	if d.confirmedBlockHeader == nil {
 		header, err := d.loadConfirmedBlockHeader(chain)
 		if err != nil {
@@ -242,6 +276,17 @@ func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader) error {
 			}
 		}
 		d.confirmedBlockHeader = header
+	}
+
+	if !dpos {
+		if blk := chain.CurrentBlock(); blk != nil {
+			d.confirmedBlockHeader = blk.BlockHeader()
+			if err := d.storeConfirmedBlockHeader(chain.CurrentBlock()); err != nil {
+				return err
+			}
+			log.Debugf("dpos set confirmed block header success", "currentHeader", d.confirmedBlockHeader.Height.String())
+		}
+		return nil
 	}
 
 	epoch := int64(-1)
@@ -264,10 +309,10 @@ func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader) error {
 		validatorMap[curHeader.Miner] = true
 		if int64(len(validatorMap)) >= Option.consensusSize() {
 			d.confirmedBlockHeader = curHeader
-			if err := d.storeConfirmedBlockHeader(); err != nil {
+			if err := d.storeConfirmedBlockHeader(chain.CurrentBlock()); err != nil {
 				return err
 			}
-			log.Debug("dpos set confirmed block header success", "currentHeader", curHeader.Height.String())
+			log.Debugf("dpos set confirmed block header success", "currentHeader", curHeader.Height.String())
 			return nil
 		}
 		curHeader = chain.GetBlockByHash(curHeader.PreviousHash).BlockHeader()
@@ -283,15 +328,38 @@ func (d *Dpos) loadConfirmedBlockHeader(chain consensus.IChainReader) (*types.Bl
 	if err != nil {
 		return nil, err
 	}
-	header := chain.GetBlockByHash(utils.BytesToHash(key)).BlockHeader()
-	if header == nil {
+
+	blk := chain.GetBlockByHash(utils.BytesToHash(key))
+	if blk == nil {
 		return nil, ErrNilBlockHeader
 	}
-	return header, nil
+	return blk.BlockHeader(), nil
 }
 
 // store inserts the snapshot into the database.
-func (d *Dpos) storeConfirmedBlockHeader() error {
+func (d *Dpos) storeConfirmedBlockHeader(lastBlock *types.Block) error {
+	if statedb, err := state.New(lastBlock.StateRoot(), d.db); err == nil {
+		if dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), lastBlock.BlockHeader().DposContext); err == nil {
+			validators, _ := dposContext.GetValidators()
+			for _, validator := range validators {
+				if bytes.Compare(validator.Bytes(), d.coinbase.Bytes()) == 0 {
+					confirmed := &types.Confirmed{
+						BlockHash:   d.confirmedBlockHeader.Hash(),
+						BlockHeight: d.confirmedBlockHeader.Height.Uint64(),
+						Address:     d.coinbase,
+					}
+					if sighash, err := d.signFn(d.coinbase, confirmed.Hash().Bytes()); err == nil {
+						confirmed.Signature = sighash
+						d.eventMux.Post(feed.NewConfirmedEvent{Confirmed: confirmed})
+						d.bftConfirmeds.Add(d.coinbase, confirmed.BlockHeight)
+					} else {
+						log.Errorf("confirmed sign err %v", err)
+					}
+				}
+			}
+		}
+	}
+
 	return d.chainDb.Put(confirmedBlockHead, d.confirmedBlockHeader.Hash().Bytes())
 }
 
@@ -303,29 +371,23 @@ func (d *Dpos) GetConfirmedBlockNumber() (*big.Int, error) {
 	return header.Height, nil
 }
 
-func (d *Dpos) loadBFTConfirmedBlockHeader(chain consensus.IChainReader) (*types.BlockHeader, error) {
-	key, err := d.chainDb.Get(bftconfirmedBlockHead)
-	if err != nil {
-		return nil, err
+func (dpos *Dpos) GetBFTConfirmedBlockNumber() (*big.Int, error) {
+	irreversibles := UInt64Slice{}
+	keys := dpos.bftConfirmeds.Keys()
+	for _, key := range keys {
+		if irreversible, ok := dpos.bftConfirmeds.Get(key); ok {
+			irreversibles = append(irreversibles, irreversible.(uint64))
+		}
 	}
-	header := chain.GetBlockByHash(utils.BytesToHash(key)).BlockHeader()
-	if header == nil {
-		return nil, ErrNilBlockHeader
-	}
-	return header, nil
-}
 
-// store inserts the snapshot into the database.
-func (d *Dpos) storeBFTConfirmedBlockHeader() error {
-	return d.chainDb.Put(bftconfirmedBlockHead, d.bftConfirmedBlockHeader.Hash().Bytes())
-}
-
-func (d *Dpos) GetBFTConfirmedBlockNumber() (*big.Int, error) {
-	header := d.bftConfirmedBlockHeader
-	if header == nil {
+	if len(irreversibles) == 0 {
 		return big.NewInt(0), nil
 	}
-	return header.Height, nil
+
+	sort.Sort(irreversibles)
+
+	/// 2/3 must be greater, so if I go 1/3 into the list sorted from low to high, then 2/3 are greater
+	return big.NewInt(int64(irreversibles[(len(irreversibles)-1)/3])), nil
 }
 
 func (d *Dpos) CheckValidator(lastBlock *types.Block, coinbase utils.Address, now int64) error {
@@ -389,3 +451,10 @@ func (d *Dpos) Finalize(chain consensus.IChainReader, header *types.BlockHeader,
 	header.DposContext = dposContext.ToProto()
 	return types.NewBlock(header, txs, actions, receipts), nil
 }
+
+// UInt64Slice attaches the methods of sort.Interface to []uint64, sorting in increasing order.
+type UInt64Slice []uint64
+
+func (s UInt64Slice) Len() int           { return len(s) }
+func (s UInt64Slice) Less(i, j int) bool { return s[i] < s[j] }
+func (s UInt64Slice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }

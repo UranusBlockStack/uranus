@@ -20,11 +20,9 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/UranusBlockStack/uranus/consensus"
-	"github.com/UranusBlockStack/uranus/server/forecast"
-
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/log"
+	"github.com/UranusBlockStack/uranus/consensus"
 	"github.com/UranusBlockStack/uranus/consensus/dpos"
 	"github.com/UranusBlockStack/uranus/consensus/miner"
 	"github.com/UranusBlockStack/uranus/consensus/pow/cpuminer"
@@ -38,6 +36,7 @@ import (
 	"github.com/UranusBlockStack/uranus/params"
 	"github.com/UranusBlockStack/uranus/rpc"
 	"github.com/UranusBlockStack/uranus/rpcapi"
+	"github.com/UranusBlockStack/uranus/server/forecast"
 	"github.com/UranusBlockStack/uranus/wallet"
 )
 
@@ -78,6 +77,7 @@ func New(ctx *node.Context, config *UranusConfig) (*Uranus, error) {
 	cjson, _ := json.Marshal(chainCfg)
 	log.Infof("chain config %v", string(cjson))
 
+	mux := &feed.TypeMux{}
 	uranus := &Uranus{
 		config:       config,
 		chainDb:      chainDb,
@@ -94,7 +94,7 @@ func New(ctx *node.Context, config *UranusConfig) (*Uranus, error) {
 	dpos.Option.BlockRepeat = chainCfg.BlockRepeat
 	dpos.Option.MaxValidatorSize = chainCfg.MaxValidatorSize
 	dpos.Option.MinStartQuantity = chainCfg.MinStartQuantity
-	dpos := dpos.NewDpos(chainDb, statedb, uranus.wallet.SignHash)
+	dpos := dpos.NewDpos(mux, chainDb, statedb, uranus.wallet.SignHash)
 
 	// blockchain
 	log.Debugf("Initialised chain configuration: %v", chainCfg)
@@ -107,7 +107,7 @@ func New(ctx *node.Context, config *UranusConfig) (*Uranus, error) {
 
 	uranus.blockchain.SetAddActionInterface(uranus.txPool)
 
-	mux := &feed.TypeMux{}
+	dpos.Init(uranus.blockchain)
 	// miner
 	uranus.miner = miner.NewUranusMiner(mux, uranus.chainConfig, checkMinerConfig(uranus.config.MinerConfig, uranus.wallet), &MinerBakend{u: uranus}, dpos, uranus.chainDb)
 	uranus.engine = dpos
