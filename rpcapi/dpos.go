@@ -18,7 +18,6 @@ package rpcapi
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/UranusBlockStack/uranus/common/utils"
@@ -53,18 +52,67 @@ func (api *DposAPI) GetValidators(number *BlockHeight, reply *[]utils.Address) e
 	if err != nil {
 		return err
 	}
-	epochTrie, err := types.NewEpochTrie(header.DposContext.EpochHash, statedb.Database().TrieDB())
+	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), header.DposContext)
 	if err != nil {
 		return err
 	}
-	dposContext := types.DposContext{}
-	dposContext.SetEpoch(epochTrie)
-	validators, err := dposContext.GetValidators()
+
+	epochContext := &dpos.EpochContext{DposContext: dposContext, Statedb: statedb}
+	validators, err := epochContext.DposContext.GetValidators()
 	if err != nil {
 		return err
 	}
 
 	*reply = validators
+	return nil
+}
+
+type VoterInfoArgs struct {
+	BlockHeight *BlockHeight
+	Delegator   utils.Address
+}
+
+type VoterInfo struct {
+	LockedBalance  *utils.Big      `json:"lockedBalance"`
+	TimeStamp      *utils.Big      `json:"timestamp"`
+	CandidateAddrs []utils.Address `json:"candidates"`
+}
+
+// GetVoterInfo retrieves voter info at specified block
+func (api *DposAPI) GetVoterInfo(args *VoterInfoArgs, reply *VoterInfo) error {
+	var block *types.Block
+	if args.BlockHeight == nil || *args.BlockHeight == LatestBlockHeight {
+		block = api.b.CurrentBlock()
+	} else {
+		block, _ = api.b.BlockByHeight(context.Background(), *args.BlockHeight)
+	}
+	if block == nil {
+		return fmt.Errorf("not found block %v", *args.BlockHeight)
+	}
+
+	header := block.BlockHeader()
+
+	statedb, err := api.b.BlockChain().StateAt(block.StateRoot())
+	if err != nil {
+		return err
+	}
+
+	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), header.DposContext)
+	if err != nil {
+		return err
+	}
+
+	addrs, err := dposContext.GetCandidateAddrs(args.Delegator)
+	if err != nil {
+		return err
+	}
+
+	*reply = VoterInfo{
+		LockedBalance:  (*utils.Big)(statedb.GetLockedBalance(args.Delegator)),
+		TimeStamp:      (*utils.Big)(statedb.GetDelegateTimestamp(args.Delegator)),
+		CandidateAddrs: addrs,
+	}
+
 	return nil
 }
 
@@ -103,10 +151,6 @@ func (api *DposAPI) GetVoters(number *BlockHeight, reply *map[utils.Address]util
 	}
 
 	*reply = result
-	fmt.Println("===", result)
-	s, _ := json.Marshal(result)
-	fmt.Println(string(s))
-
 	return nil
 }
 
@@ -127,13 +171,13 @@ func (api *DposAPI) GetCandidates(number *BlockHeight, reply *[]utils.Address) e
 	if err != nil {
 		return err
 	}
-	candidateTrie, err := types.NewEpochTrie(header.DposContext.CandidateHash, statedb.Database().TrieDB())
+	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), header.DposContext)
+
 	if err != nil {
 		return err
 	}
-	dposContext := types.DposContext{}
-	dposContext.SetCandidate(candidateTrie)
-	candidates, err := dposContext.GetCandidates()
+	epochContext := &dpos.EpochContext{DposContext: dposContext, Statedb: statedb}
+	candidates, err := epochContext.DposContext.GetCandidates()
 	if err != nil {
 		return err
 	}
@@ -165,13 +209,12 @@ func (api *DposAPI) GetDelegators(args *CandidateArgs, reply *[]utils.Address) e
 		return err
 	}
 
-	delegatorTrie, err := types.NewEpochTrie(header.DposContext.DelegateHash, statedb.Database().TrieDB())
+	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), header.DposContext)
 	if err != nil {
 		return err
 	}
-	dposContext := types.DposContext{}
-	dposContext.SetDelegate(delegatorTrie)
-	delegators, err := dposContext.GetDelegators(args.Candidate)
+	epochContext := &dpos.EpochContext{DposContext: dposContext, Statedb: statedb}
+	delegators, err := epochContext.DposContext.GetDelegators(args.Candidate)
 	if err != nil {
 		return err
 	}

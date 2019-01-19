@@ -478,6 +478,20 @@ func (dc *DposContext) GetDelegators(candidate utils.Address) ([]utils.Address, 
 	return delegators, nil
 }
 
+func (dc *DposContext) GetCandidateAddrs(delegator utils.Address) ([]utils.Address, error) {
+	candidateAddrs := []utils.Address{}
+	candidateAddrsBytes, err := dc.voteTrie.TryGet(delegator.Bytes())
+	if err != nil {
+		if _, ok := err.(*mtp.MissingNodeError); !ok {
+			return nil, err
+		}
+	}
+	if err := rlp.DecodeBytes(candidateAddrsBytes, &candidateAddrs); err != nil {
+		return nil, err
+	}
+	return candidateAddrs, nil
+}
+
 func (dc *DposContext) GetValidators() ([]utils.Address, error) {
 	var validators []utils.Address
 	key := []byte("validator")

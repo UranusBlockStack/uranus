@@ -107,7 +107,7 @@ func init() {
 	// p2p
 	falgs.StringVar(&startConfig.NodeConfig.P2P.ListenAddr, "p2p_listenaddr", startConfig.NodeConfig.P2P.ListenAddr, "p2p listening port")
 	falgs.IntVar(&startConfig.NodeConfig.P2P.MaxPeers, "p2p_maxpeers", startConfig.NodeConfig.P2P.MaxPeers, "maximum number of network peers")
-	// falgs.StringArrayVar(&startConfig.NodeConfig.P2P.BootNodeStrs, "p2p_bootnodes", startConfig.NodeConfig.P2P.BootNodeStrs, "comma separated enode URLs for P2P discovery bootstrap")
+	falgs.StringArrayVar(&startConfig.NodeConfig.P2P.BootNodeStrs, "p2p_bootnodes", startConfig.NodeConfig.P2P.BootNodeStrs, "comma separated enode URLs for P2P discovery bootstrap")
 
 	// config file
 	falgs.StringVarP(&startConfig.CfgFile, "config", "c", "", "YAML configuration file")
