@@ -146,8 +146,7 @@ func NewProtocolManager(mux *feed.TypeMux, config *params.ChainConfig, txpool *t
 	})
 
 	validator := func(header *types.BlockHeader) error {
-		return nil
-		//return engine.VerifySeal(header)
+		return engine.VerifySeal(blockchain, header)
 	}
 
 	heighter := func() uint64 {

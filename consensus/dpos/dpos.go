@@ -86,6 +86,7 @@ func NewDpos(eventMux *feed.TypeMux, chainDb db.Database, db state.Database, sig
 	return d
 }
 func (dpos *Dpos) Init(chain consensus.IChainReader) {
+	dpos.confirmedBlockHeader, _ = dpos.loadConfirmedBlockHeader(chain)
 	go func() {
 		dpos.bftConfirmeds, _ = lru.New(int(chain.Config().MaxValidatorSize))
 		sub := dpos.eventMux.Subscribe(types.Confirmed{})
@@ -209,7 +210,7 @@ func (d *Dpos) Seal(chain consensus.IChainReader, block *types.Block, stop <-cha
 	if err != nil {
 		return nil, err
 	}
-	header.ExtraData = append(header.ExtraData[len(header.ExtraData)-extraSeal:], sighash...)
+	copy(header.ExtraData[len(header.ExtraData)-extraSeal:], sighash)
 	d.updateConfirmedBlockHeader(chain, block.DposCtx().IsDpos())
 	return block.WithSeal(header), nil
 }
@@ -231,9 +232,9 @@ func (d *Dpos) VerifySeal(chain consensus.IChainReader, header *types.BlockHeade
 		return consensus.ErrUnknownBlock
 	}
 
-	number := header.Height.Uint64()
+	number := header.Height.Uint64() - 1
 	parent := chain.GetBlockByHeight(number)
-	if bytes.Compare(parent.Hash().Bytes(), header.PreviousHash.Bytes()) != 0 {
+	if parent == nil || bytes.Compare(parent.Hash().Bytes(), header.PreviousHash.Bytes()) != 0 {
 		return consensus.ErrUnknownAncestor
 	}
 
@@ -281,9 +282,10 @@ func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader, dpos boo
 		if blk := chain.CurrentBlock(); blk != nil {
 			d.confirmedBlockHeader = blk.BlockHeader()
 			if err := d.storeConfirmedBlockHeader(chain.CurrentBlock()); err != nil {
+				log.Errorf("dpos set confirmed block header success", "currentHeader", d.confirmedBlockHeader.Height, err)
 				return err
 			}
-			log.Debugf("dpos set confirmed block header success", "currentHeader", d.confirmedBlockHeader.Height.String())
+			log.Debugf("dpos set confirmed block header success", "currentHeader", d.confirmedBlockHeader.Height)
 		}
 		return nil
 	}
@@ -309,9 +311,10 @@ func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader, dpos boo
 		if int64(len(validatorMap)) >= Option.consensusSize() {
 			d.confirmedBlockHeader = curHeader
 			if err := d.storeConfirmedBlockHeader(chain.CurrentBlock()); err != nil {
+				log.Errorf("dpos set confirmed block header success", "currentHeader", d.confirmedBlockHeader.Height, err)
 				return err
 			}
-			log.Debugf("dpos set confirmed block header success", "currentHeader", curHeader.Height.String())
+			log.Debugf("dpos set confirmed block header success", "currentHeader", curHeader.Height)
 			return nil
 		}
 		curHeader = chain.GetBlockByHash(curHeader.PreviousHash).BlockHeader()

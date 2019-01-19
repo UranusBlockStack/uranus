@@ -42,7 +42,7 @@ func New(ledger *ledger.Ledger, engine consensus.Engine) *Validator {
 func (v *Validator) ValidateHeader(chain consensus.IChainReader, header *types.BlockHeader, seal bool) error {
 	var parent *types.BlockHeader
 
-	if v.ledger.GetHeader(header.Hash()) == nil {
+	if v.ledger.GetHeader(header.Hash()) != nil {
 		return nil
 	}
 
@@ -51,8 +51,8 @@ func (v *Validator) ValidateHeader(chain consensus.IChainReader, header *types.B
 	}
 
 	// check extra data len
-	if uint64(len(header.ExtraData)) > params.MaxExtraDataSize {
-		return ErrExtraDataTooLong(uint64(len(header.ExtraData)), params.MaxExtraDataSize)
+	if uint64(len(header.ExtraData)) > params.MaxExtraDataSize+65 {
+		return ErrExtraDataTooLong(uint64(len(header.ExtraData)), params.MaxExtraDataSize+65)
 	}
 
 	// check timestamp
