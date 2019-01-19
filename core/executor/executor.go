@@ -90,7 +90,7 @@ func (e *Executor) ExecActions(statedb *state.StateDB, actions []*types.Action) 
 	for _, a := range actions {
 		lb := statedb.GetLockedBalance(a.Sender)
 		statedb.AddBalance(a.Sender, lb)
-		statedb.SetLockedBalance(a.Sender, utils.Big0)
+		statedb.UnLockBalance(a.Sender)
 	}
 }
 
@@ -117,7 +117,7 @@ func (e *Executor) ExecTransaction(author *utils.Address,
 			return nil, 0, err
 		}
 	} else {
-		_, gas, failed, err = e.applyDposMessage(dposContext, tx, statedb)
+		_, gas, failed, err = e.applyDposMessage(header.TimeStamp, dposContext, tx, statedb)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -140,7 +140,7 @@ func (e *Executor) ExecTransaction(author *utils.Address,
 	return receipt, gas, err
 }
 
-func (e *Executor) applyDposMessage(dposContext *types.DposContext, tx *types.Transaction, statedb *state.StateDB) ([]byte, uint64, bool, error) {
+func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposContext, tx *types.Transaction, statedb *state.StateDB) ([]byte, uint64, bool, error) {
 	gas, _ := txpool.IntrinsicGas(tx.Payload(), false)
 	from, _ := tx.Sender(types.Signer{})
 	switch tx.Type() {
@@ -153,7 +153,7 @@ func (e *Executor) applyDposMessage(dposContext *types.DposContext, tx *types.Tr
 			return nil, gas, true, err
 		}
 	case types.Delegate:
-		statedb.SetDelegateTimestamp(from, big.NewInt(time.Now().Unix()))
+		statedb.SetDelegateTimestamp(from, timestamp)
 		statedb.SubBalance(from, tx.Value())
 		statedb.SetLockedBalance(from, tx.Value())
 		if err := dposContext.Delegate(from, tx.Tos()); err != nil {

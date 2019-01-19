@@ -203,7 +203,6 @@ func (d *Dpos) Seal(chain consensus.IChainReader, block *types.Block, stop <-cha
 		case <-time.After(time.Duration(delay) * time.Second):
 		}
 	}
-	header.TimeStamp.SetInt64(time.Now().UnixNano())
 
 	// time's up, sign the block
 	sighash, err := d.signFn(header.Miner, sigHash(header).Bytes())
