@@ -69,8 +69,8 @@ var getDelegatorsCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		req := rpcapi.CandidateArgs{
-			Number:    cmdutils.GetBlockheight(args[0]),
-			Candidate: utils.HexToAddress(cmdutils.IsHexAddr(args[1])),
+			BlockHeight: cmdutils.GetBlockheight(args[0]),
+			Candidate:   utils.HexToAddress(cmdutils.IsHexAddr(args[1])),
 		}
 		result := []utils.Address{}
 		cmdutils.ClientCall("Dpos.GetDelegators", req, &result)

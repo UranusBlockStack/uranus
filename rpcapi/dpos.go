@@ -143,20 +143,20 @@ func (api *DposAPI) GetCandidates(number *BlockHeight, reply *[]utils.Address) e
 }
 
 type CandidateArgs struct {
-	Number    *BlockHeight
-	Candidate utils.Address
+	BlockHeight *BlockHeight
+	Candidate   utils.Address
 }
 
 // GetDelegators retrieves the list of the delegators of specified candidate at specified block
 func (api *DposAPI) GetDelegators(args *CandidateArgs, reply *[]utils.Address) error {
 	var block *types.Block
-	if args.Number == nil || *args.Number == LatestBlockHeight {
+	if args.BlockHeight == nil || *args.BlockHeight == LatestBlockHeight {
 		block = api.b.CurrentBlock()
 	} else {
-		block, _ = api.b.BlockByHeight(context.Background(), *args.Number)
+		block, _ = api.b.BlockByHeight(context.Background(), *args.BlockHeight)
 	}
 	if block == nil {
-		return fmt.Errorf("not found block %v", *args.Number)
+		return fmt.Errorf("not found block %v", *args.BlockHeight)
 	}
 	header := block.BlockHeader()
 
@@ -190,7 +190,7 @@ func (api *DposAPI) GetConfirmedBlockNumber(ignore string, reply *utils.Big) err
 	return nil
 }
 
-// GetConfirmedBlockNumber retrieves the latest irreversible block
+// GetBFTConfirmedBlockNumber retrieves  the bft latest irreversible block
 func (api *DposAPI) GetBFTConfirmedBlockNumber(ignore string, reply *utils.Big) error {
 	n, err := api.b.GetBFTConfirmedBlockNumber()
 	if err != nil {
