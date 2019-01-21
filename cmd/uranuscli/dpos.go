@@ -72,7 +72,7 @@ var getDelegatorsCmd = &cobra.Command{
 			BlockHeight: cmdutils.GetBlockheight(args[0]),
 			Candidate:   utils.HexToAddress(cmdutils.IsHexAddr(args[1])),
 		}
-		result := []utils.Address{}
+		result := []*rpcapi.VoterInfo{}
 		cmdutils.ClientCall("Dpos.GetDelegators", req, &result)
 		cmdutils.PrintJSONList(result)
 	},

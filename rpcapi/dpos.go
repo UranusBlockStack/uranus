@@ -204,7 +204,7 @@ type CandidateArgs struct {
 }
 
 // GetDelegators retrieves the list of the delegators of specified candidate at specified block
-func (api *DposAPI) GetDelegators(args *CandidateArgs, reply *[]utils.Address) error {
+func (api *DposAPI) GetDelegators(args *CandidateArgs, reply *[]*VoterInfo) error {
 	var block *types.Block
 	if args.BlockHeight == nil || *args.BlockHeight == LatestBlockHeight {
 		block = api.b.CurrentBlock()
@@ -231,7 +231,21 @@ func (api *DposAPI) GetDelegators(args *CandidateArgs, reply *[]utils.Address) e
 		return err
 	}
 
-	*reply = delegators
+	result := []*VoterInfo{}
+
+	for _, delegator := range delegators {
+		addrs, _ := dposContext.GetCandidateAddrs(delegator)
+		voterInfo := &VoterInfo{
+			VoterAddr:      delegator,
+			LockedBalance:  (*utils.Big)(statedb.GetLockedBalance(delegator)),
+			TimeStamp:      (*utils.Big)(statedb.GetDelegateTimestamp(delegator)),
+			CandidateAddrs: addrs,
+		}
+		result = append(result, voterInfo)
+	}
+
+	*reply = result
+
 	return nil
 }
 
