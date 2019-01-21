@@ -454,8 +454,8 @@ func (dc *DposContext) SetVote(vote *mtp.Trie)           { dc.voteTrie = vote }
 func (dc *DposContext) SetCandidate(candidate *mtp.Trie) { dc.candidateTrie = candidate }
 func (dc *DposContext) SetMintCnt(mintCnt *mtp.Trie)     { dc.mintCntTrie = mintCnt }
 
-func (dc *DposContext) GetCandidates() ([]utils.Address, error) {
-	candidates := []utils.Address{}
+func (dc *DposContext) GetCandidates() ([]*CandidateInfo, error) {
+	candidates := []*CandidateInfo{}
 	candidateIterator := mtp.NewIterator(dc.candidateTrie.NodeIterator(nil))
 	for candidateIterator.Next() {
 		candidateInfo := &CandidateInfo{}
@@ -463,7 +463,7 @@ func (dc *DposContext) GetCandidates() ([]utils.Address, error) {
 		if err != nil {
 			return nil, err
 		}
-		candidates = append(candidates, candidateInfo.Addr)
+		candidates = append(candidates, candidateInfo)
 	}
 	return candidates, nil
 }

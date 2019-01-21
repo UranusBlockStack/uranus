@@ -30,7 +30,7 @@ var getValidatorsCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		req := cmdutils.GetBlockheight(args[0])
-		result := []utils.Address{}
+		result := []*rpcapi.CandidateInfo{}
 		cmdutils.ClientCall("Dpos.GetValidators", req, &result)
 		cmdutils.PrintJSONList(result)
 	},
@@ -56,7 +56,7 @@ var getCandidatesCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		req := cmdutils.GetBlockheight(args[0])
-		result := []utils.Address{}
+		result := []*rpcapi.CandidateInfo{}
 		cmdutils.ClientCall("Dpos.GetCandidates", req, &result)
 		cmdutils.PrintJSONList(result)
 	},

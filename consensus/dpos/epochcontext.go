@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"math/rand"
 	"sort"
+	"time"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/log"
@@ -190,10 +191,12 @@ func (ec *EpochContext) kickoutValidator(epoch int64) error {
 		if cnt < epochDuration/Option.BlockInterval/Option.MaxValidatorSize/2 {
 			if candidateInfo.Weight > 0 {
 				candidateInfo.Weight -= 10
+				candidateInfo.DegradeTime = uint64(time.Now().Unix())
 			}
 		} else {
 			if candidateInfo.Weight < 100 {
 				candidateInfo.Weight += 10
+				candidateInfo.DegradeTime = uint64(time.Now().Unix())
 			}
 		}
 		val, err := rlp.EncodeToBytes(candidateInfo)

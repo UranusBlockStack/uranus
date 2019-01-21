@@ -19,6 +19,7 @@ package rpcapi
 import (
 	"context"
 	"fmt"
+	"math/big"
 
 	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/rlp"
@@ -38,7 +39,7 @@ func NewDposAPI(b Backend) *DposAPI {
 }
 
 // GetValidators retrieves the list of the validators at specified block
-func (api *DposAPI) GetValidators(number *BlockHeight, reply *[]utils.Address) error {
+func (api *DposAPI) GetValidators(number *BlockHeight, reply *[]*CandidateInfo) error {
 	var block *types.Block
 	if number == nil || *number == LatestBlockHeight {
 		block = api.b.CurrentBlock()
@@ -65,7 +66,15 @@ func (api *DposAPI) GetValidators(number *BlockHeight, reply *[]utils.Address) e
 		return err
 	}
 
-	*reply = validators
+	result := []*CandidateInfo{}
+	for _, validator := range validators {
+		candidateInfo := &CandidateInfo{
+			CandidateAddr: validator,
+		}
+		result = append(result, candidateInfo)
+	}
+
+	*reply = result
 	return nil
 }
 
@@ -79,6 +88,12 @@ type VoterInfo struct {
 	LockedBalance  *utils.Big      `json:"lockedBalance"`
 	TimeStamp      *utils.Big      `json:"timestamp"`
 	CandidateAddrs []utils.Address `json:"candidates"`
+}
+
+type CandidateInfo struct {
+	CandidateAddr utils.Address `json:"candidate"`
+	Weight        uint64        `json:"weight"`
+	Total         *big.Int      `json:"total"`
 }
 
 // GetVoter retrieves voter info at specified block
@@ -167,7 +182,7 @@ func (api *DposAPI) GetVoters(number *BlockHeight, reply *[]*VoterInfo) error {
 }
 
 // GetCandidates retrieves the list of the candidate at specified block
-func (api *DposAPI) GetCandidates(number *BlockHeight, reply *[]utils.Address) error {
+func (api *DposAPI) GetCandidates(number *BlockHeight, reply *[]*CandidateInfo) error {
 	var block *types.Block
 	if number == nil || *number == LatestBlockHeight {
 		block = api.b.CurrentBlock()
@@ -194,7 +209,16 @@ func (api *DposAPI) GetCandidates(number *BlockHeight, reply *[]utils.Address) e
 		return err
 	}
 
-	*reply = candidates
+	result := []*CandidateInfo{}
+	for _, validator := range candidates {
+		candidateInfo := &CandidateInfo{
+			CandidateAddr: validator.Addr,
+			Weight:        validator.Weight,
+		}
+		result = append(result, candidateInfo)
+	}
+
+	*reply = result
 	return nil
 }
 
