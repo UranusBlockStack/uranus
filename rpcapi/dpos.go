@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/UranusBlockStack/uranus/common/mtp"
+	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/consensus/dpos"
 	"github.com/UranusBlockStack/uranus/core/types"
@@ -73,13 +75,14 @@ type VoterInfoArgs struct {
 }
 
 type VoterInfo struct {
+	VoterAddr      utils.Address   `json:"voter"`
 	LockedBalance  *utils.Big      `json:"lockedBalance"`
 	TimeStamp      *utils.Big      `json:"timestamp"`
 	CandidateAddrs []utils.Address `json:"candidates"`
 }
 
-// GetVoterInfo retrieves voter info at specified block
-func (api *DposAPI) GetVoterInfo(args *VoterInfoArgs, reply *VoterInfo) error {
+// GetVoter retrieves voter info at specified block
+func (api *DposAPI) GetVoter(args *VoterInfoArgs, reply *VoterInfo) error {
 	var block *types.Block
 	if args.BlockHeight == nil || *args.BlockHeight == LatestBlockHeight {
 		block = api.b.CurrentBlock()
@@ -108,6 +111,7 @@ func (api *DposAPI) GetVoterInfo(args *VoterInfoArgs, reply *VoterInfo) error {
 	}
 
 	*reply = VoterInfo{
+		VoterAddr:      args.Delegator,
 		LockedBalance:  (*utils.Big)(statedb.GetLockedBalance(args.Delegator)),
 		TimeStamp:      (*utils.Big)(statedb.GetDelegateTimestamp(args.Delegator)),
 		CandidateAddrs: addrs,
@@ -117,7 +121,7 @@ func (api *DposAPI) GetVoterInfo(args *VoterInfoArgs, reply *VoterInfo) error {
 }
 
 // GetVoters retrieves the list of the voters at specified block
-func (api *DposAPI) GetVoters(number *BlockHeight, reply *map[utils.Address]utils.Big) error {
+func (api *DposAPI) GetVoters(number *BlockHeight, reply *[]*VoterInfo) error {
 	var block *types.Block
 	if number == nil || *number == LatestBlockHeight {
 		block = api.b.CurrentBlock()
@@ -140,14 +144,22 @@ func (api *DposAPI) GetVoters(number *BlockHeight, reply *map[utils.Address]util
 	}
 	epochContext := &dpos.EpochContext{DposContext: dposContext, Statedb: statedb}
 
-	voters, _, err := epochContext.CountVotes()
-	if err != nil {
-		return err
-	}
-
-	result := make(map[utils.Address]utils.Big)
-	for voter, score := range voters {
-		result[voter] = *(*utils.Big)(score)
+	result := []*VoterInfo{}
+	iter := mtp.NewIterator(epochContext.DposContext.VoteTrie().NodeIterator(nil))
+	for iter.Next() {
+		voter := utils.BytesToAddress(iter.Key)
+		candidateAddrs := []utils.Address{}
+		candidateAddrsBytes := iter.Value
+		if err := rlp.DecodeBytes(candidateAddrsBytes, &candidateAddrs); err != nil {
+			return err
+		}
+		voterInfo := &VoterInfo{
+			VoterAddr:      voter,
+			LockedBalance:  (*utils.Big)(statedb.GetLockedBalance(voter)),
+			TimeStamp:      (*utils.Big)(statedb.GetDelegateTimestamp(voter)),
+			CandidateAddrs: candidateAddrs,
+		}
+		result = append(result, voterInfo)
 	}
 
 	*reply = result

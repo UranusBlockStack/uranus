@@ -43,9 +43,9 @@ var getVotersCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		req := cmdutils.GetBlockheight(args[0])
-		result := make(map[utils.Address]utils.Big)
+		result := []*rpcapi.VoterInfo{}
 		cmdutils.ClientCall("Dpos.GetVoters", req, &result)
-		cmdutils.PrintJSON(result)
+		cmdutils.PrintJSONList(result)
 	},
 }
 
@@ -79,7 +79,7 @@ var getDelegatorsCmd = &cobra.Command{
 }
 
 var getVoterInfoCmd = &cobra.Command{
-	Use:   "getVoterInfo <height> <delegator>",
+	Use:   "getVoter <height> <delegator>",
 	Short: "Returns voter info by delegator and height.",
 	Long:  `Returns voter info by delegator and height.`,
 	Args:  cobra.ExactArgs(2),
@@ -89,7 +89,7 @@ var getVoterInfoCmd = &cobra.Command{
 			Delegator:   utils.HexToAddress(cmdutils.IsHexAddr(args[1])),
 		}
 		result := rpcapi.VoterInfo{}
-		cmdutils.ClientCall("Dpos.GetVoterInfo", req, &result)
+		cmdutils.ClientCall("Dpos.GetVoter", req, &result)
 		cmdutils.PrintJSON(result)
 	},
 }
