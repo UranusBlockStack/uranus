@@ -212,7 +212,7 @@ func (bc *BlockChain) insertChain(block *types.Block) (interface{}, []*types.Log
 		if bc.CurrentBlock().Height().Uint64() >= block.Height().Uint64() {
 			log.Warnf("Block and state both already known, block heigt: %v", block.Height())
 		}
-		return nil, nil, blockValidator.ErrKnownBlock
+		return nil, nil, nil
 	case blockValidator.ErrFutureBlock:
 		return nil, nil, bc.PutFutureBlock(block)
 	case blockValidator.ErrUnknownAncestor:
@@ -314,16 +314,16 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts types.Rec
 	// write total difficulty
 	bc.WriteTd(block.Hash(), externTd)
 
-	root, err := state.Commit(true)
-	if err != nil {
-		return false, err
-	}
 	triedb := bc.stateCache.TrieDB()
 
 	if _, err := block.DposContext.CommitTo(triedb); err != nil {
 		return false, err
 	}
 
+	root, err := state.Commit(true)
+	if err != nil {
+		return false, err
+	}
 	if err := triedb.Commit(root, false); err != nil {
 		return false, err
 	}

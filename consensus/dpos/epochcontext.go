@@ -50,9 +50,9 @@ func (ec *EpochContext) lookupValidator(now int64) (validator utils.Address, err
 }
 
 func (ec *EpochContext) tryElect(genesis, parent *types.BlockHeader) error {
-	genesisEpoch := genesis.TimeStamp.Int64() / Option.epochInterval()
-	prevEpoch := parent.TimeStamp.Int64() / Option.epochInterval()
-	currentEpoch := ec.TimeStamp / Option.epochInterval()
+	genesisEpoch := (genesis.TimeStamp.Int64()-timeOfFirstBlock)/Option.epochInterval() + 1
+	prevEpoch := (parent.TimeStamp.Int64()-timeOfFirstBlock)/Option.epochInterval() + 1
+	currentEpoch := (ec.TimeStamp-timeOfFirstBlock)/Option.epochInterval() + 1
 
 	prevEpochIsGenesis := prevEpoch == genesisEpoch
 	if prevEpochIsGenesis && prevEpoch < currentEpoch {

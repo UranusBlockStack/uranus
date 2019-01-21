@@ -121,7 +121,6 @@ func (g *Genesis) ToBlock(chain *Chain) (*types.Block, state.Database) {
 			statedb.SetState(addr, key, value)
 		}
 	}
-	root := statedb.IntermediateRoot(false)
 	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), &types.DposContextProto{})
 	if err != nil {
 		panic(err)
@@ -136,6 +135,14 @@ func (g *Genesis) ToBlock(chain *Chain) (*types.Block, state.Database) {
 	val, _ := rlp.EncodeToBytes(candidateInfo)
 	dposContext.CandidateTrie().TryUpdate(validator.Bytes(), val)
 
+	triedb := statedb.Database().TrieDB()
+	if _, err := dposContext.CommitTo(triedb); err != nil {
+		panic(err)
+	}
+	root, err := statedb.Commit(false)
+	if err != nil {
+		panic(err)
+	}
 	dposContextProto := dposContext.ToProto()
 	head := &types.BlockHeader{
 		Height:       new(big.Int).SetUint64(g.Height),
@@ -150,13 +157,6 @@ func (g *Genesis) ToBlock(chain *Chain) (*types.Block, state.Database) {
 		StateRoot:    root,
 		DposContext:  dposContextProto,
 	}
-
-	// add dposcontext
-	if _, err := dposContext.CommitTo(statedb.Database().TrieDB()); err != nil {
-		panic(err)
-	}
-	statedb.Commit(false)
-	statedb.Database().TrieDB().Commit(root, true)
 
 	return types.NewBlock(head, nil, nil, nil), statedb.Database()
 }

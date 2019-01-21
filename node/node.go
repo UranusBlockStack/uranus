@@ -161,6 +161,9 @@ func (n *Node) Start() error {
 			p2pServer.PrivateKey = nodeKey
 		}
 	}
+	if p2pServer.NodeDatabase == "" {
+		p2pServer.NodeDatabase = n.config.resolvePath("nodes")
+	}
 	for _, service := range services {
 		p2pServer.Protocols = append(p2pServer.Protocols, service.Protocols()...)
 	}

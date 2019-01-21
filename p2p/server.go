@@ -50,6 +50,7 @@ type Config struct {
 	BootNodes      []*discover.Node
 	ListenAddr     string `mapstructure:"p2p-listenaddr"`
 	Protocols      []*Protocol
+	NodeDatabase   string `mapstructure:"p2p-nodes"`
 }
 
 type peerOpFunc func(map[discover.NodeID]*Peer)
@@ -124,6 +125,7 @@ func (srv *Server) Start() (err error) {
 		AnnounceAddr: realaddr,
 		Bootnodes:    srv.BootNodes,
 		Unhandled:    make(chan discover.ReadPacket, 100),
+		NodeDBPath:   srv.Config.NodeDatabase,
 	}
 	ntab, err := discover.ListenUDP(conn, cfg)
 	if err != nil {

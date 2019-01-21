@@ -256,16 +256,15 @@ func (m *UMiner) GenerateBlocks(work *Work, quit <-chan struct{}) {
 	}
 }
 
-func (m *UMiner) prepareNewBlock() error {
-	timestamp := time.Now().UnixNano()
+func (m *UMiner) prepareNewBlock(timestamp int64) error {
 	parent, stateDB, err := m.uranus.GetCurrentInfo()
 	if err != nil {
 		return fmt.Errorf("failed to get current info, %s", err)
 	}
 
-	if parent.BlockHeader().TimeStamp.Cmp(new(big.Int).SetInt64(timestamp)) >= 0 {
-		timestamp = parent.BlockHeader().TimeStamp.Int64() + 1
-	}
+	// if parent.BlockHeader().TimeStamp.Cmp(new(big.Int).SetInt64(timestamp)) >= 0 {
+	// 	timestamp = parent.BlockHeader().TimeStamp.Int64() + 1
+	// }
 	// this will ensure we're not going off too far in the future
 	// if now := time.Now().UnixNano(); timestamp > now+1 {
 	// 	wait := time.Duration(timestamp-now) * time.Second
@@ -441,11 +440,11 @@ func (m *UMiner) mintLoop() {
 				}
 				continue
 			}
-			if err := m.prepareNewBlock(); err != nil {
+			if err := m.prepareNewBlock(timestamp); err != nil {
 				log.Warnf("prepareNewBlock err: %v", err)
 			}
 		case <-sub.Chan():
-			if err := m.prepareNewBlock(); err != nil {
+			if err := m.prepareNewBlock(time.Now().UnixNano()); err != nil {
 				log.Warnf("prepareNewBlock err: %v", err)
 			}
 		case <-m.stopCh:

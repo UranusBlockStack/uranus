@@ -232,8 +232,7 @@ func (d *Dpos) VerifySeal(chain consensus.IChainReader, header *types.BlockHeade
 		return consensus.ErrUnknownBlock
 	}
 
-	number := header.Height.Uint64() - 1
-	parent := chain.GetBlockByHeight(number)
+	parent := chain.GetBlockByHash(header.PreviousHash)
 	if parent == nil || bytes.Compare(parent.Hash().Bytes(), header.PreviousHash.Bytes()) != 0 {
 		return consensus.ErrUnknownAncestor
 	}

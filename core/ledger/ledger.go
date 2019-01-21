@@ -17,6 +17,7 @@
 package ledger
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"time"
@@ -161,7 +162,12 @@ func (l *Ledger) HasState(hash utils.Hash) bool {
 
 // HasBlock checks if a block is fully present in the database or not.
 func (l *Ledger) HasBlock(hash utils.Hash) bool {
-	return l.GetBlock(hash) != nil
+	if blk := l.GetBlock(hash); blk != nil {
+		if tblk := l.GetBlockByHeight(blk.Height().Uint64()); tblk != nil {
+			return bytes.Compare(tblk.Hash().Bytes(), blk.Hash().Bytes()) == 0
+		}
+	}
+	return false
 }
 
 // GetHeader retrieves a header from the database by hash,
