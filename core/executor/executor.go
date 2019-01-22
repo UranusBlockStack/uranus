@@ -117,7 +117,7 @@ func (e *Executor) ExecTransaction(author *utils.Address,
 			return nil, 0, err
 		}
 	} else {
-		_, gas, failed, err = e.applyDposMessage(header.TimeStamp, dposContext, tx, statedb)
+		_, gas, failed, err = e.applyDposMessage(header.TimeStamp, dposContext, tx, statedb, gp)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -140,8 +140,11 @@ func (e *Executor) ExecTransaction(author *utils.Address,
 	return receipt, gas, err
 }
 
-func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposContext, tx *types.Transaction, statedb *state.StateDB) ([]byte, uint64, bool, error) {
+func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposContext, tx *types.Transaction, statedb *state.StateDB, gp *utils.GasPool) ([]byte, uint64, bool, error) {
 	gas, _ := txpool.IntrinsicGas(tx.Payload(), false)
+	if err := gp.SubGas(gas); err != nil {
+		return nil, gas, true, err
+	}
 	from, _ := tx.Sender(types.Signer{})
 	switch tx.Type() {
 	case types.LoginCandidate:
@@ -160,10 +163,15 @@ func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposC
 			return nil, gas, true, err
 		}
 	case types.UnDelegate:
-		statedb.ResetDelegateTimestamp(from)
-		// todo validate tos
-		if err := dposContext.UnDelegate(from); err != nil {
-			return nil, gas, true, err
+		if new(big.Int).Sub(statedb.GetBalance(from), tx.Value()).Sign() > 0 {
+			statedb.SetDelegateTimestamp(from, timestamp)
+			statedb.SubBalance(from, tx.Value())
+			statedb.SetLockedBalance(from, tx.Value())
+			if err := dposContext.Delegate(from, tx.Tos()); err != nil {
+				return nil, gas, true, err
+			}
+		} else {
+			return nil, gas, true, errInsufficientBalanceForGas
 		}
 		e.addAction(from, tx)
 	case types.Redeem:

@@ -28,7 +28,7 @@ var Option = &option{
 	BlockInterval:    int64(500 * time.Millisecond), // 500 ms
 	BlockRepeat:      12,
 	MaxValidatorSize: 3,
-	MinStartQuantity: big.NewInt(1000),
+	MinStartQuantity: new(big.Int).Mul(big.NewInt(1000000), big.NewInt(1e18)),
 }
 
 func (opt *option) consensusSize() int64 {
@@ -425,9 +425,6 @@ func (d *Dpos) CheckValidator(lastBlock *types.Block, coinbase utils.Address, no
 }
 
 func (d *Dpos) Finalize(chain consensus.IChainReader, header *types.BlockHeader, state *state.StateDB, txs []*types.Transaction, actions []*types.Action, receipts []*types.Receipt, dposContext *types.DposContext) (*types.Block, error) {
-	// Accumulate block rewards and commit the final state root
-	state.AddBalance(header.Miner, params.BlockReward)
-	header.StateRoot = state.IntermediateRoot(true)
 
 	epochContext := &EpochContext{
 		Statedb:     state,
@@ -449,7 +446,13 @@ func (d *Dpos) Finalize(chain consensus.IChainReader, header *types.BlockHeader,
 	if err != nil {
 		return nil, fmt.Errorf("got error when elect next epoch, err: %v", err)
 	}
+	if _, err := dposContext.CommitTo(state.Database().TrieDB()); err != nil {
+		return nil, err
+	}
 	header.DposContext = dposContext.ToProto()
+	// Accumulate block rewards and commit the final state root
+	state.AddBalance(header.Miner, params.BlockReward)
+	header.StateRoot = state.IntermediateRoot(true)
 	return types.NewBlock(header, txs, actions, receipts), nil
 }
 
