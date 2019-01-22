@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sort"
 
 	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/rlp"
@@ -39,7 +40,7 @@ func NewDposAPI(b Backend) *DposAPI {
 }
 
 // GetValidators retrieves the list of the validators at specified block
-func (api *DposAPI) GetValidators(number *BlockHeight, reply *[]*CandidateInfo) error {
+func (api *DposAPI) GetValidators(number *BlockHeight, reply *[]utils.Address) error {
 	var block *types.Block
 	if number == nil || *number == LatestBlockHeight {
 		block = api.b.CurrentBlock()
@@ -66,15 +67,7 @@ func (api *DposAPI) GetValidators(number *BlockHeight, reply *[]*CandidateInfo) 
 		return err
 	}
 
-	result := []*CandidateInfo{}
-	for _, validator := range validators {
-		candidateInfo := &CandidateInfo{
-			CandidateAddr: validator,
-		}
-		result = append(result, candidateInfo)
-	}
-
-	*reply = result
+	*reply = validators
 	return nil
 }
 
@@ -94,6 +87,21 @@ type CandidateInfo struct {
 	CandidateAddr utils.Address `json:"candidate"`
 	Weight        uint64        `json:"weight"`
 	Total         *big.Int      `json:"total"`
+	Validate      *big.Int      `json:"-"`
+}
+
+type CandidateInfos []*CandidateInfo
+
+func (p CandidateInfos) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+func (p CandidateInfos) Len() int      { return len(p) }
+func (p CandidateInfos) Less(i, j int) bool {
+	if p[i].Validate.Cmp(p[j].Validate) < 0 {
+		return false
+	} else if p[i].Validate.Cmp(p[j].Validate) > 0 {
+		return true
+	} else {
+		return p[i].CandidateAddr.String() < p[j].CandidateAddr.String()
+	}
 }
 
 // GetVoter retrieves voter info at specified block
@@ -209,15 +217,19 @@ func (api *DposAPI) GetCandidates(number *BlockHeight, reply *[]*CandidateInfo) 
 		return err
 	}
 
-	result := []*CandidateInfo{}
+	votes, _, _ := epochContext.CountVotes()
+	result := CandidateInfos{}
+
 	for _, validator := range candidates {
 		candidateInfo := &CandidateInfo{
 			CandidateAddr: validator.Addr,
 			Weight:        validator.Weight,
+			Validate:      votes[validator.Addr],
 		}
+		candidateInfo.Total = new(big.Int).Div(candidateInfo.Validate, big.NewInt(int64(validator.Weight)))
 		result = append(result, candidateInfo)
 	}
-
+	sort.Sort(result)
 	*reply = result
 	return nil
 }
