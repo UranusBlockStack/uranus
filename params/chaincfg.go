@@ -26,6 +26,7 @@ type ChainConfig struct {
 	ChainID          *big.Int `json:"chainId"`
 	BlockInterval    int64    `json:"blockInterval"`
 	BlockRepeat      int64    `json:"blockRepeat"`
+	DelayBlock       int64    `json:"delayblock"`
 	MaxValidatorSize int64    `json:"epchoValidators"`
 	GenesisCandidate string   `json:"candiate"`
 	MinStartQuantity *big.Int `json:"startQuantity"`

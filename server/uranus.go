@@ -94,6 +94,7 @@ func New(ctx *node.Context, config *UranusConfig) (*Uranus, error) {
 	dpos.Option.BlockRepeat = chainCfg.BlockRepeat
 	dpos.Option.MaxValidatorSize = chainCfg.MaxValidatorSize
 	dpos.Option.MinStartQuantity = chainCfg.MinStartQuantity
+	dpos.Option.DelayBlock = chainCfg.DelayBlock
 	dpos := dpos.NewDpos(mux, chainDb, statedb, uranus.wallet.SignHash)
 
 	// blockchain

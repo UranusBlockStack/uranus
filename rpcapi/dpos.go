@@ -43,10 +43,15 @@ func NewDposAPI(b Backend) *DposAPI {
 func (api *DposAPI) GetValidators(number *BlockHeight, reply *[]utils.Address) error {
 	var block *types.Block
 	if number == nil || *number == LatestBlockHeight {
-		block = api.b.CurrentBlock()
-	} else {
-		block, _ = api.b.BlockByHeight(context.Background(), *number)
+		blckNum := api.b.CurrentBlock().Height().Int64()
+		*number = BlockHeight(blckNum)
 	}
+	if number.Int64() > dpos.Option.DelayBlock {
+		*number = BlockHeight(number.Int64() - dpos.Option.DelayBlock)
+	} else {
+		*number = BlockHeight(0)
+	}
+	block, _ = api.b.BlockByHeight(context.Background(), *number)
 	if block == nil {
 		return fmt.Errorf("not found block %v", *number)
 	}

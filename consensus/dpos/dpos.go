@@ -29,6 +29,7 @@ var Option = &option{
 	BlockRepeat:      12,
 	MaxValidatorSize: 3,
 	MinStartQuantity: new(big.Int).Mul(big.NewInt(1000000), big.NewInt(1e18)),
+	DelayBlock:       12 * 3 * 2,
 }
 
 func (opt *option) consensusSize() int64 {
@@ -44,6 +45,7 @@ type option struct {
 	BlockRepeat      int64
 	MaxValidatorSize int64
 	MinStartQuantity *big.Int
+	DelayBlock       int64
 }
 
 const (
@@ -246,7 +248,14 @@ func (d *Dpos) VerifySeal(chain consensus.IChainReader, header *types.BlockHeade
 		return ErrMismatchSignerAndValidator
 	}
 
-	statedb, err := state.New(chain.CurrentBlock().StateRoot(), d.db)
+	height := uint64(0)
+	if parent.Height().Uint64() > uint64(Option.DelayBlock) {
+		height = parent.Height().Uint64() - uint64(Option.DelayBlock)
+	}
+	blk := chain.GetBlockByHeight(height)
+
+	statedb, err := state.New(blk.StateRoot(), d.db)
+
 	if err != nil {
 		return err
 	}
@@ -391,7 +400,7 @@ func (dpos *Dpos) GetBFTConfirmedBlockNumber() (*big.Int, error) {
 	return big.NewInt(int64(irreversibles[(len(irreversibles)-1)/3])), nil
 }
 
-func (d *Dpos) CheckValidator(lastBlock *types.Block, coinbase utils.Address, now int64) error {
+func (d *Dpos) CheckValidator(chain consensus.IChainReader, lastBlock *types.Block, coinbase utils.Address, now int64) error {
 	prevSlot := prevSlot(now)
 	nextSlot := nextSlot(now)
 	if lastBlock.Time().Int64() >= nextSlot {
@@ -404,7 +413,13 @@ func (d *Dpos) CheckValidator(lastBlock *types.Block, coinbase utils.Address, no
 		return ErrInvalidMintBlockTime
 	}
 
-	statedb, err := state.New(lastBlock.StateRoot(), d.db)
+	height := uint64(0)
+	if lastBlock.Height().Uint64() > uint64(Option.DelayBlock) {
+		height = lastBlock.Height().Uint64() - uint64(Option.DelayBlock)
+	}
+	blk := chain.GetBlockByHeight(height)
+
+	statedb, err := state.New(blk.StateRoot(), d.db)
 	if err != nil {
 		return err
 	}

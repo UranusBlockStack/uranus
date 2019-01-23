@@ -428,7 +428,7 @@ func (m *UMiner) mintLoop() {
 		case now := <-ticker.C:
 			timestamp := now.UnixNano()
 			timestamp = timestamp - timestamp%dpos.Option.BlockInterval
-			if err := m.engine.(*dpos.Dpos).CheckValidator(m.uranus.CurrentBlock(), m.coinbase, timestamp); err != nil {
+			if err := m.engine.(*dpos.Dpos).CheckValidator(m.uranus, m.uranus.CurrentBlock(), m.coinbase, timestamp); err != nil {
 				switch err {
 				case dpos.ErrWaitForPrevBlock,
 					dpos.ErrMintFutureBlock,
