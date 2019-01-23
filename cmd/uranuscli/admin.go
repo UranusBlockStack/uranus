@@ -20,6 +20,7 @@ import (
 	"github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/UranusBlockStack/uranus/p2p"
 	"github.com/spf13/cobra"
+	jww "github.com/spf13/jwalterweatherman"
 )
 
 var listPeersCmd = &cobra.Command{
@@ -30,7 +31,13 @@ var listPeersCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		result := []*p2p.PeerInfo{}
 		utils.ClientCall("Admin.Peers", nil, &result)
-		utils.PrintJSONList(result)
+		if utils.OneLine {
+			for i, item := range result {
+				jww.FEEDBACK.Print(i, ":", item.Name)
+			}
+		} else {
+			utils.PrintJSONList(result)
+		}
 	},
 }
 
@@ -65,6 +72,10 @@ var nodeInfoCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		result := &p2p.NodeInfo{}
 		utils.ClientCall("Admin.NodeInfo", nil, &result)
-		utils.PrintJSON(result)
+		if utils.OneLine {
+			jww.FEEDBACK.Print(result.Enode)
+		} else {
+			utils.PrintJSON(result)
+		}
 	},
 }

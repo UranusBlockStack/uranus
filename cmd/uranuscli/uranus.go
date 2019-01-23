@@ -18,6 +18,8 @@ package main
 
 import (
 	"encoding/json"
+	"math/big"
+	"strconv"
 
 	cmdutils "github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/UranusBlockStack/uranus/common/utils"
@@ -56,7 +58,14 @@ var getBalanceCmd = &cobra.Command{
 		}
 
 		cmdutils.ClientCall("Uranus.GetBalance", req, &result)
-		cmdutils.PrintJSON(result)
+		if cmdutils.OneLine {
+			x := big.NewInt(0).Div(result.ToInt(), big.NewInt(1e14))
+			y := float64(x.Int64())
+			y /= 1e4
+			jww.FEEDBACK.Print(result.String(), " URAC:", strconv.FormatFloat(y, 'f', -1, 64))
+		} else {
+			cmdutils.PrintJSON(result)
+		}
 	},
 }
 
@@ -78,7 +87,11 @@ var getNonceCmd = &cobra.Command{
 		}
 
 		cmdutils.ClientCall("Uranus.GetNonce", req, &result)
-		cmdutils.PrintJSON(result)
+		if cmdutils.OneLine {
+			jww.FEEDBACK.Print(result.String(), " Nonce:", strconv.FormatUint(uint64(*result), 10))
+		} else {
+			cmdutils.PrintJSON(result)
+		}
 	},
 }
 var getCodeCmd = &cobra.Command{

@@ -22,6 +22,7 @@ import (
 	"github.com/UranusBlockStack/uranus/rpcapi"
 	"github.com/UranusBlockStack/uranus/wallet"
 	"github.com/spf13/cobra"
+	jww "github.com/spf13/jwalterweatherman"
 )
 
 var createAccountCmd = &cobra.Command{
@@ -74,7 +75,13 @@ var listAccountsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		result := wallet.Accounts{}
 		cmdutils.ClientCall("Wallet.Accounts", nil, &result)
-		cmdutils.PrintJSONList(result)
+		if cmdutils.OneLine {
+			for i, a := range result {
+				jww.FEEDBACK.Print(i, ":", a.Address.String())
+			}
+		} else {
+			cmdutils.PrintJSONList(result)
+		}
 	},
 }
 

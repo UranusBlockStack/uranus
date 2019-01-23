@@ -39,6 +39,7 @@ var (
 	CoreURL        string
 	DefaultCoreURL = utils.EnvString("URANUS_URL", "http://localhost:8000")
 	urlPrefix      = "http://"
+	OneLine        bool // Streamline pattern, Output less and better content
 )
 
 // MustRPCClient Wraper rpc's client
@@ -75,7 +76,6 @@ func PrintJSON(data interface{}) {
 }
 
 func PrintJSONList(data interface{}) {
-
 	value := reflect.ValueOf(data)
 
 	if value.Kind() != reflect.Slice {
@@ -84,13 +84,23 @@ func PrintJSONList(data interface{}) {
 	}
 
 	for idx := 0; idx < value.Len(); idx++ {
-		jww.FEEDBACK.Println(idx, ":")
-		rawData, err := json.MarshalIndent(value.Index(idx).Interface(), "", "  ")
-		if err != nil {
-			jww.ERROR.Println(err)
-			os.Exit(1)
+		if OneLine {
+			s := fmt.Sprint(idx, ":")
+			rawData, err := json.MarshalIndent(value.Index(idx).Interface(), "", "  ")
+			if err != nil {
+				jww.ERROR.Println(err)
+				os.Exit(1)
+			}
+			jww.FEEDBACK.Println(s, string(rawData))
+		} else {
+			jww.FEEDBACK.Println(idx, ":")
+			rawData, err := json.MarshalIndent(value.Index(idx).Interface(), "", "  ")
+			if err != nil {
+				jww.ERROR.Println(err)
+				os.Exit(1)
+			}
+			jww.FEEDBACK.Println(string(rawData))
 		}
-		jww.FEEDBACK.Println(string(rawData))
 	}
 }
 

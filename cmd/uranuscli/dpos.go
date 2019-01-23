@@ -17,10 +17,16 @@
 package main
 
 import (
+	"fmt"
+	"math/big"
+	"strconv"
+	"time"
+
 	cmdutils "github.com/UranusBlockStack/uranus/cmd/utils"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/rpcapi"
 	"github.com/spf13/cobra"
+	jww "github.com/spf13/jwalterweatherman"
 )
 
 var getValidatorsCmd = &cobra.Command{
@@ -45,7 +51,20 @@ var getVotersCmd = &cobra.Command{
 		req := cmdutils.GetBlockheight(args[0])
 		result := []*rpcapi.VoterInfo{}
 		cmdutils.ClientCall("Dpos.GetVoters", req, &result)
-		cmdutils.PrintJSONList(result)
+		if cmdutils.OneLine {
+			for i := 0; i < len(result); i++ {
+				x := big.NewInt(0).Div(result[i].LockedBalance.ToInt(), big.NewInt(1e14))
+				y := float64(x.Int64())
+				y /= 1e4
+				t := time.Unix(result[i].TimeStamp.ToInt().Int64()/int64(time.Second), result[i].TimeStamp.ToInt().Int64()%int64(time.Second))
+				s := fmt.Sprint("voter:", result[i].VoterAddr.String(),
+					" locked:", strconv.FormatFloat(y, 'f', -1, 64),
+					" time:", t)
+				jww.FEEDBACK.Print(s)
+			}
+		} else {
+			cmdutils.PrintJSONList(result)
+		}
 	},
 }
 
@@ -58,7 +77,19 @@ var getCandidatesCmd = &cobra.Command{
 		req := cmdutils.GetBlockheight(args[0])
 		result := []*rpcapi.CandidateInfo{}
 		cmdutils.ClientCall("Dpos.GetCandidates", req, &result)
-		cmdutils.PrintJSONList(result)
+		if cmdutils.OneLine {
+			for i := 0; i < len(result); i++ {
+				x := big.NewInt(0).Div(result[i].Total, big.NewInt(1e14))
+				y := float64(x.Int64())
+				y /= 1e4
+				s := fmt.Sprint("Candidate:", result[i].CandidateAddr.String(),
+					" Total:", strconv.FormatFloat(y, 'f', -1, 64),
+					" weight:", result[i].Weight)
+				jww.FEEDBACK.Print(s)
+			}
+		} else {
+			cmdutils.PrintJSONList(result)
+		}
 	},
 }
 
@@ -102,7 +133,11 @@ var getConfirmedBlockNumberCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		result := new(utils.Big)
 		cmdutils.ClientCall("Dpos.GetConfirmedBlockNumber", nil, &result)
-		cmdutils.PrintJSON(result)
+		if cmdutils.OneLine {
+			jww.FEEDBACK.Print(result.String(), " Confirm Height:", strconv.FormatInt(result.ToInt().Int64(), 10))
+		} else {
+			cmdutils.PrintJSON(result)
+		}
 	},
 }
 
@@ -114,6 +149,10 @@ var getBFTConfirmedBlockNumberCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		result := new(utils.Big)
 		cmdutils.ClientCall("Dpos.GetBFTConfirmedBlockNumber", nil, &result)
-		cmdutils.PrintJSON(result)
+		if cmdutils.OneLine {
+			jww.FEEDBACK.Print(result.String(), " BFT Height:", strconv.FormatInt(result.ToInt().Int64(), 10))
+		} else {
+			cmdutils.PrintJSON(result)
+		}
 	},
 }
