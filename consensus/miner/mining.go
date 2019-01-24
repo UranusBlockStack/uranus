@@ -212,9 +212,37 @@ out:
 
 func (m *UMiner) Update() {
 	defer m.wg.Done()
+	// Subscribe TxPreEvent for tx pool
+	// Subscribe events for blockchain
+	chainBlockCh := make(chan feed.BlockAndLogsEvent, 10)
+	chainBlockSub := m.uranus.SubscribeChainBlockEvent(chainBlockCh)
+	defer chainBlockSub.Unsubscribe()
+	txCh := make(chan feed.NewTxsEvent, 4096)
+	txSub := m.uranus.SubscribeNewTxsEvent(txCh)
+	defer txSub.Unsubscribe()
 out:
 	for {
 		select {
+		case <-chainBlockCh:
+			if m.quitCurrentOp != nil {
+				close(m.quitCurrentOp)
+			}
+			m.quitCurrentOp = make(chan struct{})
+		case ev := <-txCh:
+			if atomic.LoadInt32(&m.mining) == 0 {
+				_ = ev.Txs
+				txs := make(map[utils.Address]types.Transactions)
+				for _, tx := range ev.Txs {
+					acc, _ := tx.Sender(m.currentWork.signer)
+					txs[acc] = append(txs[acc], tx)
+				}
+				txset := types.NewTransactionsByPriceAndNonce(m.currentWork.signer, txs)
+				m.currentWork.applyTransactions(m.uranus, txset)
+			}
+		case <-chainBlockSub.Err():
+			break out
+		case <-txSub.Err():
+			break out
 		case work, ok := <-m.workCh:
 			if !ok && work == nil {
 				break out
@@ -411,16 +439,13 @@ func calcGasLimit(parent *types.Block) uint64 {
 func (m *UMiner) mintLoop() {
 	defer m.wg.Done()
 	ticker := time.NewTicker(time.Second)
-	sub := m.mux.Subscribe(feed.NewMinedBlockEvent{})
 	if _, ok := m.engine.(*dpos.Dpos); !ok {
 		ticker.Stop()
-		defer sub.Unsubscribe()
 	} else {
 		ticker.Stop()
 		time.Sleep(time.Duration(dpos.Option.BlockInterval - int64(time.Now().UnixNano())%dpos.Option.BlockInterval))
 		ticker = time.NewTicker(time.Duration(dpos.Option.BlockInterval / 10))
 		defer ticker.Stop()
-		sub.Unsubscribe()
 	}
 
 	for {
@@ -441,10 +466,6 @@ func (m *UMiner) mintLoop() {
 				continue
 			}
 			if err := m.prepareNewBlock(timestamp); err != nil {
-				log.Warnf("prepareNewBlock err: %v", err)
-			}
-		case <-sub.Chan():
-			if err := m.prepareNewBlock(time.Now().UnixNano()); err != nil {
 				log.Warnf("prepareNewBlock err: %v", err)
 			}
 		case <-m.stopCh:

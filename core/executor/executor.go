@@ -17,6 +17,7 @@
 package executor
 
 import (
+	"fmt"
 	"math/big"
 	"time"
 
@@ -117,9 +118,10 @@ func (e *Executor) ExecTransaction(author *utils.Address,
 			return nil, 0, err
 		}
 	} else {
-		_, gas, failed, err = e.applyDposMessage(header.TimeStamp, dposContext, tx, statedb, gp)
-		if err != nil {
-			return nil, 0, err
+		var vmerr error
+		_, gas, failed, vmerr = e.applyDposMessage(header.TimeStamp, dposContext, tx, statedb, gp)
+		if vmerr == vm.ErrInsufficientBalance {
+			return nil, 0, vmerr
 		}
 	}
 
@@ -142,25 +144,35 @@ func (e *Executor) ExecTransaction(author *utils.Address,
 
 func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposContext, tx *types.Transaction, statedb *state.StateDB, gp *utils.GasPool) ([]byte, uint64, bool, error) {
 	gas, _ := txpool.IntrinsicGas(tx.Payload(), false)
-	if err := gp.SubGas(gas); err != nil {
-		return nil, gas, true, err
-	}
 	from, _ := tx.Sender(types.Signer{})
+	feeval := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
+	if statedb.GetBalance(from).Cmp(feeval) < 0 {
+		return nil, gas, false, errInsufficientBalanceForGas
+	}
+	statedb.SubBalance(from, feeval)
+	statedb.SetNonce(from, tx.Nonce()+1)
+	if err := gp.SubGas(gas); err != nil {
+		return nil, 0, false, err
+	}
+	snapshot := statedb.Snapshot()
 	switch tx.Type() {
 	case types.LoginCandidate:
 		if err := dposContext.BecomeCandidate(from); err != nil {
-			return nil, gas, true, err
+			statedb.RevertToSnapshot(snapshot)
+			return nil, gas, false, err
 		}
 	case types.LogoutCandidate:
 		if err := dposContext.KickoutCandidate(from); err != nil {
-			return nil, gas, true, err
+			statedb.RevertToSnapshot(snapshot)
+			return nil, gas, false, err
 		}
 	case types.Delegate:
 		statedb.SetDelegateTimestamp(from, timestamp)
 		statedb.SubBalance(from, tx.Value())
 		statedb.SetLockedBalance(from, tx.Value())
 		if err := dposContext.Delegate(from, tx.Tos()); err != nil {
-			return nil, gas, true, err
+			statedb.RevertToSnapshot(snapshot)
+			return nil, gas, false, err
 		}
 	case types.UnDelegate:
 		if new(big.Int).Sub(statedb.GetBalance(from), tx.Value()).Sign() > 0 {
@@ -171,7 +183,8 @@ func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposC
 				return nil, gas, true, err
 			}
 		} else {
-			return nil, gas, true, errInsufficientBalanceForGas
+			statedb.RevertToSnapshot(snapshot)
+			return nil, gas, false, fmt.Errorf("delegate balance insufficient")
 		}
 		e.addAction(from, tx)
 	case types.Redeem:
@@ -183,8 +196,7 @@ func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposC
 		statedb.AddBalance(from, lockedBalance)
 		statedb.UnLockBalance(from)
 	}
-	statedb.SetNonce(from, tx.Nonce()+1)
-	return nil, gas, false, nil
+	return nil, gas, true, nil
 }
 
 func (e *Executor) addAction(sender utils.Address, tx *types.Transaction) {

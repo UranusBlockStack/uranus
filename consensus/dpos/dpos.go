@@ -197,16 +197,6 @@ func (d *Dpos) Seal(chain consensus.IChainReader, block *types.Block, stop <-cha
 	header.ExtraData = append(header.ExtraData, make([]byte, extraSeal)...)
 	block = block.WithSeal(header)
 
-	now := time.Now().UnixNano()
-	delay := nextSlot(now) - now
-	if delay > 0 {
-		select {
-		case <-stop:
-			return nil, nil
-		case <-time.After(time.Duration(delay) * time.Second):
-		}
-	}
-
 	// time's up, sign the block
 	sighash, err := d.signFn(header.Miner, sigHash(header).Bytes())
 	if err != nil {

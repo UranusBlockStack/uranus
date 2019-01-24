@@ -192,10 +192,11 @@ func (d *Downloader) UnregisterPeer(id string) error {
 	return nil
 }
 
-func (d *Downloader) Synchronise(id string, head utils.Hash, td *big.Int) {
+func (d *Downloader) Synchronise(id string, head utils.Hash, td *big.Int) error {
 	log.Infof("Attempting synchronisation: %v, head 0x%x, TD %v", id, head[:4], td)
 
-	switch err := d.synchronise(id, head, td); err {
+	err := d.synchronise(id, head, td)
+	switch err {
 	case nil:
 		log.Infof("Synchronisation completed")
 
@@ -212,6 +213,7 @@ func (d *Downloader) Synchronise(id string, head utils.Hash, td *big.Int) {
 	default:
 		log.Errorf("Synchronisation failed: %v", err)
 	}
+	return err
 }
 
 func (d *Downloader) synchronise(id string, hash utils.Hash, td *big.Int) error {

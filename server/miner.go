@@ -21,6 +21,7 @@ import (
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
 	"github.com/UranusBlockStack/uranus/core/vm"
+	"github.com/UranusBlockStack/uranus/feed"
 	"github.com/UranusBlockStack/uranus/params"
 )
 
@@ -78,4 +79,12 @@ func (m *MinerBakend) GetBlockByHeight(height uint64) *types.Block {
 }
 func (m *MinerBakend) GetBlockByHash(hash utils.Hash) *types.Block {
 	return m.u.blockchain.GetBlockByHash(hash)
+}
+
+func (m *MinerBakend) SubscribeChainBlockEvent(ch chan<- feed.BlockAndLogsEvent) feed.Subscription {
+	return m.u.blockchain.SubscribeChainBlockEvent(ch)
+}
+
+func (m *MinerBakend) SubscribeNewTxsEvent(ch chan<- feed.NewTxsEvent) feed.Subscription {
+	return m.u.txPool.SubscribeNewTxsEvent(ch)
 }

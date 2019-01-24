@@ -23,6 +23,7 @@ import (
 	"math/big"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/UranusBlockStack/uranus/common/db"
@@ -102,6 +103,7 @@ type ProtocolManager struct {
 	noMorePeers   chan struct{}
 	wg            sync.WaitGroup
 	eventMux      *feed.TypeMux
+	acceptTxs     uint32
 }
 
 func NewProtocolManager(mux *feed.TypeMux, config *params.ChainConfig, txpool *txpool.TxPool, blockchain *core.BlockChain, chaindb db.Database, engine consensus.Engine) (*ProtocolManager, error) {
@@ -153,6 +155,7 @@ func NewProtocolManager(mux *feed.TypeMux, config *params.ChainConfig, txpool *t
 		return blockchain.CurrentBlock().Height().Uint64()
 	}
 	inserter := func(blocks types.Blocks) (int, error) {
+		atomic.StoreUint32(&manager.acceptTxs, 1)
 		return manager.blockchain.InsertChain(blocks)
 	}
 
@@ -421,12 +424,29 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 		pm.fetcher.Enqueue(p.id, request.Block)
 
-		if request.TD.Cmp(p.td) > 0 {
-			p.SetHead(request.Block.Hash(), request.TD)
-			go pm.synchronise(p)
+		// Assuming the block is importable by the peer, but possibly not yet done so,
+		// calculate the head hash and TD that the peer truly must have.
+		var (
+			trueHead = request.Block.PreviousHash()
+			trueTD   = new(big.Int).Sub(request.TD, request.Block.Difficulty())
+		)
+		// Update the peers total difficulty if better than the previous
+		if _, td := p.Head(); trueTD.Cmp(td) > 0 {
+			p.SetHead(trueHead, trueTD)
+
+			// Schedule a sync if above ours. Note, this will not fire a sync for a gap of
+			// a singe block (as the true TD is below the propagated block), however this
+			// scenario should easily be covered by the fetcher.
+			currentBlock := pm.blockchain.CurrentBlock()
+			if trueTD.Cmp(pm.blockchain.GetTd(currentBlock.Hash())) > 0 {
+				go pm.synchronise(p)
+			}
 		}
 
 	case TxMsg:
+		if atomic.LoadUint32(&pm.acceptTxs) == 0 {
+			break
+		}
 		var txs []*types.Transaction
 		if err := msg.DecodePayload(&txs); err != nil {
 			return fmt.Errorf("msg %v: %v", msg, err)
@@ -652,7 +672,14 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 		return
 	}
 
-	pm.downloader.Synchronise(peer.id, peer.head, peer.td)
+	if err := pm.downloader.Synchronise(peer.id, peer.head, peer.td); err != nil {
+		return
+	}
+	atomic.StoreUint32(&pm.acceptTxs, 1)
+
+	if head := pm.blockchain.CurrentBlock(); head.Height().Uint64() > 0 {
+		go pm.BroadcastBlock(head, false)
+	}
 }
 
 const (

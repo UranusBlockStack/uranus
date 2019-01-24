@@ -24,6 +24,7 @@ import (
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
 	"github.com/UranusBlockStack/uranus/core/vm"
+	"github.com/UranusBlockStack/uranus/feed"
 	"github.com/UranusBlockStack/uranus/params"
 )
 
@@ -42,10 +43,12 @@ type Engine interface {
 
 type ITxPool interface {
 	Pending() (map[utils.Address]types.Transactions, error)
+	SubscribeNewTxsEvent(ch chan<- feed.NewTxsEvent) feed.Subscription
 	Actions() []*types.Action
 }
 
 type IBlockChain interface {
+	SubscribeChainBlockEvent(ch chan<- feed.BlockAndLogsEvent) feed.Subscription
 	PostEvent(event interface{})
 	GetCurrentInfo() (*types.Block, *state.StateDB, error)
 	WriteBlockWithState(*types.Block, types.Receipts, *state.StateDB) (bool, error)
