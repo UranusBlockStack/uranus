@@ -64,7 +64,7 @@ func DefaultGenesis() *Genesis {
 		Nonce:      1,
 		ExtraData:  extraData,
 		GasLimit:   params.GenesisGasLimit,
-		Difficulty: big.NewInt(1000000),
+		Difficulty: big.NewInt(0),
 	}
 }
 

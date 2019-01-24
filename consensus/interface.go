@@ -56,6 +56,7 @@ type IBlockChain interface {
 type IChainReader interface {
 	Config() *params.ChainConfig
 	CurrentBlock() *types.Block
+	GetHeader(hash utils.Hash) *types.BlockHeader
 	GetBlockByHeight(uint64) *types.Block
 	GetBlockByHash(utils.Hash) *types.Block
 }

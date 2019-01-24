@@ -46,6 +46,11 @@ func (m *MinerBakend) GetCurrentInfo() (*types.Block, *state.StateDB, error) {
 	return m.u.blockchain.GetCurrentInfo()
 }
 
+// GetHeader retrieves a header from the database by hash,
+func (m *MinerBakend) GetHeader(hash utils.Hash) *types.BlockHeader {
+	return m.u.blockchain.GetHeader(hash)
+}
+
 // WriteBlockWithState write block and state in chain
 func (m *MinerBakend) WriteBlockWithState(block *types.Block, receipts types.Receipts, state *state.StateDB) (bool, error) {
 	return m.u.blockchain.WriteBlockWithState(block, receipts, state)

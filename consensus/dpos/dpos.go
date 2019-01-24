@@ -29,7 +29,7 @@ var Option = &option{
 	BlockRepeat:      12,
 	MaxValidatorSize: 3,
 	MinStartQuantity: new(big.Int).Mul(big.NewInt(1000000), big.NewInt(1e18)),
-	DelayBlock:       12 * 3 * 2,
+	DelayEpcho:       1,
 }
 
 func (opt *option) consensusSize() int64 {
@@ -45,7 +45,7 @@ type option struct {
 	BlockRepeat      int64
 	MaxValidatorSize int64
 	MinStartQuantity *big.Int
-	DelayBlock       int64
+	DelayEpcho       int64
 }
 
 const (
@@ -248,18 +248,12 @@ func (d *Dpos) VerifySeal(chain consensus.IChainReader, header *types.BlockHeade
 		return ErrMismatchSignerAndValidator
 	}
 
-	height := uint64(0)
-	if parent.Height().Uint64() > uint64(Option.DelayBlock) {
-		height = parent.Height().Uint64() - uint64(Option.DelayBlock)
-	}
-	blk := chain.GetBlockByHeight(height)
-
-	statedb, err := state.New(blk.StateRoot(), d.db)
-
+	epchoHeader := d.EpchoBlockHeader(chain, parent)
+	statedb, err := state.New(epchoHeader.StateRoot, d.db)
 	if err != nil {
 		return err
 	}
-	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), parent.BlockHeader().DposContext)
+	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), epchoHeader.DposContext)
 	if err != nil {
 		return err
 	}
@@ -400,6 +394,23 @@ func (dpos *Dpos) GetBFTConfirmedBlockNumber() (*big.Int, error) {
 	return big.NewInt(int64(irreversibles[(len(irreversibles)-1)/3])), nil
 }
 
+func (d *Dpos) EpchoBlockHeader(chain consensus.IChainReader, lastBlock *types.Block) *types.BlockHeader {
+	cnt := Option.DelayEpcho
+	header := lastBlock.BlockHeader()
+	epcho := header.TimeStamp.Int64() / Option.epochInterval()
+	for cnt > 0 {
+		if header.Height.Uint64() == 0 {
+			break
+		}
+		tepoch := header.TimeStamp.Int64() / Option.epochInterval()
+		if epcho != tepoch {
+			cnt--
+		}
+		header = chain.GetHeader(header.PreviousHash)
+	}
+	return header
+}
+
 func (d *Dpos) CheckValidator(chain consensus.IChainReader, lastBlock *types.Block, coinbase utils.Address, now int64) error {
 	prevSlot := prevSlot(now)
 	nextSlot := nextSlot(now)
@@ -413,18 +424,12 @@ func (d *Dpos) CheckValidator(chain consensus.IChainReader, lastBlock *types.Blo
 		return ErrInvalidMintBlockTime
 	}
 
-	height := uint64(0)
-	if lastBlock.Height().Uint64() > uint64(Option.DelayBlock) {
-		height = lastBlock.Height().Uint64() - uint64(Option.DelayBlock)
-	}
-	blk := chain.GetBlockByHeight(height)
-
-	statedb, err := state.New(blk.StateRoot(), d.db)
+	header := d.EpchoBlockHeader(chain, lastBlock)
+	statedb, err := state.New(header.StateRoot, d.db)
 	if err != nil {
 		return err
 	}
-
-	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), lastBlock.BlockHeader().DposContext)
+	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), header.DposContext)
 	if err != nil {
 		return err
 	}
