@@ -174,12 +174,12 @@ func (u *Uranus) APIs() []rpc.API {
 // Start implements node.Service, starting all internal goroutines.
 func (u *Uranus) Start(p2p *p2p.Server) error {
 	log.Info("start uranus service...")
+	// start p2p
+	u.protocolManager.Start(p2p.MaxPeers)
 	// start miner
 	if u.config.StartMiner {
 		u.miner.Start()
 	}
-	// start p2p
-	u.protocolManager.Start(p2p.MaxPeers)
 	u.uranusAPI.srv = p2p
 	return nil
 }

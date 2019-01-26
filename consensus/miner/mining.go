@@ -147,6 +147,7 @@ func (m *UMiner) Start() error {
 		log.Warn("Another goroutine has already started to mine")
 		return nil
 	}
+	m.uranus.PostEvent(feed.NewMiner{})
 
 	m.wg.Add(4)
 	go m.Wait()

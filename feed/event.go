@@ -32,6 +32,8 @@ type NewTxsEvent struct{ Txs []*types.Transaction }
 
 type ForkBlockEvent struct{ Block *types.Block }
 
+type NewMiner struct{}
+
 type NewMinedBlockEvent struct{ Block *types.Block }
 
 type BlockAndLogsEvent struct {

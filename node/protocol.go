@@ -117,6 +117,7 @@ func NewProtocolManager(mux *feed.TypeMux, config *params.ChainConfig, txpool *t
 		noMorePeers: make(chan struct{}),
 		txsyncCh:    make(chan *txsync),
 		quitSync:    make(chan struct{}),
+		acceptTxs:   1,
 	}
 
 	manager.SubProtocols = make([]*p2p.Protocol, 0)
@@ -186,7 +187,7 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	pm.txsSub = pm.txpool.SubscribeNewTxsEvent(pm.txsCh)
 	go pm.txBroadcastLoop()
 
-	pm.minedBlockSub = pm.eventMux.Subscribe(feed.NewMinedBlockEvent{}, feed.NewConfirmedEvent{})
+	pm.minedBlockSub = pm.eventMux.Subscribe(feed.NewMiner{}, feed.NewMinedBlockEvent{}, feed.NewConfirmedEvent{})
 	go pm.minedBroadcastLoop()
 
 	go pm.syncer()
@@ -525,6 +526,8 @@ func (pm *ProtocolManager) minedBroadcastLoop() {
 			pm.BroadcastBlock(ev.Block, false)
 		case feed.NewConfirmedEvent:
 			pm.BroadcastConfirmed(ev.Confirmed)
+		case feed.NewMiner:
+			atomic.StoreUint32(&pm.acceptTxs, 1)
 		}
 	}
 }
