@@ -25,6 +25,7 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/log"
+	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/consensus"
 	"github.com/UranusBlockStack/uranus/consensus/dpos"
@@ -466,7 +467,9 @@ func (m *UMiner) mintLoop() {
 				continue
 			}
 			if err := m.prepareNewBlock(timestamp); err != nil {
-				log.Warnf("prepareNewBlock err: %v", err)
+				if _, ok := err.(*mtp.MissingNodeError); !ok {
+					log.Warnf("prepareNewBlock err: %v", err)
+				}
 			}
 		case <-m.stopCh:
 			return

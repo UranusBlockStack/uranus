@@ -155,10 +155,12 @@ func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposC
 		return nil, 0, false, err
 	}
 	snapshot := statedb.Snapshot()
+	dpossnapshot := dposContext.Snapshot()
 	switch tx.Type() {
 	case types.LoginCandidate:
 		if err := dposContext.BecomeCandidate(from); err != nil {
 			statedb.RevertToSnapshot(snapshot)
+			dpossnapshot.RevertToSnapShot(dpossnapshot)
 			return nil, gas, false, err
 		}
 	case types.LogoutCandidate:
@@ -171,6 +173,7 @@ func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposC
 		statedb.SubBalance(from, tx.Value())
 		statedb.SetLockedBalance(from, tx.Value())
 		if err := dposContext.Delegate(from, tx.Tos()); err != nil {
+			dpossnapshot.RevertToSnapShot(dpossnapshot)
 			statedb.RevertToSnapshot(snapshot)
 			return nil, gas, false, err
 		}
@@ -183,6 +186,7 @@ func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposC
 				return nil, gas, true, err
 			}
 		} else {
+			dpossnapshot.RevertToSnapShot(dpossnapshot)
 			statedb.RevertToSnapshot(snapshot)
 			return nil, gas, false, fmt.Errorf("delegate balance insufficient")
 		}

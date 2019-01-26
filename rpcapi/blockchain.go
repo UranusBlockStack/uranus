@@ -18,6 +18,7 @@ package rpcapi
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
@@ -55,6 +56,9 @@ func (s *BlockChainAPI) GetBlockByHeight(args GetBlockByHeightArgs, reply *map[s
 		*reply = response
 		return err
 	}
+	if block == nil {
+		return fmt.Errorf("not found")
+	}
 	return err
 }
 
@@ -74,6 +78,9 @@ func (s *BlockChainAPI) GetBlockByHash(args GetBlockByHashArgs, reply *map[strin
 		*reply = response
 		return nil
 	}
+	if block == nil {
+		return fmt.Errorf("not found")
+	}
 	return err
 }
 
@@ -87,6 +94,8 @@ func (s *BlockChainAPI) GetTransactionByHash(Hash utils.Hash, reply *RPCTransact
 	if tx := s.b.GetPoolTransaction(Hash); tx != nil {
 		*reply = *newRPCPendingTransaction(tx)
 		return nil
+	} else if tx == nil {
+		return fmt.Errorf("not found")
 	}
 	return nil
 }
@@ -95,11 +104,14 @@ func (s *BlockChainAPI) GetTransactionByHash(Hash utils.Hash, reply *RPCTransact
 func (s *BlockChainAPI) GetTransactionReceipt(Hash utils.Hash, reply *map[string]interface{}) error {
 	stx := s.b.GetTransaction(Hash)
 	if stx == nil {
-		return nil
+		return fmt.Errorf("not found")
 	}
 	receipt, err := s.b.GetReceipt(context.Background(), Hash)
 	if err != nil {
 		return err
+	}
+	if receipt == nil {
+		return fmt.Errorf("not found")
 	}
 	from, _ := stx.Tx.Sender(types.Signer{})
 	fields := map[string]interface{}{
