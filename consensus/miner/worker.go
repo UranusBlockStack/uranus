@@ -17,6 +17,8 @@
 package miner
 
 import (
+	"time"
+
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/consensus"
@@ -59,7 +61,7 @@ func (w *Work) applyActions(blockchain consensus.IBlockChain, actions []*types.A
 	w.actions = actions
 }
 
-func (w *Work) applyTransactions(blockchain consensus.IBlockChain, txs *types.TransactionsByPriceAndNonce) error {
+func (w *Work) applyTransactions(blockchain consensus.IBlockChain, txs *types.TransactionsByPriceAndNonce, timestamp int64) error {
 	gp := new(utils.GasPool).AddGas(w.Block.BlockHeader().GasLimit)
 	var (
 		coalescedLogs []*types.Log
@@ -70,6 +72,12 @@ func (w *Work) applyTransactions(blockchain consensus.IBlockChain, txs *types.Tr
 			log.Debugf("Not enough gas for further transactions gp: %v", gp)
 			break
 		}
+
+		if time.Now().UnixNano() > timestamp {
+			log.Warn("Not enough time for further transactions")
+			break
+		}
+
 		// Retrieve the next transaction and abort if all done
 		tx := txs.Peek()
 		if tx == nil {

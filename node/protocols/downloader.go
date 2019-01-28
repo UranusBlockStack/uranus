@@ -679,7 +679,7 @@ func (d *Downloader) process() {
 			index, err := d.insertChain(raw)
 			if err != nil {
 				d.dropPeer(blocks[index].OriginPeer)
-				log.Errorf("downloading canceled: insertChain  %v", err)
+				log.Errorf("downloading canceled: insertChain %v %v %v", raw[0].Height(), raw[0].Hash().String(), err)
 				d.cancel()
 				return
 			}

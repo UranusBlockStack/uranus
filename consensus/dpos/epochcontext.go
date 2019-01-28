@@ -190,7 +190,7 @@ func (ec *EpochContext) kickoutValidator(epoch int64) error {
 			return err
 		}
 		if cnt < epochDuration/Option.BlockInterval/Option.MaxValidatorSize/2 {
-			if candidateInfo.Weight > 0 {
+			if candidateInfo.Weight > 10 {
 				candidateInfo.Weight -= 10
 				candidateInfo.DegradeTime = uint64(time.Now().Unix())
 			}

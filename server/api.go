@@ -254,7 +254,6 @@ func (api *APIBackend) NodeInfo() (*p2p.NodeInfo, error) {
 }
 
 func (api *APIBackend) Start(threads int32) error {
-	api.u.miner.SetThreads(threads)
 	return api.u.miner.Start()
 }
 func (api *APIBackend) Stop() error {

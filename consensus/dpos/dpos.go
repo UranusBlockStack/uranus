@@ -117,7 +117,7 @@ func prevSlot(now int64) int64 {
 	return int64((now-Option.BlockInterval/10)/Option.BlockInterval) * Option.BlockInterval
 }
 
-func nextSlot(now int64) int64 {
+func NextSlot(now int64) int64 {
 	return int64((now+Option.BlockInterval-Option.BlockInterval/10)/Option.BlockInterval) * Option.BlockInterval
 }
 
@@ -403,7 +403,7 @@ func (d *Dpos) EpchoBlockHeader(chain consensus.IChainReader, lastBlock *types.B
 
 func (d *Dpos) CheckValidator(chain consensus.IChainReader, lastBlock *types.Block, coinbase utils.Address, now int64) error {
 	prevSlot := prevSlot(now)
-	nextSlot := nextSlot(now)
+	nextSlot := NextSlot(now)
 	if lastBlock.Time().Int64() >= nextSlot {
 		return ErrMintFutureBlock
 	}
