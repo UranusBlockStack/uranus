@@ -108,8 +108,7 @@ func (v *Validator) ValidateTxs(block *types.Block) error {
 
 	parent := v.ledger.GetBlock(block.PreviousHash())
 	if parent == nil {
-
-		return ErrPrunedAncestor
+		return ErrUnknownAncestor
 	} else {
 		if !v.ledger.HasState(parent.StateRoot()) {
 			if !v.ledger.HasBlock(parent.Hash()) {
@@ -156,6 +155,9 @@ func (v *Validator) ValidateState(
 	// check the state root against the received state root and throw an error if they don't match.
 	if stateSha := statedb.IntermediateRoot(deleteEmptyObjects); header.StateRoot != stateSha {
 		return ErrStateRootHash(header.StateRoot, stateSha)
+	}
+	if dposSha := block.DposContext.ToProto().Root(); dposSha != header.DposContext.Root() {
+		return ErrDposRootHash(dposSha, header.DposContext.Root())
 	}
 	return nil
 }

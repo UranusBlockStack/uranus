@@ -281,7 +281,6 @@ outer:
 		}
 		err := m.generateBlock(timestamp)
 		if err == nil {
-			log.Info("succeed to create the new block", "height", m.currentWork.Block.Height(), "hash", m.currentWork.Block.Hash().String(), "txs", len(m.currentWork.Block.Transactions()))
 			break outer
 		}
 		if _, ok := err.(*mtp.MissingNodeError); !ok {

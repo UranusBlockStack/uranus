@@ -201,7 +201,7 @@ func (d *Downloader) Synchronise(id string, head utils.Hash, td *big.Int) error 
 		log.Infof("Synchronisation completed")
 
 	case errBusy:
-		log.Errorf("Synchronisation already in progress")
+		log.Debugf("Synchronisation already in progress")
 
 	case errTimeout, errBadPeer, errStallingPeer, errBannedHead, errEmptyHashSet, errPeersUnavailable, errInvalidChain, errCrossCheckFailed:
 		log.Errorf("Removing peer %v: %v", id, err)

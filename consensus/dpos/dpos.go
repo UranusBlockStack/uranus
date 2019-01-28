@@ -29,7 +29,7 @@ var Option = &option{
 	BlockRepeat:      12,
 	MaxValidatorSize: 3,
 	MinStartQuantity: new(big.Int).Mul(big.NewInt(1000000), big.NewInt(1e18)),
-	DelayEpcho:       1,
+	DelayEpcho:       2,
 }
 
 func (opt *option) consensusSize() int64 {
@@ -113,12 +113,16 @@ func (dpos *Dpos) handleConfirmed(chain consensus.IChainReader, confirmed *types
 	}
 }
 
-func prevSlot(now int64) int64 {
+func Slot(now int64) int64 {
 	return int64((now-Option.BlockInterval/10)/Option.BlockInterval) * Option.BlockInterval
 }
 
+func PrevSlot(now int64) int64 {
+	return Slot(now) - Option.BlockInterval
+}
+
 func NextSlot(now int64) int64 {
-	return int64((now+Option.BlockInterval-Option.BlockInterval/10)/Option.BlockInterval) * Option.BlockInterval
+	return Slot(now) + Option.BlockInterval
 }
 
 // update counts in MintCntTrie for the miner of newBlock
@@ -238,7 +242,7 @@ func (d *Dpos) VerifySeal(chain consensus.IChainReader, header *types.BlockHeade
 		return ErrMismatchSignerAndValidator
 	}
 
-	epchoHeader := d.EpchoBlockHeader(chain, parent)
+	epchoHeader := d.EpchoBlockHeader(chain, header.TimeStamp.Int64(), parent)
 	statedb, err := state.New(epchoHeader.StateRoot, d.db)
 	if err != nil {
 		return err
@@ -384,37 +388,33 @@ func (dpos *Dpos) GetBFTConfirmedBlockNumber() (*big.Int, error) {
 	return big.NewInt(int64(irreversibles[(len(irreversibles)-1)/3])), nil
 }
 
-func (d *Dpos) EpchoBlockHeader(chain consensus.IChainReader, lastBlock *types.Block) *types.BlockHeader {
-	cnt := Option.DelayEpcho
+func (d *Dpos) EpchoBlockHeader(chain consensus.IChainReader, timestamp int64, lastBlock *types.Block) *types.BlockHeader {
+	timestamp = timestamp - Option.DelayEpcho*Option.epochInterval()
 	header := lastBlock.BlockHeader()
-	epcho := header.TimeStamp.Int64() / Option.epochInterval()
-	for cnt > 0 {
-		if header.Height.Uint64() == 0 {
+	for {
+		if header.TimeStamp.Int64() < timestamp || header.Height.Uint64() == 0 {
 			break
 		}
-		tepoch := header.TimeStamp.Int64() / Option.epochInterval()
-		if epcho != tepoch {
-			cnt--
-		}
+
 		header = chain.GetHeader(header.PreviousHash)
 	}
 	return header
 }
 
 func (d *Dpos) CheckValidator(chain consensus.IChainReader, lastBlock *types.Block, coinbase utils.Address, now int64) error {
-	prevSlot := prevSlot(now)
+	prevSlot := PrevSlot(now)
 	nextSlot := NextSlot(now)
 	if lastBlock.Time().Int64() >= nextSlot {
 		return ErrMintFutureBlock
 	}
-	if lastBlock.Time().Int64() != prevSlot && nextSlot-now >= Option.BlockInterval/10 {
+	if lastBlock.Time().Int64() != prevSlot && nextSlot-now >= 5*Option.BlockInterval/10 {
 		return ErrWaitForPrevBlock
 	}
 	if now%Option.BlockInterval != 0 {
 		return ErrInvalidMintBlockTime
 	}
 
-	header := d.EpchoBlockHeader(chain, lastBlock)
+	header := d.EpchoBlockHeader(chain, now, lastBlock)
 	statedb, err := state.New(header.StateRoot, d.db)
 	if err != nil {
 		return err
@@ -451,6 +451,9 @@ func (d *Dpos) Finalize(chain consensus.IChainReader, header *types.BlockHeader,
 	//update mint count trie
 	updateMintCnt(parent.BlockHeader().TimeStamp.Int64(), header.TimeStamp.Int64(), header.Miner, dposContext)
 
+	// Accumulate block rewards and commit the final state root
+	state.AddBalance(header.Miner, params.BlockReward)
+
 	genesis := chain.GetBlockByHeight(0)
 	err := epochContext.tryElect(genesis.BlockHeader(), parent.BlockHeader())
 	if err != nil {
@@ -459,10 +462,13 @@ func (d *Dpos) Finalize(chain consensus.IChainReader, header *types.BlockHeader,
 	if _, err := dposContext.CommitTo(state.Database().TrieDB()); err != nil {
 		return nil, err
 	}
-	header.DposContext = dposContext.ToProto()
-	// Accumulate block rewards and commit the final state root
-	state.AddBalance(header.Miner, params.BlockReward)
+
 	header.StateRoot = state.IntermediateRoot(true)
+	if err := state.Database().TrieDB().Commit(header.StateRoot, false); err != nil {
+		return nil, err
+	}
+	header.DposContext = dposContext.ToProto()
+
 	return types.NewBlock(header, txs, actions, receipts), nil
 }
 

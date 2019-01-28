@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"math/rand"
 	"sort"
-	"time"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/log"
@@ -26,7 +25,7 @@ type EpochContext struct {
 
 func (ec *EpochContext) lookupValidator(now int64) (validator utils.Address, err error) {
 	validator = utils.Address{}
-	offset := now % Option.epochInterval()
+	offset := (now - Option.BlockInterval) % Option.epochInterval()
 	// if offset%Option.BlockInterval != 0 {
 	// 	return utils.Address{}, ErrInvalidMintBlockTime
 	// }
@@ -64,7 +63,7 @@ func (ec *EpochContext) tryElect(genesis, parent *types.BlockHeader) error {
 	for i := prevEpoch; i < currentEpoch; i++ {
 		// if prevEpoch is not genesis, kickout not active candidate
 		if !prevEpochIsGenesis && iter.Next() {
-			if err := ec.kickoutValidator(prevEpoch); err != nil {
+			if err := ec.kickoutValidator(ec.TimeStamp, prevEpoch); err != nil {
 				return err
 			}
 		}
@@ -97,8 +96,6 @@ func (ec *EpochContext) tryElect(genesis, parent *types.BlockHeader) error {
 			sortedValidators = append(sortedValidators, candidate.address)
 		}
 
-		epochTrie, _ := types.NewEpochTrie(utils.Hash{}, ec.DposContext.DB())
-		ec.DposContext.SetEpoch(epochTrie)
 		ec.DposContext.SetValidators(sortedValidators)
 		firstEpcho := timeOfFirstBlock / Option.epochInterval()
 		log.Infof("Come to new epoch prevEpoch %v nextEpoch %v, validators %v", i-firstEpcho+1, i-firstEpcho+2, sortedValidators)
@@ -150,7 +147,7 @@ func (ec *EpochContext) CountVotes() (votes map[utils.Address]*big.Int, total *b
 	return votes, total, nil
 }
 
-func (ec *EpochContext) kickoutValidator(epoch int64) error {
+func (ec *EpochContext) kickoutValidator(timestamp int64, epoch int64) error {
 	validators, err := ec.DposContext.GetValidators()
 	if err != nil {
 		return fmt.Errorf("failed to get validator: %s", err)
@@ -192,12 +189,12 @@ func (ec *EpochContext) kickoutValidator(epoch int64) error {
 		if cnt < epochDuration/Option.BlockInterval/Option.MaxValidatorSize/2 {
 			if candidateInfo.Weight > 10 {
 				candidateInfo.Weight -= 10
-				candidateInfo.DegradeTime = uint64(time.Now().Unix())
+				candidateInfo.DegradeTime = uint64(timestamp)
 			}
 		} else {
 			if candidateInfo.Weight < 100 {
 				candidateInfo.Weight += 10
-				candidateInfo.DegradeTime = uint64(time.Now().Unix())
+				candidateInfo.DegradeTime = uint64(timestamp)
 			}
 		}
 		val, err := rlp.EncodeToBytes(candidateInfo)
