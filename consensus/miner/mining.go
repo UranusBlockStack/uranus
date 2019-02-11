@@ -244,7 +244,7 @@ func (m *UMiner) mintLoop() {
 	for {
 		select {
 		case now := <-ticker.C:
-			timestamp := dpos.NextSlot(now.UnixNano())
+			timestamp := dpos.Slot(now.UnixNano())
 			if err := m.engine.(*dpos.Dpos).CheckValidator(m.uranus, m.uranus.CurrentBlock(), m.coinbase, timestamp); err != nil {
 				switch err {
 				case dpos.ErrWaitForPrevBlock,
@@ -280,7 +280,7 @@ outer:
 		default:
 		}
 		err := m.generateBlock(timestamp)
-		if err == nil {
+		if err == nil || err == dpos.ErrMintFutureBlock {
 			break outer
 		}
 		if _, ok := err.(*mtp.MissingNodeError); !ok {
@@ -294,6 +294,12 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 	parent, stateDB, err := m.uranus.GetCurrentInfo()
 	if err != nil {
 		return fmt.Errorf("failed to get current info, %s", err)
+	}
+	if parent.Time().Int64() != timestamp-dpos.Option.BlockInterval && timestamp-time.Now().UnixNano() >= 5*dpos.Option.BlockInterval/10 {
+		return dpos.ErrWaitForPrevBlock
+	}
+	if parent.Time().Int64() >= timestamp {
+		return dpos.ErrMintFutureBlock
 	}
 	height := parent.BlockHeader().Height
 	difficult := m.engine.CalcDifficulty(m.uranus.Config(), uint64(timestamp), parent.BlockHeader())
@@ -309,49 +315,59 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 	var dposContext *types.DposContext = nil
 	if _, ok := m.engine.(*dpos.Dpos); ok {
 		var err error
+
 		dposContext, err = types.NewDposContextFromProto(stateDB.Database().TrieDB(), parent.BlockHeader().DposContext)
 		if err != nil {
 			return err
 		}
 	}
-	m.currentWork = NewWork(types.NewBlockWithBlockHeader(header), parent.Height().Uint64(), stateDB, dposContext)
+	currentWork := NewWork(types.NewBlockWithBlockHeader(header), parent.Height().Uint64(), stateDB, dposContext)
 
 	actions := m.uranus.Actions()
 
-	m.currentWork.applyActions(m.uranus, actions)
+	currentWork.applyActions(m.uranus, actions)
 
 	pending, err := m.uranus.Pending()
 	if err != nil {
 		return fmt.Errorf("Failed to fetch pending transactions, err: %s", err.Error())
 	}
 
-	txs := types.NewTransactionsByPriceAndNonce(m.currentWork.signer, pending)
+	txs := types.NewTransactionsByPriceAndNonce(currentWork.signer, pending)
 	interval := dpos.Option.BlockInterval
-	err = m.currentWork.applyTransactions(m.uranus, txs, timestamp+interval-interval/10)
+	err = currentWork.applyTransactions(m.uranus, txs, timestamp+interval-interval/10)
 	if err != nil {
 		return fmt.Errorf("failed to apply transaction %s", err)
 	}
 
-	header = m.currentWork.Block.BlockHeader()
-	header.GasUsed = *m.currentWork.gasUsed
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if parent, _, _ := m.uranus.GetCurrentInfo(); parent.Hash() != currentWork.Block.PreviousHash() {
+		return dpos.ErrWaitForPrevBlock
+	}
+	m.currentWork = currentWork
+
+	header = currentWork.Block.BlockHeader()
+	header.GasUsed = *currentWork.gasUsed
+
 	if atomic.LoadInt32(&m.mining) == 1 {
-		block, err := m.engine.Finalize(m.uranus, header, stateDB, m.currentWork.txs, m.currentWork.actions, m.currentWork.receipts, m.currentWork.dposContext)
+		block, err := m.engine.Finalize(m.uranus, header, stateDB, currentWork.txs, currentWork.actions, currentWork.receipts, currentWork.dposContext)
+
 		if err != nil {
 			return err
 		}
 
-		block.DposContext = m.currentWork.dposContext
-		m.currentWork.Block = block
-		result, err := m.engine.Seal(m.uranus, m.currentWork.Block, m.quitCurrentOp, 0, nil)
+		block.DposContext = currentWork.dposContext
+		currentWork.Block = block
+		result, err := m.engine.Seal(m.uranus, currentWork.Block, m.quitCurrentOp, 0, nil)
 		if err != nil {
 			return err
 		}
 
-		if _, err := m.uranus.WriteBlockWithState(result, m.currentWork.receipts, m.currentWork.state); err != nil {
+		if _, err := m.uranus.WriteBlockWithState(result, currentWork.receipts, currentWork.state); err != nil {
 			return err
 		}
 
-		log.Infof("Successfully sealed new block number: %v, hash: %v, diff: %v, txs: %v", result.Height(), result.Hash(), result.Difficulty(), len(block.Transactions()))
+		log.Infof("Successfully sealed new block number: %v, hash: %v, diff: %v, txs: %v, time: %v, parent: %v", result.Height(), result.Hash(), result.Difficulty(), len(block.Transactions()), result.Time(), result.PreviousHash().String())
 		m.uranus.PostEvent(feed.BlockAndLogsEvent{Block: result})
 		m.mux.Post(feed.NewMinedBlockEvent{
 			Block: result,

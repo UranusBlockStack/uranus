@@ -114,15 +114,7 @@ func (dpos *Dpos) handleConfirmed(chain consensus.IChainReader, confirmed *types
 }
 
 func Slot(now int64) int64 {
-	return int64((now-Option.BlockInterval/10)/Option.BlockInterval) * Option.BlockInterval
-}
-
-func PrevSlot(now int64) int64 {
-	return Slot(now) - Option.BlockInterval
-}
-
-func NextSlot(now int64) int64 {
-	return Slot(now) + Option.BlockInterval
+	return int64((now+Option.BlockInterval/10)/Option.BlockInterval) * Option.BlockInterval
 }
 
 // update counts in MintCntTrie for the miner of newBlock
@@ -402,14 +394,6 @@ func (d *Dpos) EpchoBlockHeader(chain consensus.IChainReader, timestamp int64, l
 }
 
 func (d *Dpos) CheckValidator(chain consensus.IChainReader, lastBlock *types.Block, coinbase utils.Address, now int64) error {
-	prevSlot := PrevSlot(now)
-	nextSlot := NextSlot(now)
-	if lastBlock.Time().Int64() >= nextSlot {
-		return ErrMintFutureBlock
-	}
-	if lastBlock.Time().Int64() != prevSlot && nextSlot-now >= 5*Option.BlockInterval/10 {
-		return ErrWaitForPrevBlock
-	}
 	if now%Option.BlockInterval != 0 {
 		return ErrInvalidMintBlockTime
 	}

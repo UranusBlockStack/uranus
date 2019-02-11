@@ -35,7 +35,7 @@ type Config struct {
 var DefaultConfig = &Config{
 	Format: "text",
 	Formatter: &logrus.TextFormatter{
-		TimestampFormat: "2006-01-02 15:04:05",
+		TimestampFormat: "2006-01-02 15:04:05.999",
 		FullTimestamp:   true,
 	},
 	Level:  "debug",

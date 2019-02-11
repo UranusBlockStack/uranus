@@ -100,8 +100,8 @@ func (d *deferredList) Range(f func(hash utils.Hash, t *timeActionHash) bool) {
 }
 
 func (d *deferredList) getAction(hash utils.Hash) *types.Action {
-	d.RLock()
-	defer d.RUnlock()
+	d.Lock()
+	defer d.Unlock()
 	return d.all[hash]
 }
 
@@ -118,7 +118,7 @@ func (d *deferredList) countAction() int {
 }
 
 func (d *deferredList) deleteAction(hash utils.Hash) {
-	d.RLock()
-	defer d.RUnlock()
+	d.Lock()
+	defer d.Unlock()
 	delete(d.all, hash)
 }

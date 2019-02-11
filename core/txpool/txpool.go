@@ -321,6 +321,8 @@ func (tp *TxPool) Pending() (map[utils.Address]types.Transactions, error) {
 
 // Actions get actions
 func (tp *TxPool) Actions() []*types.Action {
+	tp.mu.Lock()
+	defer tp.mu.Unlock()
 	now := big.NewInt(time.Now().Unix())
 	return tp.dList.Cap(new(big.Int).Sub(now, tp.chainconfig.DelayDuration))
 }
