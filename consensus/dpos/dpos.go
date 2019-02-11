@@ -67,7 +67,7 @@ var (
 	confirmedBlockHead = []byte("confirmed-block-head")
 )
 
-type SignerFn func(utils.Address, []byte) ([]byte, error)
+type SignerFn func(utils.Address, string, []byte) ([]byte, error)
 type Dpos struct {
 	eventMux             *feed.TypeMux
 	chainDb              db.Database
@@ -76,37 +76,40 @@ type Dpos struct {
 	confirmedBlockHeader *types.BlockHeader
 	bftConfirmeds        *lru.Cache
 	coinbase             utils.Address
+	passphrase           string
 }
 
-func NewDpos(eventMux *feed.TypeMux, chainDb db.Database, db state.Database, signFn SignerFn) *Dpos {
+func NewDpos(eventMux *feed.TypeMux, chainDb db.Database, db state.Database, signFn SignerFn, passphrase string) *Dpos {
 	d := &Dpos{
-		eventMux: eventMux,
-		chainDb:  chainDb,
-		db:       db,
-		signFn:   signFn,
+		eventMux:   eventMux,
+		chainDb:    chainDb,
+		db:         db,
+		signFn:     signFn,
+		passphrase: passphrase,
 	}
 	return d
 }
-func (dpos *Dpos) Init(chain consensus.IChainReader) {
-	dpos.confirmedBlockHeader, _ = dpos.loadConfirmedBlockHeader(chain)
+
+func (d *Dpos) Init(chain consensus.IChainReader) {
+	d.confirmedBlockHeader, _ = d.loadConfirmedBlockHeader(chain)
 	go func() {
-		dpos.bftConfirmeds, _ = lru.New(int(chain.Config().MaxValidatorSize))
-		sub := dpos.eventMux.Subscribe(types.Confirmed{})
+		d.bftConfirmeds, _ = lru.New(int(chain.Config().MaxValidatorSize))
+		sub := d.eventMux.Subscribe(types.Confirmed{})
 		for ev := range sub.Chan() {
 			switch ev.Data.(type) {
 			case types.Confirmed:
 				confirmed := ev.Data.(types.Confirmed)
-				dpos.handleConfirmed(chain, &confirmed)
+				d.handleConfirmed(chain, &confirmed)
 			default:
 			}
 		}
 	}()
 }
 
-func (dpos *Dpos) handleConfirmed(chain consensus.IChainReader, confirmed *types.Confirmed) {
+func (d *Dpos) handleConfirmed(chain consensus.IChainReader, confirmed *types.Confirmed) {
 	if confirmed.IsValidate() {
 		if blk := chain.GetBlockByHeight(confirmed.BlockHeight); blk != nil && bytes.Compare(blk.Hash().Bytes(), confirmed.BlockHash.Bytes()) == 0 {
-			dpos.bftConfirmeds.Add(confirmed.Address, confirmed.BlockHeight)
+			d.bftConfirmeds.Add(confirmed.Address, confirmed.BlockHeight)
 		}
 	} else {
 		// TODO
@@ -194,7 +197,7 @@ func (d *Dpos) Seal(chain consensus.IChainReader, block *types.Block, stop <-cha
 	block = block.WithSeal(header)
 
 	// time's up, sign the block
-	sighash, err := d.signFn(header.Miner, sigHash(header).Bytes())
+	sighash, err := d.signFn(header.Miner, d.passphrase, sigHash(header).Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +273,7 @@ func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader, dpos boo
 		if blk := chain.CurrentBlock(); blk != nil {
 			d.confirmedBlockHeader = blk.BlockHeader()
 			if err := d.storeConfirmedBlockHeader(chain.CurrentBlock()); err != nil {
-				log.Errorf("dpos set confirmed block header success", "currentHeader", d.confirmedBlockHeader.Height, err)
+				log.Errorf("dpos set confirmed block header: %v ,failed %v", d.confirmedBlockHeader.Height, err)
 				return err
 			}
 			log.Debugf("dpos set confirmed block header success", "currentHeader", d.confirmedBlockHeader.Height)
@@ -299,7 +302,7 @@ func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader, dpos boo
 		if int64(len(validatorMap)) >= Option.consensusSize() {
 			d.confirmedBlockHeader = curHeader
 			if err := d.storeConfirmedBlockHeader(chain.CurrentBlock()); err != nil {
-				log.Errorf("dpos set confirmed block header success", "currentHeader", d.confirmedBlockHeader.Height, err)
+				log.Errorf("dpos set confirmed block header:%v, failed: %v", d.confirmedBlockHeader.Height, err)
 				return err
 			}
 			log.Debugf("dpos set confirmed block header success", "currentHeader", curHeader.Height)
@@ -338,7 +341,7 @@ func (d *Dpos) storeConfirmedBlockHeader(lastBlock *types.Block) error {
 						BlockHeight: d.confirmedBlockHeader.Height.Uint64(),
 						Address:     d.coinbase,
 					}
-					if sighash, err := d.signFn(d.coinbase, confirmed.Hash().Bytes()); err == nil {
+					if sighash, err := d.signFn(d.coinbase, d.passphrase, confirmed.Hash().Bytes()); err == nil {
 						confirmed.Signature = sighash
 						d.eventMux.Post(feed.NewConfirmedEvent{Confirmed: confirmed})
 						d.bftConfirmeds.Add(d.coinbase, confirmed.BlockHeight)
@@ -361,11 +364,11 @@ func (d *Dpos) GetConfirmedBlockNumber() (*big.Int, error) {
 	return header.Height, nil
 }
 
-func (dpos *Dpos) GetBFTConfirmedBlockNumber() (*big.Int, error) {
+func (d *Dpos) GetBFTConfirmedBlockNumber() (*big.Int, error) {
 	irreversibles := UInt64Slice{}
-	keys := dpos.bftConfirmeds.Keys()
+	keys := d.bftConfirmeds.Keys()
 	for _, key := range keys {
-		if irreversible, ok := dpos.bftConfirmeds.Get(key); ok {
+		if irreversible, ok := d.bftConfirmeds.Get(key); ok {
 			irreversibles = append(irreversibles, irreversible.(uint64))
 		}
 	}

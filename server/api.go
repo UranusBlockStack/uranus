@@ -159,7 +159,7 @@ func (api *APIBackend) NewAccount(passphrase string) (wallet.Account, error) {
 
 // Delete removes the speciified account
 func (api *APIBackend) Delete(address utils.Address, passphrase string) error {
-	acc, err := api.u.wallet.Find(address)
+	acc, err := api.u.wallet.Find(address, passphrase)
 	if err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func (api *APIBackend) Delete(address utils.Address, passphrase string) error {
 
 // Update update the specified account
 func (api *APIBackend) Update(address utils.Address, passphrase, newPassphrase string) error {
-	acc, err := api.u.wallet.Find(address)
+	acc, err := api.u.wallet.Find(address, passphrase)
 	if err != nil {
 		return err
 	}
