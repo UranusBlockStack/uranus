@@ -209,9 +209,9 @@ func (bc *BlockChain) insertChain(block *types.Block) (interface{}, []*types.Log
 
 	switch err {
 	case blockValidator.ErrKnownBlock:
-		if bc.CurrentBlock().Height().Uint64() >= block.Height().Uint64() {
-			log.Warnf("Block and state both already known, block heigt: %v", block.Height())
-		}
+		// if bc.CurrentBlock().Height().Uint64() >= block.Height().Uint64() {
+		// 	log.Warnf("Block and state both already known, block heigt: %v", block.Height())
+		// }
 		return nil, nil, nil
 	case blockValidator.ErrFutureBlock:
 		return nil, nil, bc.PutFutureBlock(block)
@@ -250,10 +250,10 @@ func (bc *BlockChain) insertChain(block *types.Block) (interface{}, []*types.Log
 	}
 
 	if forking {
-		log.Debugf("Inserted forked block number: %v,hash: %v,diff: %v,txsLen: %v,gas: %v.", block.Height(), block.Hash(), block.Difficulty(), len(block.Transactions()), block.GasUsed())
+		log.Infof("Inserted forked block number: %v,hash: %v,diff: %v,txs: %v,gas: %v, time: %v.", block.Height(), block.Hash(), block.Difficulty(), len(block.Transactions()), block.GasUsed(), block.Time())
 		return feed.ForkBlockEvent{Block: block}, logs, nil
 	}
-	log.Debugf("Inserted new block number: %v,hash: %v,txsLen: %v,gas: %v, diff: %v", block.Height(), block.Hash(), len(block.Transactions()), block.GasUsed(), block.Difficulty())
+	log.Infof("Inserted new block number: %v,hash: %v, diff: %v,txs: %v,gas: %v, time: %v", block.Height(), block.Hash(), block.Difficulty(), len(block.Transactions()), block.GasUsed(), block.Time())
 	return feed.BlockAndLogsEvent{Block: block, Logs: logs}, logs, nil
 }
 
@@ -302,6 +302,10 @@ func (bc *BlockChain) ExecActions(statedb *state.StateDB, actions []*types.Actio
 func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts types.Receipts, state *state.StateDB) (bool, error) {
 	bc.chainmu.Lock()
 	defer bc.chainmu.Unlock()
+	if bc.HasBlock(block.Hash()) && bc.HasState(block.StateRoot()) {
+		return true, nil
+	}
+
 	// get the total difficulty of the block
 	ptd := bc.GetTd(block.PreviousHash())
 	if ptd == nil {

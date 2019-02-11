@@ -125,7 +125,7 @@ func (g *Genesis) ToBlock(chain *Chain) (*types.Block, state.Database) {
 	if err != nil {
 		panic(err)
 	}
-	validator := utils.HexToAddress(params.DefaultChainConfig.GenesisCandidate)
+	validator := utils.HexToAddress(g.Config.GenesisCandidate)
 	dposContext.SetValidators([]utils.Address{validator})
 	dposContext.DelegateTrie().TryUpdate(append(validator.Bytes(), validator.Bytes()...), validator.Bytes())
 	candidateInfo := &types.CandidateInfo{

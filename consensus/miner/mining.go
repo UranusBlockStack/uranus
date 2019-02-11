@@ -254,7 +254,7 @@ func (m *UMiner) mintLoop() {
 					log.Debugf("Failed to mint the block, while %v", err)
 				default:
 					if _, ok := err.(*mtp.MissingNodeError); !ok {
-						log.Errorf("Failed to mint the block, err %v", err)
+						log.Warnf("Failed to mint the block, err %v", err)
 					}
 				}
 				continue
@@ -284,7 +284,7 @@ outer:
 			break outer
 		}
 		if _, ok := err.(*mtp.MissingNodeError); !ok {
-			log.Errorf("Failed to mint the block, err %v", err)
+			log.Warnf("Failed to mint the block, err %v", err)
 		}
 		time.Sleep(time.Duration(dpos.Option.BlockInterval / 10))
 	}
@@ -295,7 +295,7 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 	if err != nil {
 		return fmt.Errorf("failed to get current info, %s", err)
 	}
-	if parent.Time().Int64() != timestamp-dpos.Option.BlockInterval && timestamp-time.Now().UnixNano() >= 5*dpos.Option.BlockInterval/10 {
+	if parent.Time().Int64() != timestamp-dpos.Option.BlockInterval && timestamp-time.Now().UnixNano() >= 2*dpos.Option.BlockInterval/10 {
 		return dpos.ErrWaitForPrevBlock
 	}
 	if parent.Time().Int64() >= timestamp {
@@ -366,8 +366,7 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 		if _, err := m.uranus.WriteBlockWithState(result, currentWork.receipts, currentWork.state); err != nil {
 			return err
 		}
-
-		log.Infof("Successfully sealed new block number: %v, hash: %v, diff: %v, txs: %v, time: %v, parent: %v", result.Height(), result.Hash(), result.Difficulty(), len(block.Transactions()), result.Time(), result.PreviousHash().String())
+		log.Infof("Successfully sealed new block number: %v, hash: %v, diff: %v, txs: %v, time: %v", result.Height(), result.Hash(), result.Difficulty(), len(block.Transactions()), result.Time())
 		m.uranus.PostEvent(feed.BlockAndLogsEvent{Block: result})
 		m.mux.Post(feed.NewMinedBlockEvent{
 			Block: result,

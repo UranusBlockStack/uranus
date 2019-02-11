@@ -25,7 +25,7 @@ type EpochContext struct {
 
 func (ec *EpochContext) lookupValidator(now int64) (validator utils.Address, err error) {
 	validator = utils.Address{}
-	offset := (now - Option.BlockInterval) % Option.epochInterval()
+	offset := now % Option.epochInterval()
 	// if offset%Option.BlockInterval != 0 {
 	// 	return utils.Address{}, ErrInvalidMintBlockTime
 	// }

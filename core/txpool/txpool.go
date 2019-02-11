@@ -382,12 +382,12 @@ func (tp *TxPool) add(tx *types.Transaction) (bool, error) {
 	// If the transaction is already known, discard it
 	hash := tx.Hash()
 	if tp.txs.Get(hash) != nil {
-		log.Warnf("Discarding already known transaction hash: %v", hash)
+		log.Warnf("Discarding already known transaction hash: %v, nonce: %v", hash, tx.Nonce())
 		return false, fmt.Errorf("known transaction: %x", hash)
 	}
 	// If the transaction fails basic validation, discard it
 	if err := tp.validateTx(tx); err != nil {
-		log.Warnf("Discarding invalid transaction hash: %v,err: %v", hash, err)
+		log.Warnf("Discarding invalid transaction hash: %v, nonce: %v,err: %v", hash, tx.Nonce(), err)
 		return false, err
 	}
 	// If the transaction pool is full, discard underpriceList transactions
@@ -650,7 +650,7 @@ func (tp *TxPool) promoteQueue(accounts []utils.Address) {
 		// Drop all transactions that are deemed too old (low nonce)
 		for _, tx := range list.Forward(tp.currentState.GetNonce(addr)) {
 			hash := tx.Hash()
-			log.Warnf("Removed old queued transaction hash: %v ", hash)
+			log.Warnf("Removed old queued transaction hash: %v, addr: %v, nonce: %v", hash, addr.String(), tx.Nonce())
 			tp.txs.Remove(hash)
 			tp.priceList.Removed()
 		}
@@ -658,7 +658,7 @@ func (tp *TxPool) promoteQueue(accounts []utils.Address) {
 		drops, _ := list.Filter(tp.currentState.GetBalance(addr), tp.curMaxGas)
 		for _, tx := range drops {
 			hash := tx.Hash()
-			log.Warnf("Removed unpayable queued transaction hash: %v ", hash)
+			log.Warnf("Removed unpayable queued transaction hash: %v, addr: %v, nonce: %v", hash, addr.String(), tx.Nonce())
 			tp.txs.Remove(hash)
 			tp.priceList.Removed()
 		}
@@ -666,7 +666,7 @@ func (tp *TxPool) promoteQueue(accounts []utils.Address) {
 		for _, tx := range list.Ready(tp.tmpState.GetNonce(addr)) {
 			hash := tx.Hash()
 			if tp.promoteTx(addr, hash, tx) {
-				log.Warnf("Promoting queued transaction hash: %v ", hash)
+				log.Warnf("Promoting queued transaction hash: %v, addr: %v, nonce: %v", hash, addr.String(), tx.Nonce())
 				promoted = append(promoted, tx)
 			}
 		}
@@ -675,7 +675,7 @@ func (tp *TxPool) promoteQueue(accounts []utils.Address) {
 			hash := tx.Hash()
 			tp.txs.Remove(hash)
 			tp.priceList.Removed()
-			log.Warningf("Removed cap-exceeding queued transaction hash: %v", hash)
+			log.Warningf("Removed cap-exceeding queued transaction hash: %v, addr: %v, nonce: %v", hash, addr.String(), tx.Nonce())
 		}
 
 		// Delete the entire queue entry if it became empty.

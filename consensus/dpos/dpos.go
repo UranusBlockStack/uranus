@@ -387,7 +387,7 @@ func (d *Dpos) EpchoBlockHeader(chain consensus.IChainReader, timestamp int64, l
 	timestamp = timestamp - Option.DelayEpcho*Option.epochInterval()
 	header := lastBlock.BlockHeader()
 	for {
-		if header.TimeStamp.Int64() < timestamp || header.Height.Uint64() == 0 {
+		if header.TimeStamp.Int64() <= timestamp || header.Height.Uint64() == 0 {
 			break
 		}
 
@@ -416,7 +416,10 @@ func (d *Dpos) CheckValidator(chain consensus.IChainReader, lastBlock *types.Blo
 		return err
 	}
 	if (validator == utils.Address{}) || bytes.Compare(validator.Bytes(), coinbase.Bytes()) != 0 {
-		return ErrInvalidBlockValidator
+		validators, _ := epochContext.DposContext.GetValidators()
+		offset := now % Option.epochInterval()
+		offset /= Option.BlockInterval * Option.BlockRepeat
+		return fmt.Errorf("%v %v, excepted %v index %v", ErrInvalidBlockValidator, coinbase, validators, offset)
 	}
 	return nil
 }
