@@ -215,8 +215,13 @@ func (d *Dpos) Author(header *types.BlockHeader) (utils.Address, error) {
 	return header.Miner, nil
 }
 
-func (d *Dpos) CalcDifficulty(config *params.ChainConfig, time uint64, parent *types.BlockHeader) *big.Int {
-	return big.NewInt(1)
+func (d *Dpos) CalcDifficulty(chain consensus.IChainReader, config *params.ChainConfig, time uint64, parent *types.BlockHeader) *big.Int {
+	if timeOfFirstBlock == 0 {
+		if firstBlock := chain.GetBlockByHeight(1); firstBlock != nil {
+			timeOfFirstBlock = firstBlock.BlockHeader().TimeStamp.Int64()
+		}
+	}
+	return big.NewInt((int64(time) - timeOfFirstBlock) / int64(Option.BlockInterval))
 }
 
 func (d *Dpos) VerifySeal(chain consensus.IChainReader, header *types.BlockHeader) error {

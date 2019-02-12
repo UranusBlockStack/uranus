@@ -61,7 +61,7 @@ func (v *Validator) ValidateHeader(chain consensus.IChainReader, header *types.B
 	}
 
 	// Verify the block's difficulty based in it's timestamp and parent's difficulty
-	expected := v.engine.CalcDifficulty(chain.Config(), header.TimeStamp.Uint64(), parent)
+	expected := v.engine.CalcDifficulty(chain, chain.Config(), header.TimeStamp.Uint64(), parent)
 	if expected.Cmp(header.Difficulty) != 0 {
 		return ErrDifficulty(header.Difficulty, expected)
 	}

@@ -84,7 +84,7 @@ func makeHeader(parent *types.Block, state *state.StateDB, engine consensus.Engi
 	return &types.BlockHeader{
 		PreviousHash: parent.Hash(),
 		Miner:        parent.Miner(),
-		Difficulty: engine.CalcDifficulty(params.TestChainConfig, time.Uint64(), &types.BlockHeader{
+		Difficulty: engine.CalcDifficulty(nil, params.TestChainConfig, time.Uint64(), &types.BlockHeader{
 			Height:     parent.Height(),
 			TimeStamp:  new(big.Int).Sub(time, big.NewInt(10)),
 			Difficulty: parent.Difficulty(),

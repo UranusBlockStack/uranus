@@ -139,7 +139,7 @@ func (cm *CpuMiner) Author(header *types.BlockHeader) (utils.Address, error) {
 
 // CalcDifficulty returns the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
-func (cm *CpuMiner) CalcDifficulty(config *params.ChainConfig, time uint64, parentHeader *types.BlockHeader) *big.Int {
+func (cm *CpuMiner) CalcDifficulty(chain consensus.IChainReader, config *params.ChainConfig, time uint64, parentHeader *types.BlockHeader) *big.Int {
 	// diff = parentDiff + parentDiff / 1024 * max (1 - (blockTime - parentTime) / 10, -99)
 	parentDifficult := parentHeader.Difficulty
 	parentTime := parentHeader.TimeStamp.Uint64()

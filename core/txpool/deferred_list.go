@@ -47,7 +47,7 @@ func (d *deferredList) Remove(actions []*types.Action) {
 
 func (d *deferredList) Put(a *types.Action) {
 	t := &timeActionHash{
-		timestamp: a.GenTimeStamp,
+		timestamp: new(big.Int).SetBytes(a.GenTimeStamp.Bytes()),
 		hash:      a.Hash(),
 	}
 	heap.Push(d.items, t)

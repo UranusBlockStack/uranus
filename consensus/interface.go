@@ -31,7 +31,7 @@ import (
 // Engine TODO
 type Engine interface {
 	Author(header *types.BlockHeader) (utils.Address, error) //Delete
-	CalcDifficulty(config *params.ChainConfig, time uint64, parent *types.BlockHeader) *big.Int
+	CalcDifficulty(chain IChainReader, config *params.ChainConfig, time uint64, parent *types.BlockHeader) *big.Int
 
 	VerifySeal(chain IChainReader, header *types.BlockHeader) error
 	//VerifyHeader(chain IChainReader, header *types.BlockHeader) error

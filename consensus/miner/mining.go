@@ -19,13 +19,13 @@ package miner
 import (
 	"fmt"
 	"math/big"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/log"
-	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/consensus"
 	"github.com/UranusBlockStack/uranus/consensus/dpos"
@@ -247,14 +247,14 @@ func (m *UMiner) mintLoop() {
 			timestamp := dpos.Slot(now.UnixNano())
 			if err := m.engine.(*dpos.Dpos).CheckValidator(m.uranus, m.uranus.CurrentBlock(), m.coinbase, timestamp); err != nil {
 				switch err {
-				case dpos.ErrWaitForPrevBlock,
-					dpos.ErrMintFutureBlock,
-					dpos.ErrInvalidMintBlockTime,
-					dpos.ErrInvalidBlockValidator:
-					log.Debugf("Failed to mint the block, while %v", err)
+
+				case dpos.ErrInvalidBlockValidator:
+					log.Debugf("Failed to mint the block, err %v", err)
 				default:
-					if _, ok := err.(*mtp.MissingNodeError); !ok {
-						log.Warnf("Failed to mint the block, err %v", err)
+					if strings.Contains(err.Error(), dpos.ErrInvalidBlockValidator.Error()) {
+						log.Debugf("Failed to mint the block, while %v", err)
+					} else {
+						log.Errorf("Failed to mint the block, err %v", err)
 					}
 				}
 				continue
@@ -262,8 +262,9 @@ func (m *UMiner) mintLoop() {
 			if m.quitCurrentOp != nil {
 				close(m.quitCurrentOp)
 			}
-			m.quitCurrentOp = make(chan struct{})
-			go m.mintBlock(timestamp)
+			quitCurrentOp := make(chan struct{})
+			go m.mintBlock(timestamp, quitCurrentOp)
+			m.quitCurrentOp = quitCurrentOp
 		case <-m.stopCh:
 			return
 
@@ -271,21 +272,27 @@ func (m *UMiner) mintLoop() {
 	}
 }
 
-func (m *UMiner) mintBlock(timestamp int64) {
+func (m *UMiner) mintBlock(timestamp int64, quit chan struct{}) {
 outer:
-	for {
+	for i := 0; i < 10; i++ {
 		select {
-		case <-m.quitCurrentOp:
+		case <-quit:
+			log.Infof("mint block exit timestamp %v", timestamp)
 			break outer
 		default:
 		}
 		err := m.generateBlock(timestamp)
 		if err == nil || err == dpos.ErrMintFutureBlock {
+			log.Infof("mint block exit timestamp %v err %v", timestamp, err)
 			break outer
 		}
-		if _, ok := err.(*mtp.MissingNodeError); !ok {
-			log.Warnf("Failed to mint the block, err %v", err)
+
+		if i == 9 {
+			log.Errorf("Failed to mint the block, err %v index %v", err, i)
+		} else {
+			log.Warnf("Failed to mint the block, err %v index %v", err, i)
 		}
+
 		time.Sleep(time.Duration(dpos.Option.BlockInterval / 10))
 	}
 }
@@ -295,14 +302,15 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 	if err != nil {
 		return fmt.Errorf("failed to get current info, %s", err)
 	}
-	if parent.Time().Int64() != timestamp-dpos.Option.BlockInterval && timestamp-time.Now().UnixNano() >= 2*dpos.Option.BlockInterval/10 {
+	first := (timestamp%int64(dpos.Option.BlockInterval*dpos.Option.BlockRepeat*dpos.Option.MaxValidatorSize))%int64(dpos.Option.BlockRepeat*dpos.Option.MaxValidatorSize) == 0
+	if first && parent.Time().Int64() != timestamp-dpos.Option.BlockInterval && timestamp-time.Now().UnixNano() >= dpos.Option.BlockInterval {
 		return dpos.ErrWaitForPrevBlock
 	}
 	if parent.Time().Int64() >= timestamp {
 		return dpos.ErrMintFutureBlock
 	}
 	height := parent.BlockHeader().Height
-	difficult := m.engine.CalcDifficulty(m.uranus.Config(), uint64(timestamp), parent.BlockHeader())
+	difficult := m.engine.CalcDifficulty(m.uranus, m.uranus.Config(), uint64(timestamp), parent.BlockHeader())
 	header := &types.BlockHeader{
 		PreviousHash: parent.Hash(),
 		Miner:        m.coinbase,
@@ -312,7 +320,7 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 		Difficulty:   difficult,
 		ExtraData:    m.extraData,
 	}
-	var dposContext *types.DposContext = nil
+	var dposContext *types.DposContext
 	if _, ok := m.engine.(*dpos.Dpos); ok {
 		var err error
 
@@ -342,7 +350,7 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if parent, _, _ := m.uranus.GetCurrentInfo(); parent.Hash() != currentWork.Block.PreviousHash() {
-		return dpos.ErrWaitForPrevBlock
+		return fmt.Errorf("parent has changed %v(%v) ---> %v(%v)", currentWork.Block.PreviousHash().String(), currentWork.Block.Height().Uint64()-1, parent.Hash().String(), parent.Height())
 	}
 	m.currentWork = currentWork
 
@@ -358,7 +366,8 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 
 		block.DposContext = currentWork.dposContext
 		currentWork.Block = block
-		result, err := m.engine.Seal(m.uranus, currentWork.Block, m.quitCurrentOp, 0, nil)
+		quit := make(chan struct{})
+		result, err := m.engine.Seal(m.uranus, currentWork.Block, quit, 0, nil)
 		if err != nil {
 			return err
 		}
