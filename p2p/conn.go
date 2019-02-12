@@ -539,7 +539,7 @@ func (rw *connFrameRW) WriteMsg(msg *Message) error {
 	headbuf := make([]byte, 32)
 	fsize := uint32(len(ptype)) + uint32(len(msg.Payload))
 	if fsize > maxUint24 {
-		return errors.New("message size overflows uint24")
+		return fmt.Errorf("message size overflows uint24 %v > %v", fsize, maxUint24)
 	}
 	putInt24(fsize, headbuf)
 	copy(headbuf[3:], zeroHeader)

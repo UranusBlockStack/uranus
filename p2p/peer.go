@@ -155,6 +155,7 @@ func (p *Peer) startProtocols() {
 		proto := proto
 		proto.closed = p.closed
 		proto.wstart = wstart
+		proto.werr = p.runningErr
 		go func() {
 			defer p.wg.Done()
 			err := proto.Run(p, proto)
@@ -253,6 +254,7 @@ type protoRW struct {
 	w      MsgReadWriter
 	closed <-chan struct{}
 	wstart chan struct{}
+	werr   chan error
 }
 
 func (rw *protoRW) WriteMsg(msg *Message) (err error) {
@@ -261,6 +263,8 @@ func (rw *protoRW) WriteMsg(msg *Message) (err error) {
 		err = rw.w.WriteMsg(msg)
 		if err == nil {
 			rw.wstart <- struct{}{}
+		} else {
+			rw.werr <- err
 		}
 	case <-rw.closed:
 		err = fmt.Errorf("shutting down")

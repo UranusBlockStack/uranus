@@ -19,6 +19,7 @@ package protocols
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math"
 	"math/big"
 	"sync"
@@ -29,7 +30,7 @@ import (
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
 	"github.com/UranusBlockStack/uranus/feed"
-	"gopkg.in/fatih/set.v0"
+	set "gopkg.in/fatih/set.v0"
 )
 
 var (
@@ -228,9 +229,7 @@ func (d *Downloader) synchronise(id string, hash utils.Hash, td *big.Int) error 
 	if atomic.CompareAndSwapInt32(&d.notified, 0, 1) {
 		log.Info("Block synchronisation started")
 	}
-	if _, cached := d.queue.Size(); cached > 0 && d.queue.GetHeadBlock() != nil {
-		return errPendingQueue
-	}
+
 	d.queue.Reset()
 	d.peers.Reset()
 	d.checks = make(map[utils.Hash]*crossCheck)
@@ -254,7 +253,6 @@ func (d *Downloader) syncWithPeer(p *peer, hash utils.Hash, td *big.Int) (err er
 	d.mux.Post(StartEvent{})
 	defer func() {
 		if err != nil {
-			log.Errorf("downloading canceled: findAncestor %v", err)
 			d.cancel()
 			d.mux.Post(FailedEvent{err})
 		} else {
@@ -262,19 +260,23 @@ func (d *Downloader) syncWithPeer(p *peer, hash utils.Hash, td *big.Int) (err er
 		}
 	}()
 
+	log.Infof("Synchronising with the network", "peer", p.id, "head", hash, "td", td)
+	defer func(start time.Time) {
+		log.Infof("Synchronisation terminated", "elapsed", time.Since(start))
+	}(time.Now())
+
 	number, err := d.findAncestor(p)
 	if err != nil {
-		return err
+		return fmt.Errorf("findAncestor %v", err)
 	}
 	errc := make(chan error, 2)
 	go func() { errc <- d.fetchHashes(p, td, number+1) }()
 	go func() { errc <- d.fetchBlocks(number + 1) }()
 
 	if err := <-errc; err != nil {
-		log.Errorf("downloading canceled: fetchBlocks or fetchHashes %v", err)
 		d.cancel()
 		<-errc
-		return err
+		return fmt.Errorf("fetchBlocks or fetchHashes %v", err)
 	}
 	return <-errc
 }
