@@ -134,7 +134,6 @@ func (w *Work) commitTransaction(tx *types.Transaction, bc consensus.IBlockChain
 	dposSnap := w.dposContext.Snapshot()
 	receipt, _, err := bc.ExecTransaction(&w.Block.BlockHeader().Miner, w.dposContext, gp, w.state, w.Block.BlockHeader(), tx, GasUsed, vm.Config{})
 	if err != nil {
-		log.Errorf("failed exec transaction %v --- %v", tx.Hash().String(), err)
 		w.state.RevertToSnapshot(snap)
 		w.dposContext.RevertToSnapShot(dposSnap)
 		return err, nil

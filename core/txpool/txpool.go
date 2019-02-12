@@ -53,11 +53,11 @@ type TxPool struct {
 	pending map[utils.Address]*txList   // All currently processable transactions
 	queue   map[utils.Address]*txList   // Queued but non-processable transactions
 	beats   map[utils.Address]time.Time // Last heartbeat from each known account
+	dList   *deferredList
 
-	dList *deferredList
-
-	txs       *allTxs    // All transactions cache
-	priceList *priceList // All transactions sorted by price
+	txs        *allTxs    // All transactions cache
+	priceList  *priceList // All transactions sorted by price
+	addTxsChan chan types.Transactions
 
 	mu sync.RWMutex
 	wg sync.WaitGroup // for shutdown sync
@@ -92,9 +92,11 @@ func New(config *Config, chainconfig *params.ChainConfig, chain blockChainHelper
 	tp.resetTxpoolState(nil, chain.CurrentBlock())
 
 	tp.chainBlockSub = tp.chain.SubscribeChainBlockEvent(tp.chainBlockCh)
+	tp.addTxsChan = make(chan types.Transactions, tp.config.GlobalQueue)
 
 	tp.wg.Add(1)
 	go tp.loop()
+	go tp.txloop()
 
 	return tp
 }
@@ -142,7 +144,16 @@ func (tp *TxPool) loop() {
 	}
 }
 
-// Stop stop the transaction pool.
+func (tp *TxPool) txloop() {
+	for {
+		select {
+		case txs := <-tp.addTxsChan:
+			tp.addTxs(txs)
+		}
+	}
+}
+
+// S	top stop the transaction pool.
 func (tp *TxPool) Stop() {
 	if tp.txScription != nil {
 		tp.txScription.Unsubscribe()
@@ -502,6 +513,18 @@ func (tp *TxPool) AddAction(a *types.Action) {
 
 func (tp *TxPool) AddTx(tx *types.Transaction) error {
 	return tp.addTx(tx)
+}
+
+func (tp *TxPool) AddTxsChan(txs types.Transactions) bool {
+	if len(tp.addTxsChan) == int(tp.config.GlobalQueue) {
+		for _, tx := range txs {
+			from, _ := tx.Sender(tp.signer)
+			log.Warningf("Removed cap-exceeding handle transaction hash: %v, addr: %v, nonce: %v", tx.Hash(), from.String(), tx.Nonce())
+		}
+		return false
+	}
+	tp.addTxsChan <- txs
+	return true
 }
 
 func (tp *TxPool) AddTxs(txs []*types.Transaction) []error {

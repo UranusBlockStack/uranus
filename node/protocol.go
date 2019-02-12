@@ -452,13 +452,15 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.DecodePayload(&txs); err != nil {
 			return fmt.Errorf("msg %v: %v", msg, err)
 		}
-		for i, tx := range txs {
-			if tx == nil {
-				return fmt.Errorf("transaction %d is nil", i)
+
+		if pm.txpool.AddTxsChan(txs) {
+			for i, tx := range txs {
+				if tx == nil {
+					return fmt.Errorf("transaction %d is nil", i)
+				}
+				p.MarkTransaction(tx.Hash())
 			}
-			p.MarkTransaction(tx.Hash())
 		}
-		pm.txpool.AddTxs(txs)
 	case ConfirmedMsg:
 		confirmed := types.Confirmed{}
 		if err := msg.DecodePayload(&confirmed); err != nil {

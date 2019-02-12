@@ -59,6 +59,7 @@ var (
 	ErrMintFutureBlock            = errors.New("mint the future block")
 	ErrMismatchSignerAndValidator = errors.New("mismatch block signer and validator")
 	ErrInvalidBlockValidator      = errors.New("invalid block validator")
+	ErrTooMuchUnconfirmedBlock    = errors.New("too much unconfirmed block")
 	ErrInvalidMintBlockTime       = errors.New("invalid time to mint the block")
 	ErrNilBlockHeader             = errors.New("nil block header returned")
 )
@@ -272,7 +273,7 @@ func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader, dpos boo
 	if !dpos {
 		if blk := chain.CurrentBlock(); blk != nil {
 			d.confirmedBlockHeader = blk.BlockHeader()
-			if err := d.storeConfirmedBlockHeader(chain.CurrentBlock()); err != nil {
+			if err := d.storeConfirmedBlockHeader(chain, chain.CurrentBlock()); err != nil {
 				log.Errorf("dpos set confirmed block header: %v ,failed %v", d.confirmedBlockHeader.Height, err)
 				return err
 			}
@@ -301,7 +302,7 @@ func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader, dpos boo
 		validatorMap[curHeader.Miner] = true
 		if int64(len(validatorMap)) >= Option.consensusSize() {
 			d.confirmedBlockHeader = curHeader
-			if err := d.storeConfirmedBlockHeader(chain.CurrentBlock()); err != nil {
+			if err := d.storeConfirmedBlockHeader(chain, chain.CurrentBlock()); err != nil {
 				log.Errorf("dpos set confirmed block header:%v, failed: %v", d.confirmedBlockHeader.Height, err)
 				return err
 			}
@@ -330,8 +331,9 @@ func (d *Dpos) loadConfirmedBlockHeader(chain consensus.IChainReader) (*types.Bl
 }
 
 // store inserts the snapshot into the database.
-func (d *Dpos) storeConfirmedBlockHeader(lastBlock *types.Block) error {
-	if statedb, err := state.New(lastBlock.StateRoot(), d.db); err == nil {
+func (d *Dpos) storeConfirmedBlockHeader(chain consensus.IChainReader, lastBlock *types.Block) error {
+	header := d.EpchoBlockHeader(chain, lastBlock.Time().Int64()+Option.BlockInterval, lastBlock)
+	if statedb, err := state.New(header.StateRoot, d.db); err == nil {
 		if dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), lastBlock.BlockHeader().DposContext); err == nil {
 			validators, _ := dposContext.GetValidators()
 			for _, validator := range validators {
@@ -402,6 +404,9 @@ func (d *Dpos) CheckValidator(chain consensus.IChainReader, lastBlock *types.Blo
 	}
 
 	header := d.EpchoBlockHeader(chain, now, lastBlock)
+	// if d.confirmedBlockHeader != nil && header.Height.Cmp(d.confirmedBlockHeader.Height) > 0 && bytes.Compare(lastBlock.Miner().Bytes(), coinbase.Bytes()) == 0 {
+	// 	return ErrTooMuchUnconfirmedBlock
+	// }
 	statedb, err := state.New(header.StateRoot, d.db)
 	if err != nil {
 		return err
