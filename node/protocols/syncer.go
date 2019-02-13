@@ -31,7 +31,7 @@ const (
 	arriveTimeout = 500 * time.Millisecond
 	gatherSlack   = 100 * time.Millisecond
 	fetchTimeout  = 5 * time.Second
-	maxUncleDist  = 7
+	maxUncleDist  = 32
 	maxQueueDist  = 32
 	hashLimit     = 256
 	blockLimit    = 64
@@ -124,6 +124,7 @@ func (f *Fetcher) Notify(peer string, hash utils.Hash, time time.Time, fetcher b
 	}
 	select {
 	case f.notify <- block:
+		log.Infof("Peer %s: notify block [%x]", peer, hash.Bytes()[:4])
 		return nil
 	case <-f.quit:
 		return errTerminated
@@ -132,9 +133,10 @@ func (f *Fetcher) Notify(peer string, hash utils.Hash, time time.Time, fetcher b
 
 func (f *Fetcher) Enqueue(peer string, block *types.Block) error {
 	op := &inject{
-		origin: peer,
 		block:  block,
+		origin: peer,
 	}
+
 	select {
 	case f.inject <- op:
 		return nil
@@ -169,6 +171,7 @@ func (f *Fetcher) loop() {
 	for {
 		for hash, announce := range f.fetching {
 			if time.Since(announce.time) > fetchTimeout {
+				log.Infof("forget notify block [%x], timeout %v", hash.Bytes()[:4], time.Since(announce.time))
 				f.forgetHash(hash)
 			}
 		}
@@ -184,7 +187,7 @@ func (f *Fetcher) loop() {
 			hash := op.block.Hash()
 			if number+maxUncleDist < height || f.getBlock(hash) != nil {
 				f.forgetBlock(hash)
-				continue
+				break
 			}
 			f.insert(op.origin, op.block)
 		}
@@ -284,7 +287,11 @@ func (f *Fetcher) reschedule(fetch *time.Timer) {
 			earliest = announces[0].time
 		}
 	}
-	fetch.Reset(arriveTimeout - time.Since(earliest))
+	duration := arriveTimeout - time.Since(earliest)
+	if duration <= 0 {
+		duration = time.Millisecond
+	}
+	fetch.Reset(duration)
 }
 
 func (f *Fetcher) enqueue(peer string, block *types.Block) {

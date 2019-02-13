@@ -230,6 +230,10 @@ func (d *Downloader) synchronise(id string, hash utils.Hash, td *big.Int) error 
 		log.Info("Block synchronisation started")
 	}
 
+	if _, cached := d.queue.Size(); cached > 0 && d.queue.GetHeadBlock() != nil {
+		return errPendingQueue
+	}
+
 	d.queue.Reset()
 	d.peers.Reset()
 	d.checks = make(map[utils.Hash]*crossCheck)

@@ -342,7 +342,7 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 
 	txs := types.NewTransactionsByPriceAndNonce(currentWork.signer, pending)
 	interval := dpos.Option.BlockInterval
-	err = currentWork.applyTransactions(m.uranus, txs, timestamp+interval-interval/10)
+	err = currentWork.applyTransactions(m.uranus, txs, timestamp+interval-2*interval/5)
 	if err != nil {
 		return fmt.Errorf("failed to apply transaction %s", err)
 	}
