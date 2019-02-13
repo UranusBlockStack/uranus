@@ -38,6 +38,8 @@ func AddCommands() {
 	RootCmd.AddCommand(getBlockByHashCmd)
 	RootCmd.AddCommand(getTransactionByHashCmd)
 	RootCmd.AddCommand(getTransactionReceiptCmd)
+	RootCmd.AddCommand(importBlocksCommand)
+	RootCmd.AddCommand(exportBlocksCommand)
 
 	// txpool command
 	RootCmd.AddCommand(getContentCmd)

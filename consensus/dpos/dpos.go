@@ -64,6 +64,7 @@ var (
 	ErrNilBlockHeader             = errors.New("nil block header returned")
 )
 var (
+	timeOfGenesisBlock = int64(-1)
 	timeOfFirstBlock   = int64(0)
 	confirmedBlockHead = []byte("confirmed-block-head")
 )
@@ -216,12 +217,10 @@ func (d *Dpos) Author(header *types.BlockHeader) (utils.Address, error) {
 }
 
 func (d *Dpos) CalcDifficulty(chain consensus.IChainReader, config *params.ChainConfig, time uint64, parent *types.BlockHeader) *big.Int {
-	if timeOfFirstBlock == 0 {
-		if firstBlock := chain.GetBlockByHeight(1); firstBlock != nil {
-			timeOfFirstBlock = firstBlock.BlockHeader().TimeStamp.Int64()
-		}
+	if timeOfGenesisBlock == -1 {
+		timeOfGenesisBlock = chain.GetBlockByHeight(0).Time().Int64()
 	}
-	return big.NewInt((int64(time) - timeOfFirstBlock) / int64(Option.BlockInterval))
+	return big.NewInt((int64(time)-timeOfGenesisBlock)/int64(Option.BlockInterval) + 1)
 }
 
 func (d *Dpos) VerifySeal(chain consensus.IChainReader, header *types.BlockHeader) error {

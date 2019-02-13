@@ -11,7 +11,7 @@
 		"refund": 259200
 	},
 	"nonce": "0x1",
-	"timestamp": "0x0",
+	"timestamp": "0x1579dc827e390000",
 	"extraData": "0x",
 	"gasLimit": "0x4c4b40",
 	"difficulty": "0xf4240",

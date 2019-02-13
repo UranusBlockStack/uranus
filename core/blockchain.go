@@ -18,6 +18,7 @@ package core
 
 import (
 	"fmt"
+	"io"
 	"math/big"
 	"math/rand"
 	"sort"
@@ -66,6 +67,7 @@ type BlockChain struct {
 	engine   consensus.Engine
 
 	chainmu sync.RWMutex
+	mu      sync.RWMutex
 	quit    chan struct{} // blockchain quit channel
 }
 
@@ -300,8 +302,8 @@ func (bc *BlockChain) ExecActions(statedb *state.StateDB, actions []*types.Actio
 
 //WriteBlockWithState write the block to the chain and get the status.
 func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts types.Receipts, state *state.StateDB) (bool, error) {
-	bc.chainmu.Lock()
-	defer bc.chainmu.Unlock()
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
 	if bc.HasBlock(block.Hash()) && bc.HasState(block.StateRoot()) {
 		return true, nil
 	}
@@ -446,8 +448,8 @@ func (bc *BlockChain) State() (*state.StateDB, error) {
 
 // GetCurrentInfo return current info
 func (bc *BlockChain) GetCurrentInfo() (*types.Block, *state.StateDB, error) {
-	bc.chainmu.Lock()
-	defer bc.chainmu.Unlock()
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
 	currentBlock := bc.currentBlock.Load().(*types.Block)
 	state, err := bc.StateAt(currentBlock.StateRoot())
 	return currentBlock, state, err
@@ -472,4 +474,28 @@ func (bc *BlockChain) SubscribeSideBlockEvent(ch chan<- feed.ForkBlockEvent) fee
 
 func (bc *BlockChain) Config() *params.ChainConfig {
 	return bc.config
+}
+
+// ExportN writes a subset of the active chain to the given writer.
+func (bc *BlockChain) ExportN(w io.Writer, first uint64, last uint64) error {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
+
+	if first > last {
+		return fmt.Errorf("export failed: first (%d) is greater than last (%d)", first, last)
+	}
+	log.Info("Exporting batch of blocks", "count", last-first+1)
+
+	for nr := first; nr <= last; nr++ {
+		block := bc.GetBlockByHeight(nr)
+		if block == nil {
+			return fmt.Errorf("export failed on #%d: not found", nr)
+		}
+
+		if err := block.EncodeRLP(w); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -17,9 +17,17 @@
 package rpcapi
 
 import (
+	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
 
+	"github.com/UranusBlockStack/uranus/common/log"
+	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
 )
@@ -148,4 +156,113 @@ func (s *BlockChainAPI) rpcOutputBlock(b *types.Block, inclTx bool, fullTx bool)
 	}
 	fields["totalDifficulty"] = (*utils.Big)(s.b.GetTd(b.Hash()))
 	return fields, err
+}
+
+// ExportBlocksArgs export blocks
+type ExportBlocksArgs struct {
+	FileName    string
+	FirstHeight *BlockHeight
+	LastHeight  *BlockHeight
+}
+
+// ExportBlocks export block
+func (s *BlockChainAPI) ExportBlocks(args ExportBlocksArgs, reply *map[string]interface{}) error {
+
+	fh, err := os.OpenFile(args.FileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		return err
+	}
+	defer fh.Close()
+
+	var writer io.Writer = fh
+	if strings.HasSuffix(args.FileName, ".gz") {
+		writer = gzip.NewWriter(writer)
+		defer writer.(*gzip.Writer).Close()
+	}
+
+	if args.FirstHeight == nil {
+		firtHeight := BlockHeight(1)
+		args.FirstHeight = &firtHeight
+	}
+	if args.LastHeight == nil {
+		lastHeight := BlockHeight(s.b.CurrentBlock().Height().Int64())
+		args.LastHeight = &lastHeight
+	}
+	return s.b.BlockChain().ExportN(writer, uint64(args.FirstHeight.Int64()), uint64(args.LastHeight.Int64()))
+
+}
+
+// ImportBlocks import blocks
+func (s *BlockChainAPI) ImportBlocks(filename string, reply *map[string]interface{}) error {
+	interrupt := make(chan os.Signal, 1)
+	stop := make(chan struct{})
+	signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(interrupt)
+	defer close(interrupt)
+	go func() {
+		if _, ok := <-interrupt; ok {
+			log.Info("Interrupted during import, stopping at next batch")
+		}
+		close(stop)
+	}()
+
+	checkInterrupt := func() bool {
+		select {
+		case <-stop:
+			return true
+		default:
+			return false
+		}
+	}
+
+	log.Infof("Importing blockchain file %v", filename)
+	fh, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer fh.Close()
+	var reader io.Reader = fh
+	if strings.HasSuffix(filename, ".gz") {
+		if reader, err = gzip.NewReader(reader); err != nil {
+			return err
+		}
+	}
+	stream := rlp.NewStream(reader, 0)
+
+	importBatchSize := 2500
+
+	n := 0
+	for batch := 0; ; batch++ {
+		if checkInterrupt() {
+			return fmt.Errorf("interrupted")
+		}
+		i := 0
+		blocks := make([]*types.Block, 0)
+		for ; i < importBatchSize; i++ {
+			var b types.Block
+			if err := stream.Decode(&b); err == io.EOF {
+				break
+			} else if err != nil {
+				return fmt.Errorf("at block %d: %v", n, err)
+			}
+			// don't import first block
+			if b.Height().Uint64() == 0 {
+				i--
+				continue
+			}
+			blocks = append(blocks, &b)
+			n++
+		}
+		if i == 0 {
+			break
+		}
+		// Import the batch.
+		if checkInterrupt() {
+			return fmt.Errorf("interrupted")
+		}
+		if _, err := s.b.BlockChain().InsertChain(blocks); err != nil {
+			return fmt.Errorf("invalid block %d: %v", n, err)
+		}
+	}
+	return nil
 }

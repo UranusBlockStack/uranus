@@ -102,3 +102,38 @@ var getTransactionReceiptCmd = &cobra.Command{
 		cmdutils.PrintJSON(result)
 	},
 }
+
+var importBlocksCommand = &cobra.Command{
+	Use:   "importBlocks <file>",
+	Short: "Import blocks from an RLP-encoded form.",
+	Long:  `Import blocks from an RLP-encoded form. If the file ends with .gz, the output will be gzipped.`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		result := map[uint64]interface{}{}
+		cmdutils.ClientCall("BlockChain.ImportBlocks", args[0], &result)
+		cmdutils.PrintJSON(result)
+	},
+}
+
+var exportBlocksCommand = &cobra.Command{
+	Use:   "exportBlocks <file> [<blockNumFirst> <blockNumLast>]",
+	Short: "Export blocks into an RLP-encoded form.",
+	Long:  `Export blocks into an RLP-encoded form. If the file ends with .gz, the output will be gzipped.`,
+	Args:  cobra.RangeArgs(1, 3),
+	Run: func(cmd *cobra.Command, args []string) {
+		req := rpcapi.ExportBlocksArgs{}
+		switch len(args) {
+		case 3:
+			req.FirstHeight = cmdutils.GetBlockheight(args[2])
+			fallthrough
+		case 2:
+			req.LastHeight = cmdutils.GetBlockheight(args[1])
+			fallthrough
+		case 1:
+			req.FileName = args[0]
+		}
+		result := map[uint64]interface{}{}
+		cmdutils.ClientCall("BlockChain.ExportBlocks", req, &result)
+		cmdutils.PrintJSON(result)
+	},
+}

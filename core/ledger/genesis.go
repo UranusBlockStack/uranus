@@ -19,6 +19,7 @@ package ledger
 import (
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/math"
@@ -58,12 +59,14 @@ type Genesis struct {
 
 // DefaultGenesis returns the nurans main net genesis block.
 func DefaultGenesis() *Genesis {
+	gtime, _ := time.Parse("2006-01-02 15:04:05", "2019-01-15 00:00:00")
 	extraData, _ := utils.Decode("uranus gensis block")
 	return &Genesis{
 		Config:     params.DefaultChainConfig,
 		Nonce:      1,
 		ExtraData:  extraData,
 		GasLimit:   params.GenesisGasLimit,
+		Timestamp:  uint64(gtime.UnixNano()),
 		Difficulty: big.NewInt(0),
 	}
 }
