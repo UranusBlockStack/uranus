@@ -48,6 +48,7 @@ var (
 	ErrInvalidType    = errors.New("invalid transaction type")
 	ErrInvalidAddress = errors.New("invalid transaction payload address")
 	ErrInvalidAction  = errors.New("invalid transaction payload action")
+	ErrNotFound       = errors.New("not found")
 )
 
 // Transaction transaction

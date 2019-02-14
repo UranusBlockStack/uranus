@@ -150,7 +150,7 @@ var callCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 
 	Run: func(cmd *cobra.Command, args []string) {
-		result := new(utils.Bytes)
+		result := map[string]interface{}{}
 		req := &rpcapi.CallArgs{}
 		if err := json.Unmarshal([]byte(args[0]), req); err != nil {
 			jww.ERROR.Println(err)

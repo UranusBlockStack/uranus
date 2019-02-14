@@ -220,7 +220,7 @@ type CallArgs struct {
 }
 
 // Call executes the given transaction on the state for the given block number.
-func (u *UranusAPI) Call(args CallArgs, reply *utils.Bytes) error {
+func (u *UranusAPI) Call(args CallArgs, reply *map[string]interface{}) error {
 	blockheight := LatestBlockHeight
 	if args.BlockHeight != nil {
 		blockheight = *args.BlockHeight
@@ -284,12 +284,17 @@ func (u *UranusAPI) Call(args CallArgs, reply *utils.Bytes) error {
 
 	stx := executor.NewStateTransitionForApi(evm, args.From, tx, gp)
 
-	res, _, _, err := stx.TransitionDb()
+	res, gasused, failed, err := stx.TransitionDb()
 	if err := vmError(); err != nil {
 		return err
 	}
+	ret := map[string]interface{}{}
+	ret["result"] = res
+	ret["gasUsed"] = gasused
+	ret["failed"] = failed
+	ret["error"] = err
 
-	*reply = (utils.Bytes)(res)
+	*reply = ret
 	return err
 }
 

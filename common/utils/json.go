@@ -124,14 +124,6 @@ func UnmarshalFixedUnprefixedText(typname string, input, out []byte) error {
 	return nil
 }
 
-// Big marshals/unmarshals as a JSON string with 0x prefix.
-// The zero value marshals as "0x0".
-//
-// Negative integers are not supported at this time. Attempting to marshal them will
-// return an error. Values larger than 256bits are rejected by Unmarshal but will be
-// marshaled without error.
-type Big big.Int
-
 // MarshalText implements encoding.TextMarshaler
 func (b Big) MarshalText() ([]byte, error) {
 	return []byte(EncodeBig((*big.Int)(&b))), nil
@@ -175,16 +167,6 @@ func (b *Big) UnmarshalText(input []byte) error {
 	dec.SetBits(words)
 	*b = (Big)(dec)
 	return nil
-}
-
-// ToInt converts b to a big.Int.
-func (b *Big) ToInt() *big.Int {
-	return (*big.Int)(b)
-}
-
-// String returns the hex encoding of b.
-func (b *Big) String() string {
-	return EncodeBig(b.ToInt())
 }
 
 // Uint64 marshals/unmarshals as a JSON string with 0x prefix.
