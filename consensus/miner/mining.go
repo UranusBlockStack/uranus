@@ -17,6 +17,7 @@
 package miner
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"strings"
@@ -164,8 +165,11 @@ func (m *UMiner) update() {
 out:
 	for {
 		select {
-		case <-chainBlockCh:
-
+		case ev := <-chainBlockCh:
+			if m.quitCurrentOp != nil && bytes.Compare(ev.Block.Miner().Bytes(), m.GetCoinBase().Bytes()) != 0 {
+				close(m.quitCurrentOp)
+				m.quitCurrentOp = nil
+			}
 		case ev := <-txCh:
 			if atomic.LoadInt32(&m.mining) == 0 {
 				_ = ev.Txs
@@ -274,7 +278,7 @@ func (m *UMiner) mintLoop() {
 
 func (m *UMiner) mintBlock(timestamp int64, quit chan struct{}) {
 outer:
-	for i := 0; i < 10; i++ {
+	for {
 		select {
 		case <-quit:
 			log.Infof("mint block exit timestamp %v", timestamp)
@@ -286,14 +290,7 @@ outer:
 			log.Infof("mint block exit timestamp %v err %v", timestamp, err)
 			break outer
 		}
-
-		if i == 9 {
-			log.Errorf("Failed to mint the block, err %v index %v", err, i)
-		} else {
-			log.Warnf("Failed to mint the block, err %v index %v", err, i)
-		}
-
-		time.Sleep(time.Duration(dpos.Option.BlockInterval / 10))
+		log.Warnf("Failed to mint the block, timestamp %v err %v", timestamp, err)
 	}
 }
 
@@ -329,8 +326,9 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 			return err
 		}
 	}
-	currentWork := NewWork(types.NewBlockWithBlockHeader(header), parent.Height().Uint64(), stateDB, dposContext)
-
+	quit := make(chan struct{})
+	m.quitCurrentOp = quit
+	currentWork := NewWork(types.NewBlockWithBlockHeader(header), parent.Height().Uint64(), stateDB, dposContext, quit)
 	actions := m.uranus.Actions()
 
 	currentWork.applyActions(m.uranus, actions)

@@ -5,6 +5,7 @@
 		"blockRepeat": 12,
 		"epchoValidators": 3,
 		"delayepcho": 2,
+		"unconfirmedBlockNum": 72,
 		"candiate": "0x970e8128ab834e8eac17ab8e3812f010678cf791",
 		"startQuantity": 10000000000000000000000000,
 		"votes": 30,

@@ -17,6 +17,7 @@
 package miner
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/UranusBlockStack/uranus/common/log"
@@ -42,10 +43,12 @@ type Work struct {
 	state    *state.StateDB
 	tcount   int // tx count in cycle
 
+	quit chan struct{}
+
 	dposContext *types.DposContext
 }
 
-func NewWork(blk *types.Block, height uint64, state *state.StateDB, dposContext *types.DposContext) *Work {
+func NewWork(blk *types.Block, height uint64, state *state.StateDB, dposContext *types.DposContext, quit chan struct{}) *Work {
 	return &Work{
 		Block:       blk,
 		Height:      height,
@@ -53,6 +56,7 @@ func NewWork(blk *types.Block, height uint64, state *state.StateDB, dposContext 
 		gasUsed:     new(uint64),
 		signer:      types.Signer{},
 		dposContext: dposContext,
+		quit:        quit,
 	}
 }
 
@@ -76,6 +80,12 @@ func (w *Work) applyTransactions(blockchain consensus.IBlockChain, txs *types.Tr
 		if time.Now().UnixNano() > timestamp {
 			log.Warn("Not enough time for further transactions")
 			break
+		}
+
+		select {
+		case <-w.quit:
+			return fmt.Errorf("new parent comed")
+		default:
 		}
 
 		// Retrieve the next transaction and abort if all done

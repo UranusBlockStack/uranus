@@ -25,11 +25,12 @@ import (
 )
 
 var Option = &option{
-	BlockInterval:    int64(500 * time.Millisecond), // 500 ms
-	BlockRepeat:      12,
-	MaxValidatorSize: 3,
-	MinStartQuantity: new(big.Int).Mul(big.NewInt(1000000), big.NewInt(1e18)),
-	DelayEpcho:       2,
+	BlockInterval:       int64(500 * time.Millisecond), // 500 ms
+	BlockRepeat:         12,
+	MaxValidatorSize:    3,
+	MinStartQuantity:    new(big.Int).Mul(big.NewInt(1000000), big.NewInt(1e18)),
+	DelayEpcho:          2,
+	UnconfirmedBlockNum: 72,
 }
 
 func (opt *option) consensusSize() int64 {
@@ -41,11 +42,12 @@ func (opt *option) epochInterval() int64 {
 }
 
 type option struct {
-	BlockInterval    int64
-	BlockRepeat      int64
-	MaxValidatorSize int64
-	MinStartQuantity *big.Int
-	DelayEpcho       int64
+	BlockInterval       int64
+	BlockRepeat         int64
+	MaxValidatorSize    int64
+	MinStartQuantity    *big.Int
+	DelayEpcho          int64
+	UnconfirmedBlockNum int64
 }
 
 const (
@@ -295,16 +297,15 @@ func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader, dpos boo
 		return nil
 	}
 
-	epoch := int64(-1)
+	// epoch := int64(-1)
 	validatorMap := make(map[utils.Address]bool)
 	curHeader := chain.CurrentBlock().BlockHeader()
-	for d.confirmedBlockHeader.Hash() != curHeader.Hash() &&
-		d.confirmedBlockHeader.Height.Uint64() < curHeader.Height.Uint64() {
-		curEpoch := curHeader.TimeStamp.Int64() / Option.epochInterval()
-		if curEpoch != epoch {
-			epoch = curEpoch
-			validatorMap = make(map[utils.Address]bool)
-		}
+	for d.confirmedBlockHeader.Height.Uint64() < curHeader.Height.Uint64() {
+		// curEpoch := curHeader.TimeStamp.Int64() / Option.epochInterval()
+		// if curEpoch != epoch {
+		// 	epoch = curEpoch
+		// 	validatorMap = make(map[utils.Address]bool)
+		// }
 		// fast return
 		// if block number difference less Option.consensusSize()-witnessNum
 		// there is no need to check block is confirmed
@@ -440,6 +441,11 @@ func (d *Dpos) CheckValidator(chain consensus.IChainReader, lastBlock *types.Blo
 	// if d.confirmedBlockHeader != nil && header.Height.Cmp(d.confirmedBlockHeader.Height) > 0 && bytes.Compare(lastBlock.Miner().Bytes(), coinbase.Bytes()) == 0 {
 	// 	return ErrTooMuchUnconfirmedBlock
 	// }
+	var confirmedNumber *big.Int
+	if d.confirmedBlockHeader != nil {
+		confirmedNumber = d.confirmedBlockHeader.Height
+	}
+
 	statedb, err := state.New(header.StateRoot, d.db)
 	if err != nil {
 		return err
@@ -459,6 +465,12 @@ func (d *Dpos) CheckValidator(chain consensus.IChainReader, lastBlock *types.Blo
 		offset /= Option.BlockInterval * Option.BlockRepeat
 		return fmt.Errorf("%v %v, excepted %v index %v", ErrInvalidBlockValidator, coinbase, validators, offset)
 	}
+
+	if distance := new(big.Int).Sub(lastBlock.Height(), confirmedNumber); distance.Int64() > Option.UnconfirmedBlockNum && bytes.Compare(lastBlock.Miner().Bytes(), coinbase.Bytes()) == 0 {
+		log.Infof("confirmed: %v, latest: %v, distance:%v", confirmedNumber, lastBlock.Height(), distance)
+		return ErrTooMuchUnconfirmedBlock
+	}
+
 	return nil
 }
 

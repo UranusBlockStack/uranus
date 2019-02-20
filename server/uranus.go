@@ -97,6 +97,11 @@ func New(ctx *node.Context, config *UranusConfig) (*Uranus, error) {
 	if chainCfg.DelayEpcho > 0 {
 		dpos.Option.DelayEpcho = chainCfg.DelayEpcho
 	}
+
+	if chainCfg.UnconfirmedBlockNum > 0 {
+		dpos.Option.UnconfirmedBlockNum = chainCfg.UnconfirmedBlockNum
+	}
+
 	dpos := dpos.NewDpos(mux, chainDb, statedb, uranus.wallet.SignHash, "coinbase")
 
 	// blockchain
