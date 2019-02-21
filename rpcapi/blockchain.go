@@ -42,6 +42,30 @@ func NewBlockChainAPI(b Backend) *BlockChainAPI {
 	return &BlockChainAPI{b}
 }
 
+// GetLatestBlockHeight returns the latest block height.
+func (s *BlockChainAPI) GetLatestBlockHeight(ingore string, reply *utils.Uint64) error {
+	h := s.b.CurrentBlock().Height()
+	*reply = (utils.Uint64)(h.Uint64())
+	return nil
+}
+
+type GetLatestBlockArgs struct {
+	FullTx bool
+}
+
+// GetLatestBlock returns the latest block.
+func (s *BlockChainAPI) GetLatestBlock(args GetLatestBlockArgs, reply *map[string]interface{}) error {
+	block := s.b.CurrentBlock()
+	response, err := s.rpcOutputBlock(block, true, args.FullTx)
+	if err == nil {
+		for _, field := range []string{"hash", "nonce", "miner"} {
+			response[field] = nil
+		}
+	}
+	*reply = response
+	return err
+}
+
 type GetBlockByHeightArgs struct {
 	BlockHeight *BlockHeight
 	FullTx      bool

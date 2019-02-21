@@ -34,6 +34,8 @@ func AddCommands() {
 	RootCmd.AddCommand(nodeInfoCmd)
 
 	// blockchain command
+	RootCmd.AddCommand(getLatestBlockHeightCmd)
+	RootCmd.AddCommand(getLatestBlockCmd)
 	RootCmd.AddCommand(getBlockByHeightCmd)
 	RootCmd.AddCommand(getBlockByHashCmd)
 	RootCmd.AddCommand(getTransactionByHashCmd)

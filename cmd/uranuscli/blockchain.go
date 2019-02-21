@@ -27,6 +27,40 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 )
 
+var getLatestBlockHeightCmd = &cobra.Command{
+	Use:   "getLatestBlockHeight",
+	Short: "Returns the latest block height.",
+	Long:  `Returns the latest block height.`,
+	Args:  cobra.RangeArgs(0, 1),
+	Run: func(cmd *cobra.Command, args []string) {
+		result := new(utils.Uint64)
+		cmdutils.ClientCall("BlockChain.GetLatestBlockHeight", nil, &result)
+		if cmdutils.OneLine {
+			jww.FEEDBACK.Print(result.String(), " Latest Height:", strconv.FormatInt((int64)(*result), 10))
+		} else {
+			cmdutils.PrintJSON(result)
+		}
+	},
+}
+
+var getLatestBlockCmd = &cobra.Command{
+	Use:   "getLatestBlock [fullTx]",
+	Short: "Returns the latest block.",
+	Long:  `Returns the latest block.`,
+	Args:  cobra.RangeArgs(0, 1),
+	Run: func(cmd *cobra.Command, args []string) {
+		req := rpcapi.GetLatestBlockArgs{}
+		switch len(args) {
+		case 1:
+			req.FullTx, _ = strconv.ParseBool(args[0])
+		}
+
+		result := map[string]interface{}{}
+		cmdutils.ClientCall("BlockChain.GetLatestBlock", req, &result)
+		cmdutils.PrintJSON(result)
+	},
+}
+
 var getBlockByHeightCmd = &cobra.Command{
 	Use:   "getBlockByHeight <height> [fullTx]",
 	Short: "Returns the requested block by height.",
