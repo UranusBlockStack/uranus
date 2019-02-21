@@ -300,8 +300,8 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 	if err != nil {
 		return fmt.Errorf("failed to get current info, %s", err)
 	}
-	first := (timestamp%int64(dpos.Option.BlockInterval*dpos.Option.BlockRepeat*dpos.Option.MaxValidatorSize))%int64(dpos.Option.BlockRepeat*dpos.Option.MaxValidatorSize) == 0
-	if first && parent.Time().Int64() != timestamp-dpos.Option.BlockInterval && timestamp-time.Now().UnixNano() >= dpos.Option.BlockInterval {
+	first := (timestamp%int64(dpos.Option.BlockInterval*dpos.Option.BlockRepeat*dpos.Option.MaxValidatorSize))%int64(dpos.Option.BlockRepeat*dpos.Option.BlockInterval) == 0
+	if first && parent.Time().Int64() != timestamp-dpos.Option.BlockInterval && time.Now().UnixNano()-timestamp <= 2*dpos.Option.BlockInterval/5 {
 		return dpos.ErrWaitForPrevBlock
 	}
 	if parent.Time().Int64() >= timestamp {
