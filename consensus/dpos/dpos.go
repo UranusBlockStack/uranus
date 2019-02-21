@@ -25,12 +25,12 @@ import (
 )
 
 var Option = &option{
-	BlockInterval:       int64(500 * time.Millisecond), // 500 ms
-	BlockRepeat:         12,
-	MaxValidatorSize:    3,
-	MinStartQuantity:    new(big.Int).Mul(big.NewInt(1000000), big.NewInt(1e18)),
-	DelayEpcho:          2,
-	UnconfirmedBlockNum: 72,
+	BlockInterval:    int64(500 * time.Millisecond), // 500 ms
+	BlockRepeat:      12,
+	MaxValidatorSize: 3,
+	MinStartQuantity: new(big.Int).Mul(big.NewInt(1000000), big.NewInt(1e18)),
+	DelayEpcho:       2,
+	MaxConfirmedNum:  72,
 }
 
 func (opt *option) consensusSize() int64 {
@@ -42,12 +42,12 @@ func (opt *option) epochInterval() int64 {
 }
 
 type option struct {
-	BlockInterval       int64
-	BlockRepeat         int64
-	MaxValidatorSize    int64
-	MinStartQuantity    *big.Int
-	DelayEpcho          int64
-	UnconfirmedBlockNum int64
+	BlockInterval    int64
+	BlockRepeat      int64
+	MaxValidatorSize int64
+	MinStartQuantity *big.Int
+	DelayEpcho       int64
+	MaxConfirmedNum  int64
 }
 
 const (
@@ -289,10 +289,10 @@ func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader, dpos boo
 		if blk := chain.CurrentBlock(); blk != nil {
 			d.confirmedBlockHeader = blk.BlockHeader()
 			if err := d.storeConfirmedBlockHeader(chain, chain.CurrentBlock()); err != nil {
-				log.Errorf("dpos set confirmed block header: %v ,failed %v", d.confirmedBlockHeader.Height, err)
+				log.Errorf("dpos set confirmed block header success currentHeader %v -- %v", d.confirmedBlockHeader.Height, err)
 				return err
 			}
-			log.Debugf("dpos set confirmed block header success", "currentHeader", d.confirmedBlockHeader.Height)
+			log.Debugf("dpos set confirmed block header success currentHeader %v", d.confirmedBlockHeader.Height)
 		}
 		return nil
 	}
@@ -300,7 +300,7 @@ func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader, dpos boo
 	// epoch := int64(-1)
 	validatorMap := make(map[utils.Address]bool)
 	curHeader := chain.CurrentBlock().BlockHeader()
-	for d.confirmedBlockHeader.Height.Uint64() < curHeader.Height.Uint64() {
+	for d.confirmedBlockHeader.Height.Cmp(curHeader.Height) <= 0 {
 		// curEpoch := curHeader.TimeStamp.Int64() / Option.epochInterval()
 		// if curEpoch != epoch {
 		// 	epoch = curEpoch
@@ -315,18 +315,21 @@ func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader, dpos boo
 		}
 		validatorMap[curHeader.Miner] = true
 		if int64(len(validatorMap)) >= Option.consensusSize() {
-			d.confirmedBlockHeader = curHeader
-			if err := d.storeConfirmedBlockHeader(chain, chain.CurrentBlock()); err != nil {
-				log.Errorf("dpos set confirmed block header:%v, failed: %v", d.confirmedBlockHeader.Height, err)
-				return err
+			if d.confirmedBlockHeader.Height.Cmp(curHeader.Height) != 0 {
+				d.confirmedBlockHeader = curHeader
+				if err := d.storeConfirmedBlockHeader(chain, chain.CurrentBlock()); err != nil {
+					log.Errorf("dpos set confirmed block header %v success -- err %v", d.confirmedBlockHeader.Height, err)
+					return err
+				}
+				log.Debugf("dpos set confirmed block header %v success", curHeader.Height)
 			}
-			log.Debugf("dpos set confirmed block header success", "currentHeader", curHeader.Height)
 			return nil
 		}
-		curHeader = chain.GetBlockByHash(curHeader.PreviousHash).BlockHeader()
-		if curHeader == nil {
+		blk := chain.GetBlockByHash(curHeader.PreviousHash)
+		if blk == nil {
 			return ErrNilBlockHeader
 		}
+		curHeader = blk.BlockHeader()
 	}
 	return nil
 }
@@ -361,6 +364,7 @@ func (d *Dpos) storeConfirmedBlockHeader(chain consensus.IChainReader, lastBlock
 						confirmed.Signature = sighash
 						d.eventMux.Post(feed.NewConfirmedEvent{Confirmed: confirmed})
 						d.bftConfirmeds.Add(d.coinbase, confirmed.BlockHeight)
+						d.storeBFTConfirmedBlockHeader(chain)
 					} else {
 						log.Errorf("confirmed sign err %v", err)
 					}
@@ -385,10 +389,24 @@ func (d *Dpos) loadBFTConfirmedBlockHeader(chain consensus.IChainReader) (*types
 	return blk.BlockHeader(), nil
 }
 
-// store inserts the snapshot into the database.
 func (d *Dpos) storeBFTConfirmedBlockHeader(chain consensus.IChainReader) error {
-	h, _ := d.GetBFTConfirmedBlockNumber()
-	d.bftConfirmedBlockHeader = chain.GetBlockByHeight(h.Uint64()).BlockHeader()
+	irreversibles := UInt64Slice{}
+	keys := d.bftConfirmeds.Keys()
+	for _, key := range keys {
+		if irreversible, ok := d.bftConfirmeds.Get(key); ok {
+			irreversibles = append(irreversibles, irreversible.(uint64))
+		}
+	}
+
+	if len(irreversibles) == 0 {
+		return nil
+	}
+
+	sort.Sort(irreversibles)
+
+	h := irreversibles[(len(irreversibles)-1)/3]
+	d.bftConfirmedBlockHeader = chain.GetBlockByHeight(h).BlockHeader()
+	log.Debugf("dpos set bft confirmed block header %v success", d.bftConfirmedBlockHeader.Height)
 	return d.chainDb.Put(bftConfirmedBlockHead, d.bftConfirmedBlockHeader.Hash().Bytes())
 }
 
@@ -400,23 +418,12 @@ func (d *Dpos) GetConfirmedBlockNumber() (*big.Int, error) {
 	return header.Height, nil
 }
 
-func (d *Dpos) GetBFTConfirmedBlockNumber() (*big.Int, error) {
-	irreversibles := UInt64Slice{}
-	keys := d.bftConfirmeds.Keys()
-	for _, key := range keys {
-		if irreversible, ok := d.bftConfirmeds.Get(key); ok {
-			irreversibles = append(irreversibles, irreversible.(uint64))
-		}
-	}
-
-	if len(irreversibles) == 0 {
+func (dpos *Dpos) GetBFTConfirmedBlockNumber() (*big.Int, error) {
+	header := dpos.bftConfirmedBlockHeader
+	if header == nil {
 		return big.NewInt(0), nil
 	}
-
-	sort.Sort(irreversibles)
-
-	/// 2/3 must be greater, so if I go 1/3 into the list sorted from low to high, then 2/3 are greater
-	return big.NewInt(int64(irreversibles[(len(irreversibles)-1)/3])), nil
+	return header.Height, nil
 }
 
 func (d *Dpos) EpchoBlockHeader(chain consensus.IChainReader, timestamp int64, lastBlock *types.Block) *types.BlockHeader {
@@ -466,8 +473,9 @@ func (d *Dpos) CheckValidator(chain consensus.IChainReader, lastBlock *types.Blo
 		return fmt.Errorf("%v %v, excepted %v index %v", ErrInvalidBlockValidator, coinbase, validators, offset)
 	}
 
-	if distance := new(big.Int).Sub(lastBlock.Height(), confirmedNumber); distance.Int64() > Option.UnconfirmedBlockNum && bytes.Compare(lastBlock.Miner().Bytes(), coinbase.Bytes()) == 0 {
-		log.Infof("confirmed: %v, latest: %v, distance:%v", confirmedNumber, lastBlock.Height(), distance)
+	maxconfirmed := Option.MaxConfirmedNum
+	if distance := new(big.Int).Sub(lastBlock.Height(), confirmedNumber); distance.Int64() > maxconfirmed && bytes.Compare(lastBlock.Miner().Bytes(), coinbase.Bytes()) == 0 {
+		log.Infof("confirmed: %v, latest: %v, distance:%v, maxconfirmed: %v", confirmedNumber, lastBlock.Height(), distance, maxconfirmed)
 		return ErrTooMuchUnconfirmedBlock
 	}
 

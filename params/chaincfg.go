@@ -23,16 +23,16 @@ import (
 )
 
 type ChainConfig struct {
-	ChainID             *big.Int `json:"chainId"`
-	BlockInterval       int64    `json:"blockInterval"`
-	BlockRepeat         int64    `json:"blockRepeat"`
-	MaxValidatorSize    int64    `json:"epchoValidators"`
-	DelayEpcho          int64    `json:"delayepcho"`
-	UnconfirmedBlockNum int64    `json:"unconfirmedBlockNum"`
-	GenesisCandidate    string   `json:"candiate"`
-	MinStartQuantity    *big.Int `json:"startQuantity"`
-	MaxVotes            uint64   `json:"votes"`
-	DelayDuration       *big.Int `json:"refund"`
+	ChainID          *big.Int `json:"chainId"`
+	BlockInterval    int64    `json:"blockInterval"`
+	BlockRepeat      int64    `json:"blockRepeat"`
+	MaxValidatorSize int64    `json:"epchoValidators"`
+	DelayEpcho       int64    `json:"delayepcho"`
+	MaxConfirmedNum  int64    `json:"maxConfirmedNum"`
+	GenesisCandidate string   `json:"candiate"`
+	MinStartQuantity *big.Int `json:"startQuantity"`
+	MaxVotes         uint64   `json:"votes"`
+	DelayDuration    *big.Int `json:"refund"`
 }
 
 // String implements fmt.Stringer.

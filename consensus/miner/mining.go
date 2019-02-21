@@ -235,19 +235,19 @@ func calcGasLimit(parent *types.Block) uint64 {
 
 func (m *UMiner) mintLoop() {
 	defer m.wg.Done()
-	ticker := time.NewTicker(time.Second)
+	timer := time.NewTimer(time.Second)
 	if _, ok := m.engine.(*dpos.Dpos); !ok {
-		ticker.Stop()
+		timer.Stop()
 	} else {
-		ticker.Stop()
-		time.Sleep(time.Duration(dpos.Option.BlockInterval - int64(time.Now().UnixNano())%dpos.Option.BlockInterval))
-		ticker = time.NewTicker(time.Duration(dpos.Option.BlockInterval))
-		defer ticker.Stop()
+		timer.Stop()
+		timer = time.NewTimer(time.Duration(dpos.Option.BlockInterval - int64(time.Now().UnixNano())%dpos.Option.BlockInterval))
+		defer timer.Stop()
 	}
 
 	for {
 		select {
-		case now := <-ticker.C:
+		case now := <-timer.C:
+			timer.Reset(time.Duration(dpos.Option.BlockInterval - int64(time.Now().UnixNano())%dpos.Option.BlockInterval))
 			timestamp := dpos.Slot(now.UnixNano())
 			if err := m.engine.(*dpos.Dpos).CheckValidator(m.uranus, m.uranus.CurrentBlock(), m.coinbase, timestamp); err != nil {
 				switch err {
@@ -263,6 +263,7 @@ func (m *UMiner) mintLoop() {
 				}
 				continue
 			}
+			log.Debugf("mint the block timestamp %v, actual %v", timestamp, now.UnixNano())
 			if m.quitCurrentOp != nil {
 				close(m.quitCurrentOp)
 			}
