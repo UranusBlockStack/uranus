@@ -34,6 +34,7 @@ type Config struct {
 // DefaultTxPoolConfig contains the default configurations for the transaction
 // pool.
 var DefaultTxPoolConfig = Config{
+
 	PriceLimit: 1,
 	PriceBump:  10,
 

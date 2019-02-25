@@ -61,7 +61,6 @@ func (api *DposAPI) GetValidators(number *BlockHeight, reply *[]utils.Address) e
 	if err != nil {
 		return err
 	}
-
 	epochContext := &dpos.EpochContext{DposContext: dposContext, Statedb: statedb}
 	validators, err := epochContext.DposContext.GetValidators()
 	if err != nil {
@@ -185,7 +184,6 @@ func (api *DposAPI) GetVoters(number *BlockHeight, reply *[]*VoterInfo) error {
 		}
 		result = append(result, voterInfo)
 	}
-
 	*reply = result
 	return nil
 }
@@ -208,7 +206,6 @@ func (api *DposAPI) GetCandidates(number *BlockHeight, reply *[]*CandidateInfo) 
 		return err
 	}
 	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), header.DposContext)
-
 	if err != nil {
 		return err
 	}
@@ -220,7 +217,6 @@ func (api *DposAPI) GetCandidates(number *BlockHeight, reply *[]*CandidateInfo) 
 
 	votes, _, _ := epochContext.CountVotes()
 	result := CandidateInfos{}
-
 	for _, validator := range candidates {
 		candidateInfo := &CandidateInfo{
 			CandidateAddr: validator.Addr,
@@ -230,7 +226,9 @@ func (api *DposAPI) GetCandidates(number *BlockHeight, reply *[]*CandidateInfo) 
 		candidateInfo.Total = new(big.Int).Div(candidateInfo.Validate, big.NewInt(int64(validator.Weight)))
 		result = append(result, candidateInfo)
 	}
+
 	sort.Sort(result)
+
 	*reply = result
 	return nil
 }
@@ -282,7 +280,6 @@ func (api *DposAPI) GetDelegators(args *CandidateArgs, reply *[]*VoterInfo) erro
 	}
 
 	*reply = result
-
 	return nil
 }
 

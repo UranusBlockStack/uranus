@@ -17,7 +17,6 @@
 package protocols
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -267,7 +266,7 @@ func (q *queue) Deliver(id string, blocks []*types.Block) (err error) {
 
 	request := q.pendPool[id]
 	if request == nil {
-		return errors.New("no fetches pending")
+		return errNoFetchesPending
 	}
 	delete(q.pendPool, id)
 
@@ -300,7 +299,7 @@ func (q *queue) Deliver(id string, blocks []*types.Block) (err error) {
 	}
 	if len(errs) != 0 {
 		if len(errs) == len(blocks) {
-			return errors.New("stale delivery")
+			return errStaleDelivery
 		}
 		return fmt.Errorf("multiple failures: %v", errs)
 	}

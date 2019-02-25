@@ -26,7 +26,7 @@ import (
 	"github.com/UranusBlockStack/uranus/core/types"
 	"github.com/UranusBlockStack/uranus/node/protocols"
 	"github.com/UranusBlockStack/uranus/p2p"
-	"gopkg.in/fatih/set.v0"
+	set "gopkg.in/fatih/set.v0"
 )
 
 const (

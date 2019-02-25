@@ -267,7 +267,6 @@ func (api *APIBackend) SetCoinbase(address utils.Address) error {
 func (api *APIBackend) GetConfirmedBlockNumber() (*big.Int, error) {
 	return api.u.engine.(*dpos.Dpos).GetConfirmedBlockNumber()
 }
-
 func (api *APIBackend) GetBFTConfirmedBlockNumber() (*big.Int, error) {
 	return api.u.engine.(*dpos.Dpos).GetBFTConfirmedBlockNumber()
 }

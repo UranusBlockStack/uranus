@@ -49,8 +49,9 @@ type UMiner struct {
 	canStart      int32
 	stopCh        chan struct{}
 	quitCurrentOp chan struct{}
-	uranus        consensus.IUranus
-	db            db.Database
+
+	uranus consensus.IUranus
+	db     db.Database
 
 	extraData   []byte
 	coinbase    utils.Address
@@ -75,6 +76,7 @@ func NewUranusMiner(mux *feed.TypeMux, config *params.ChainConfig, minerCfg *Con
 		engine:    engine,
 		db:        db,
 	}
+	uminer.generateBlock(time.Now().Add(time.Minute).UnixNano())
 	go uminer.loop()
 	return uminer
 }
@@ -251,25 +253,19 @@ func (m *UMiner) mintLoop() {
 			timestamp := dpos.Slot(now.UnixNano())
 			if err := m.engine.(*dpos.Dpos).CheckValidator(m.uranus, m.uranus.CurrentBlock(), m.coinbase, timestamp); err != nil {
 				switch err {
-
 				case dpos.ErrInvalidBlockValidator:
-					log.Debugf("Failed to mint the block, err %v", err)
+					log.Debugf("Failed to mint the block, timestamp %v, err %v", timestamp, err)
 				default:
 					if strings.Contains(err.Error(), dpos.ErrInvalidBlockValidator.Error()) {
-						log.Debugf("Failed to mint the block, while %v", err)
+						log.Debugf("Failed to mint the block, timestamp %v, err %v", timestamp, err)
 					} else {
-						log.Errorf("Failed to mint the block, err %v", err)
+						log.Errorf("Failed to mint the block, timestamp %v, err %v", timestamp, err)
 					}
 				}
 				continue
 			}
 			log.Debugf("mint the block timestamp %v, actual %v", timestamp, now.UnixNano())
-			if m.quitCurrentOp != nil {
-				close(m.quitCurrentOp)
-			}
-			quitCurrentOp := make(chan struct{})
-			go m.mintBlock(timestamp, quitCurrentOp)
-			m.quitCurrentOp = quitCurrentOp
+			m.mintBlock(timestamp)
 		case <-m.stopCh:
 			return
 
@@ -277,18 +273,12 @@ func (m *UMiner) mintLoop() {
 	}
 }
 
-func (m *UMiner) mintBlock(timestamp int64, quit chan struct{}) {
+func (m *UMiner) mintBlock(timestamp int64) {
 outer:
 	for {
-		select {
-		case <-quit:
-			log.Infof("mint block exit timestamp %v", timestamp)
-			break outer
-		default:
-		}
 		err := m.generateBlock(timestamp)
-		if err == nil || err == dpos.ErrMintFutureBlock {
-			log.Infof("mint block exit timestamp %v err %v", timestamp, err)
+		if err == nil || err == dpos.ErrMintFutureBlock || err == dpos.ErrMintIngoreBlock {
+			log.Infof("mint the block exit timestamp %v err %v", timestamp, err)
 			break outer
 		}
 		log.Warnf("Failed to mint the block, timestamp %v err %v", timestamp, err)
@@ -300,12 +290,15 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 	if err != nil {
 		return fmt.Errorf("failed to get current info, %s", err)
 	}
+	if parent.Time().Int64() >= timestamp {
+		return dpos.ErrMintFutureBlock
+	}
+	if time.Now().UnixNano() >= timestamp+int64(dpos.Option.BlockInterval) {
+		return dpos.ErrMintIngoreBlock
+	}
 	first := (timestamp%int64(dpos.Option.BlockInterval*dpos.Option.BlockRepeat*dpos.Option.MaxValidatorSize))%int64(dpos.Option.BlockRepeat*dpos.Option.BlockInterval) == 0
 	if first && parent.Time().Int64() != timestamp-dpos.Option.BlockInterval && time.Now().UnixNano()-timestamp <= 2*dpos.Option.BlockInterval/5 {
 		return dpos.ErrWaitForPrevBlock
-	}
-	if parent.Time().Int64() >= timestamp {
-		return dpos.ErrMintFutureBlock
 	}
 	height := parent.BlockHeader().Height
 	difficult := m.engine.CalcDifficulty(m.uranus, m.uranus.Config(), uint64(timestamp), parent.BlockHeader())
@@ -318,10 +311,9 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 		Difficulty:   difficult,
 		ExtraData:    m.extraData,
 	}
-	var dposContext *types.DposContext
+	var dposContext *types.DposContext = nil
 	if _, ok := m.engine.(*dpos.Dpos); ok {
 		var err error
-
 		dposContext, err = types.NewDposContextFromProto(stateDB.Database().TrieDB(), parent.BlockHeader().DposContext)
 		if err != nil {
 			return err
@@ -330,6 +322,7 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 	quit := make(chan struct{})
 	m.quitCurrentOp = quit
 	currentWork := NewWork(types.NewBlockWithBlockHeader(header), parent.Height().Uint64(), stateDB, dposContext, quit)
+
 	actions := m.uranus.Actions()
 
 	currentWork.applyActions(m.uranus, actions)
@@ -355,10 +348,8 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 
 	header = currentWork.Block.BlockHeader()
 	header.GasUsed = *currentWork.gasUsed
-
 	if atomic.LoadInt32(&m.mining) == 1 {
 		block, err := m.engine.Finalize(m.uranus, header, stateDB, currentWork.txs, currentWork.actions, currentWork.receipts, currentWork.dposContext)
-
 		if err != nil {
 			return err
 		}
@@ -374,12 +365,14 @@ func (m *UMiner) generateBlock(timestamp int64) error {
 		if _, err := m.uranus.WriteBlockWithState(result, currentWork.receipts, currentWork.state); err != nil {
 			return err
 		}
+
 		log.Infof("Successfully sealed new block number: %v, hash: %v, diff: %v, txs: %v, time: %v", result.Height(), result.Hash(), result.Difficulty(), len(block.Transactions()), result.Time())
 		m.uranus.PostEvent(feed.BlockAndLogsEvent{Block: result})
 		m.mux.Post(feed.NewMinedBlockEvent{
 			Block: result,
 		})
 		return nil
+
 	}
 	return nil
 }

@@ -53,15 +53,21 @@ func TestAccounts(t *testing.T) {
 	assert.Equal(t, accounts, taccounts)
 }
 
-func TestImportRawKey(t *testing.T) {
+func TestImportAndExportRawKey(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "test_keystoredir")
 	w := NewWallet(dir)
-	account, err := genNewAccount()
+
+	account, err := w.NewAccount("testPass")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	addr, err := w.ImportRawKey(utils.BytesToHex(crypto.ByteFromECDSA(account.PrivateKey)), "test")
+	keyhex, err := w.ExportRawKey(account.Address, "testPass")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addr, err := w.ImportRawKey(keyhex, "testPass")
 	if err != nil {
 		t.Fatal(err)
 	}

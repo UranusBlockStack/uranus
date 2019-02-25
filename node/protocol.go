@@ -103,7 +103,8 @@ type ProtocolManager struct {
 	noMorePeers   chan struct{}
 	wg            sync.WaitGroup
 	eventMux      *feed.TypeMux
-	acceptTxs     uint32
+
+	acceptTxs uint32
 }
 
 func NewProtocolManager(mux *feed.TypeMux, config *params.ChainConfig, txpool *txpool.TxPool, blockchain *core.BlockChain, chaindb db.Database, engine consensus.Engine) (*ProtocolManager, error) {
@@ -448,11 +449,11 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if atomic.LoadUint32(&pm.acceptTxs) == 0 {
 			break
 		}
+
 		var txs []*types.Transaction
 		if err := msg.DecodePayload(&txs); err != nil {
 			return fmt.Errorf("msg %v: %v", msg, err)
 		}
-
 		if pm.txpool.AddTxsChan(txs) {
 			for i, tx := range txs {
 				if tx == nil {
@@ -513,7 +514,7 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 		for _, peer := range peers {
 			txset[peer] = append(txset[peer], tx)
 		}
-		log.Infof("Broadcast transaction hash %v recipients", tx.Hash(), len(peers))
+		log.Infof("Broadcast transaction hash %v recipients %v", tx.Hash(), len(peers))
 	}
 	for peer, txs := range txset {
 		peer.SendTransactions(txs)
@@ -681,7 +682,6 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 		return
 	}
 	atomic.StoreUint32(&pm.acceptTxs, 1)
-
 	if head := pm.blockchain.CurrentBlock(); head.Height().Uint64() > 0 {
 		go pm.BroadcastBlock(head, false)
 	}

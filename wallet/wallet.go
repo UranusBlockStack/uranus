@@ -86,11 +86,13 @@ func (w *Wallet) ImportRawKey(privkey string, passphrase string) (utils.Address,
 	} else if err != nil && err != ErrNoMatch {
 		return utils.Address{}, err
 	}
+
 	account := Account{
 		Address:    addr,
 		PrivateKey: key,
 		FileName:   keyFileName(addr),
 	}
+
 	path := filepath.Join(w.ks.keyStoreDir, keyFileName(addr))
 
 	if err := w.ks.PutKey(account, path, passphrase); err != nil {
@@ -107,7 +109,6 @@ func (w *Wallet) ExportRawKey(addr utils.Address, passphrase string) (string, er
 	if err != nil {
 		return "", err
 	}
-
 	return utils.BytesToHex(crypto.ByteFromECDSA(account.PrivateKey)), nil
 }
 
@@ -126,6 +127,7 @@ func (w *Wallet) NewAccount(passphrase string) (Account, error) {
 	return account, nil
 }
 
+// Find resolves the given account into a unique entry in the keystore.
 func (w *Wallet) Find(addr utils.Address, passphrase string) (Account, error) {
 	if la, ok := w.accountCache.Get(addr); ok && la.(*lockAccount).passphrase == passphrase {
 		return *la.(*lockAccount).account, nil
@@ -159,11 +161,9 @@ func (w *Wallet) Find(addr utils.Address, passphrase string) (Account, error) {
 // Delete removes the speciified account
 func (w *Wallet) Delete(account Account, passphrase string) error {
 	path := filepath.Join(w.ks.keyStoreDir, account.FileName)
-
 	if !utils.FileExists(path) {
 		return nil
 	}
-
 	w.accountCache.Remove(account.Address)
 	return os.Remove(path)
 }
@@ -171,7 +171,6 @@ func (w *Wallet) Delete(account Account, passphrase string) error {
 // Update update the specified account
 func (w *Wallet) Update(account Account, passphrase, newPassphrase string) error {
 	path := filepath.Join(w.ks.keyStoreDir, account.FileName)
-
 	if !utils.FileExists(path) {
 		return ErrNoMatch
 	}
@@ -205,6 +204,5 @@ func (w *Wallet) SignHash(addr utils.Address, passphrase string, hash []byte) ([
 	if err != nil {
 		return nil, err
 	}
-
 	return crypto.Sign(hash[:], account.PrivateKey)
 }

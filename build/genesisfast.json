@@ -1,7 +1,7 @@
 {
 	"config": {
 		"chainId": 1,
-		"blockInterval": 3000000000,
+		"blockInterval": 500000000,
 		"blockRepeat": 12,
 		"epchoValidators": 3,
 		"delayepcho": 2,
@@ -14,7 +14,7 @@
 	"nonce": "0x1",
 	"timestamp": "0x1579dc827e390000",
 	"extraData": "0x",
-	"gasLimit": "0x4c4b40",
+	"gasLimit": "0x7fffffff",
 	"difficulty": "0xf4240",
 	"mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 	"miner": "0x0000000000000000000000000000000000000000",

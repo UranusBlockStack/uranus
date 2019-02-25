@@ -50,6 +50,7 @@ func checkMinerConfig(cfg *miner.Config, wallet *wallet.Wallet) *miner.Config {
 	} else if cfg.MinerThreads > runtime.NumCPU() {
 		cfg.MinerThreads = runtime.NumCPU()
 	}
+
 	accounts, err := wallet.Accounts()
 	if len(accounts) == 0 {
 		if err != nil {

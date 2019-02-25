@@ -178,7 +178,7 @@ running:
 			log.Warnf("peer %v close --- %v", p.ID().String(), err)
 			break running
 		case str := <-p.quit:
-			log.Warnf("peer %v close --- %v", p.ID().String(), err)
+			log.Infof("peer %v close --- %v", p.ID().String(), str)
 			err = errors.New(str)
 			break running
 		}

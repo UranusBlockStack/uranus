@@ -72,7 +72,6 @@ func (c *httpClient) Write(d []byte) (n int, err error) {
 	if err != nil {
 		return 0, err
 	}
-
 	c.resp <- resp
 	return len(d), nil
 }

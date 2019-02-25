@@ -58,6 +58,7 @@ var (
 	errMissingSignature           = errors.New("extra-data 65 byte suffix signature missing")
 	ErrInvalidTimestamp           = errors.New("invalid timestamp")
 	ErrWaitForPrevBlock           = errors.New("wait for last block arrived")
+	ErrMintIngoreBlock            = errors.New("mint the ingore block")
 	ErrMintFutureBlock            = errors.New("mint the future block")
 	ErrMismatchSignerAndValidator = errors.New("mismatch block signer and validator")
 	ErrInvalidBlockValidator      = errors.New("invalid block validator")
@@ -95,7 +96,6 @@ func NewDpos(eventMux *feed.TypeMux, chainDb db.Database, db state.Database, sig
 	}
 	return d
 }
-
 func (d *Dpos) Init(chain consensus.IChainReader) {
 	d.confirmedBlockHeader, _ = d.loadConfirmedBlockHeader(chain)
 	d.bftConfirmedBlockHeader, _ = d.loadBFTConfirmedBlockHeader(chain)
@@ -297,7 +297,7 @@ func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader, dpos boo
 		return nil
 	}
 
-	// epoch := int64(-1)
+	//epoch := int64(-1)
 	validatorMap := make(map[utils.Address]bool)
 	curHeader := chain.CurrentBlock().BlockHeader()
 	for d.confirmedBlockHeader.Height.Cmp(curHeader.Height) <= 0 {
@@ -309,10 +309,6 @@ func (d *Dpos) updateConfirmedBlockHeader(chain consensus.IChainReader, dpos boo
 		// fast return
 		// if block number difference less Option.consensusSize()-witnessNum
 		// there is no need to check block is confirmed
-		if curHeader.Height.Int64()-d.confirmedBlockHeader.Height.Int64() < int64(Option.consensusSize()-int64(len(validatorMap))) {
-			log.Debug("Dpos fast return", "current", curHeader.Height.String(), "confirmed", d.confirmedBlockHeader.Height.String(), "witnessCount", len(validatorMap))
-			return nil
-		}
 		validatorMap[curHeader.Miner] = true
 		if int64(len(validatorMap)) >= Option.consensusSize() {
 			if d.confirmedBlockHeader.Height.Cmp(curHeader.Height) != 0 {
@@ -389,6 +385,7 @@ func (d *Dpos) loadBFTConfirmedBlockHeader(chain consensus.IChainReader) (*types
 	return blk.BlockHeader(), nil
 }
 
+// store inserts the snapshot into the database.
 func (d *Dpos) storeBFTConfirmedBlockHeader(chain consensus.IChainReader) error {
 	irreversibles := UInt64Slice{}
 	keys := d.bftConfirmeds.Keys()
@@ -428,12 +425,12 @@ func (dpos *Dpos) GetBFTConfirmedBlockNumber() (*big.Int, error) {
 
 func (d *Dpos) EpchoBlockHeader(chain consensus.IChainReader, timestamp int64, lastBlock *types.Block) *types.BlockHeader {
 	timestamp = timestamp - Option.DelayEpcho*Option.epochInterval()
+
 	header := lastBlock.BlockHeader()
 	for {
 		if header.TimeStamp.Int64() <= timestamp || header.Height.Uint64() == 0 {
 			break
 		}
-
 		header = chain.GetHeader(header.PreviousHash)
 	}
 	return header
@@ -445,10 +442,7 @@ func (d *Dpos) CheckValidator(chain consensus.IChainReader, lastBlock *types.Blo
 	}
 
 	header := d.EpchoBlockHeader(chain, now, lastBlock)
-	// if d.confirmedBlockHeader != nil && header.Height.Cmp(d.confirmedBlockHeader.Height) > 0 && bytes.Compare(lastBlock.Miner().Bytes(), coinbase.Bytes()) == 0 {
-	// 	return ErrTooMuchUnconfirmedBlock
-	// }
-	var confirmedNumber *big.Int
+	confirmedNumber := big.NewInt(0)
 	if d.confirmedBlockHeader != nil {
 		confirmedNumber = d.confirmedBlockHeader.Height
 	}
@@ -457,6 +451,7 @@ func (d *Dpos) CheckValidator(chain consensus.IChainReader, lastBlock *types.Blo
 	if err != nil {
 		return err
 	}
+
 	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), header.DposContext)
 	if err != nil {
 		return err
@@ -478,12 +473,10 @@ func (d *Dpos) CheckValidator(chain consensus.IChainReader, lastBlock *types.Blo
 		log.Infof("confirmed: %v, latest: %v, distance:%v, maxconfirmed: %v", confirmedNumber, lastBlock.Height(), distance, maxconfirmed)
 		return ErrTooMuchUnconfirmedBlock
 	}
-
 	return nil
 }
 
 func (d *Dpos) Finalize(chain consensus.IChainReader, header *types.BlockHeader, state *state.StateDB, txs []*types.Transaction, actions []*types.Action, receipts []*types.Receipt, dposContext *types.DposContext) (*types.Block, error) {
-
 	epochContext := &EpochContext{
 		Statedb:     state,
 		DposContext: dposContext,
@@ -498,14 +491,12 @@ func (d *Dpos) Finalize(chain consensus.IChainReader, header *types.BlockHeader,
 
 	//update mint count trie
 	updateMintCnt(parent.BlockHeader().TimeStamp.Int64(), header.TimeStamp.Int64(), header.Miner, dposContext)
-
 	// Accumulate block rewards and commit the final state root
 	if dpos, err := d.isDpos(chain, header); err != nil {
 		return nil, fmt.Errorf("got error when isDpos, err: %v", err)
 	} else if dpos {
 		state.AddBalance(header.Miner, params.BlockReward)
 	}
-
 	genesis := chain.GetBlockByHeight(0)
 	err := epochContext.tryElect(genesis.BlockHeader(), parent.BlockHeader())
 	if err != nil {
@@ -514,13 +505,11 @@ func (d *Dpos) Finalize(chain consensus.IChainReader, header *types.BlockHeader,
 	if _, err := dposContext.CommitTo(state.Database().TrieDB()); err != nil {
 		return nil, err
 	}
-
 	header.StateRoot = state.IntermediateRoot(true)
 	if err := state.Database().TrieDB().Commit(header.StateRoot, false); err != nil {
 		return nil, err
 	}
 	header.DposContext = dposContext.ToProto()
-
 	return types.NewBlock(header, txs, actions, receipts), nil
 }
 

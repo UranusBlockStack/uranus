@@ -28,9 +28,9 @@ import (
 	"github.com/UranusBlockStack/uranus/params"
 )
 
-// Engine TODO
 type Engine interface {
 	Author(header *types.BlockHeader) (utils.Address, error) //Delete
+
 	CalcDifficulty(chain IChainReader, config *params.ChainConfig, time uint64, parent *types.BlockHeader) *big.Int
 
 	VerifySeal(chain IChainReader, header *types.BlockHeader) error
@@ -43,8 +43,8 @@ type Engine interface {
 
 type ITxPool interface {
 	Pending() (map[utils.Address]types.Transactions, error)
-	SubscribeNewTxsEvent(ch chan<- feed.NewTxsEvent) feed.Subscription
 	Actions() []*types.Action
+	SubscribeNewTxsEvent(ch chan<- feed.NewTxsEvent) feed.Subscription
 }
 
 type IBlockChain interface {

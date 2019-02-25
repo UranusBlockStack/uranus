@@ -99,7 +99,6 @@ func (ec *EpochContext) tryElect(genesis, parent *types.BlockHeader) error {
 		ec.DposContext.SetValidators(sortedValidators)
 		firstEpcho := timeOfFirstBlock / Option.epochInterval()
 		log.Infof("Come to new epoch prevEpoch %v nextEpoch %v, validators %v", i-firstEpcho+1, i-firstEpcho+2, sortedValidators)
-
 	}
 	return nil
 }

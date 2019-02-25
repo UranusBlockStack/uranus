@@ -73,7 +73,7 @@ var (
 	}
 	// ErrStateRootHash is returned invalid stateroot hash
 	ErrStateRootHash = func(actual, expected utils.Hash) error {
-		return fmt.Errorf("transaction state root hash mismatch: have %s, want %s", actual, expected)
+		return fmt.Errorf("transaction state root hash mismatch: have %x, want %x", actual, expected)
 	}
 	// ErrDposRootHash is returned invalid stateroot hash
 	ErrDposRootHash = func(actual, expected utils.Hash) error {

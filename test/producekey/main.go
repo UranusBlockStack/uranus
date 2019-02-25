@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-
 	"github.com/UranusBlockStack/uranus/common/crypto"
+	"strings"
 )
 
 func main() {
@@ -15,6 +15,6 @@ func main() {
 		priv, _ := crypto.GenerateKey()
 		addr := crypto.PubkeyToAddress(priv.PublicKey)
 
-		fmt.Println("produce[", i, "]:", addr, hex.EncodeToString(crypto.ByteFromECDSA(priv)))
+		fmt.Println("produce[", i, "]:", strings.ToLower(addr.String()), hex.EncodeToString(crypto.ByteFromECDSA(priv)))
 	}
 }

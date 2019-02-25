@@ -53,10 +53,12 @@ type TxPool struct {
 	pending map[utils.Address]*txList   // All currently processable transactions
 	queue   map[utils.Address]*txList   // Queued but non-processable transactions
 	beats   map[utils.Address]time.Time // Last heartbeat from each known account
-	dList   *deferredList
 
-	txs        *allTxs    // All transactions cache
-	priceList  *priceList // All transactions sorted by price
+	dList *deferredList
+
+	txs       *allTxs    // All transactions cache
+	priceList *priceList // All transactions sorted by price
+
 	addTxsChan chan types.Transactions
 
 	mu sync.RWMutex
@@ -92,6 +94,7 @@ func New(config *Config, chainconfig *params.ChainConfig, chain blockChainHelper
 	tp.resetTxpoolState(nil, chain.CurrentBlock())
 
 	tp.chainBlockSub = tp.chain.SubscribeChainBlockEvent(tp.chainBlockCh)
+
 	tp.addTxsChan = make(chan types.Transactions, tp.config.GlobalQueue)
 
 	tp.wg.Add(1)
@@ -153,7 +156,7 @@ func (tp *TxPool) txloop() {
 	}
 }
 
-// S	top stop the transaction pool.
+// Stop stop the transaction pool.
 func (tp *TxPool) Stop() {
 	if tp.txScription != nil {
 		tp.txScription.Unsubscribe()
@@ -508,6 +511,8 @@ func (tp *TxPool) promoteTx(addr utils.Address, hash utils.Hash, tx *types.Trans
 }
 
 func (tp *TxPool) AddAction(a *types.Action) {
+	tp.mu.Lock()
+	defer tp.mu.Unlock()
 	tp.dList.Put(a)
 }
 

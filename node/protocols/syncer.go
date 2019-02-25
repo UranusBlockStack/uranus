@@ -133,10 +133,9 @@ func (f *Fetcher) Notify(peer string, hash utils.Hash, time time.Time, fetcher b
 
 func (f *Fetcher) Enqueue(peer string, block *types.Block) error {
 	op := &inject{
-		block:  block,
 		origin: peer,
+		block:  block,
 	}
-
 	select {
 	case f.inject <- op:
 		return nil
@@ -181,12 +180,16 @@ func (f *Fetcher) loop() {
 
 			number := op.block.Height().Uint64()
 			if number > height+1 {
-				f.queue.Push(op, -float32(op.block.Height().Uint64()))
+				f.queue.Push(op, -float32(op.block.Difficulty().Uint64()))
 				break
 			}
 			hash := op.block.Hash()
 			if number+maxUncleDist < height || f.getBlock(hash) != nil {
 				f.forgetBlock(hash)
+				continue
+			}
+			if f.getBlock(op.block.PreviousHash()) == nil {
+				f.queue.Push(op, -float32(op.block.Difficulty().Uint64()))
 				break
 			}
 			f.insert(op.origin, op.block)
@@ -313,7 +316,7 @@ func (f *Fetcher) enqueue(peer string, block *types.Block) {
 		}
 		f.queues[peer] = count
 		f.queued[hash] = op
-		f.queue.Push(op, -float32(block.Height().Uint64()))
+		f.queue.Push(op, -float32(block.Difficulty().Uint64()))
 
 		log.Infof("Peer %s: queued block #%d [%x], total %v", peer, block.Height().Uint64(), hash.Bytes()[:4], f.queue.Size())
 
@@ -329,6 +332,7 @@ func (f *Fetcher) insert(peer string, block *types.Block) {
 
 		parent := f.getBlock(block.PreviousHash())
 		if parent == nil {
+			log.Infof("Peer %s: block #%d [%x] found parent failed: %v", peer, block.Height().Uint64(), hash[:4], block.PreviousHash().String())
 			return
 		}
 		switch err := f.validateBlock(block.BlockHeader()); err {

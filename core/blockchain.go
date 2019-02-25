@@ -47,21 +47,18 @@ type Processor interface {
 
 // BlockChain manages chain imports, reverts, chain reorganisations.
 type BlockChain struct {
-	config   *params.ChainConfig
-	vmConfig *vm.Config
-
 	*ledger.Ledger
-
-	genesisBlock *types.Block
-	currentBlock atomic.Value
-
-	stateCache state.Database // State database to reuse between imports (contains state cache)
-	validator  *blockValidator.Validator
-
+	config              *params.ChainConfig
+	vmConfig            *vm.Config
+	genesisBlock        *types.Block
+	currentBlock        atomic.Value
+	stateCache          state.Database // State database to reuse between imports (contains state cache)
 	chainBlockFeed      feed.Feed
 	chainBlockscription feed.Subscription
-	sideBlockFeed       feed.Feed
-	SideBlockscription  feed.Subscription
+	validator           *blockValidator.Validator
+
+	sideBlockFeed      feed.Feed
+	SideBlockscription feed.Subscription
 
 	executor *exec.Executor
 	engine   consensus.Engine
@@ -134,7 +131,9 @@ func (bc *BlockChain) loop() {
 		case <-futureTimer.C:
 			bc.processBlocks()
 		case <-bc.quit:
-			bc.chainBlockscription.Unsubscribe()
+			if bc.chainBlockscription != nil {
+				bc.chainBlockscription.Unsubscribe()
+			}
 			log.Info("blockchain service stop.")
 			return
 		}
@@ -155,14 +154,9 @@ func (bc *BlockChain) processBlocks() {
 	// sort by number
 	sort.Sort(blocks)
 
-	for _, b := range blocks {
+	for i := range blocks {
 		// insert future block one by one.
-		event, _, err := bc.insertChain(b)
-		if err != nil {
-			log.Errorf("inster chain err :%v", err)
-			continue
-		}
-		bc.PostEvent(event)
+		bc.InsertChain(blocks[i : i+1])
 	}
 
 }
@@ -178,6 +172,9 @@ func (bc *BlockChain) PostEvent(event interface{}) {
 }
 
 func (bc *BlockChain) InsertChain(blocks types.Blocks) (int, error) {
+	if len(blocks) == 0 {
+		return 0, nil
+	}
 	for i := 1; i < len(blocks); i++ {
 		if blocks[i].Height().Uint64() != blocks[i-1].Height().Uint64()+1 || blocks[i].PreviousHash() != blocks[i-1].Hash() {
 			log.Error("Non contiguous block insert", "height", blocks[i].Height(), "hash", blocks[i].Hash(),
@@ -187,18 +184,20 @@ func (bc *BlockChain) InsertChain(blocks types.Blocks) (int, error) {
 		}
 	}
 
+	bc.chainmu.Lock()
+	defer bc.chainmu.Unlock()
+	senderCacher.recoverFromBlocks(types.Signer{}, blocks)
 	n := 0
 	for _, blk := range blocks {
-		if bc.HasBlock(blk.Hash()) {
-			continue
-		}
 		event, _, err := bc.insertChain(blk)
 		if err == nil {
 			n++
 		} else {
 			return n, err
 		}
-		bc.PostEvent(event)
+		if event != nil {
+			bc.PostEvent(event)
+		}
 	}
 	return n, nil
 }
@@ -236,7 +235,6 @@ func (bc *BlockChain) insertChain(block *types.Block) (interface{}, []*types.Log
 		}
 		return bc.insertChain(parent)
 	}
-
 	if err != nil {
 		return nil, nil, err
 	}
@@ -260,6 +258,10 @@ func (bc *BlockChain) insertChain(block *types.Block) (interface{}, []*types.Log
 }
 
 func (bc *BlockChain) execBlock(block *types.Block) (types.Receipts, []*types.Log, *state.StateDB, error) {
+	tstart := time.Now()
+	defer func() {
+		log.Infof("exec block number: %v,hash: %v, diff: %v,txs: %v,gas: %v, time: %v ... ep %v", block.Height(), block.Hash(), block.Difficulty(), len(block.Transactions()), block.GasUsed(), block.Time(), time.Now().Sub(tstart))
+	}()
 	parent := bc.GetBlock(block.PreviousHash())
 
 	state, err := state.New(parent.StateRoot(), bc.stateCache)
@@ -304,10 +306,6 @@ func (bc *BlockChain) ExecActions(statedb *state.StateDB, actions []*types.Actio
 func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts types.Receipts, state *state.StateDB) (bool, error) {
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
-	if bc.HasBlock(block.Hash()) && bc.HasState(block.StateRoot()) {
-		return true, nil
-	}
-
 	// get the total difficulty of the block
 	ptd := bc.GetTd(block.PreviousHash())
 	if ptd == nil {
@@ -325,7 +323,6 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts types.Rec
 	if _, err := block.DposContext.CommitTo(triedb); err != nil {
 		return false, err
 	}
-
 	root, err := state.Commit(true)
 	if err != nil {
 		return false, err
@@ -350,13 +347,12 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts types.Rec
 			}
 			status = true
 		}
-
 	}
 
 	bc.WriteBlockAndReceipts(block, receipts)
-
 	if !status && reorg {
 		// Set new head.
+		log.Debugf("set head block number: %v,hash: %v, diff: %v,txs: %v,gas: %v, time: %v", block.Height(), block.Hash(), block.Difficulty(), len(block.Transactions()), block.GasUsed(), block.Time())
 		bc.WriteLegitimateHashAndHeadBlockHash(block.Height().Uint64(), block.Hash())
 		bc.currentBlock.Store(block)
 	}
@@ -429,6 +425,8 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 
 	// Insert the new chain, taking care of the proper incremental order
 	for i := len(newChain) - 1; i >= 0; i-- {
+		block := newChain[i]
+		log.Debugf("set head block number: %v,hash: %v, diff: %v,txs: %v,gas: %v, time: %v", block.Height(), block.Hash(), block.Difficulty(), len(block.Transactions()), block.GasUsed(), block.Time())
 		bc.WriteLegitimateHashAndHeadBlockHash(newChain[i].Height().Uint64(), newChain[i].Hash())
 		bc.currentBlock.Store(newChain[i])
 	}

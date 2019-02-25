@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with the uranus library. If not, see <http:#www.gnu.org/licenses/>.
 
-TEST = $(shell go list ./...)
+TEST = $(shell go list ./... |grep -v test)
 all:
 	@go install ./cmd/uranus
 	go build ./cmd/uranus

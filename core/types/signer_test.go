@@ -47,5 +47,4 @@ func TestRecoverPlain(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, expAddr, addr)
-
 }

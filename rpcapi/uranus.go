@@ -156,8 +156,6 @@ func (args *SendTxArgs) check(ctx context.Context, b Backend) error {
 		if len(input) == 0 {
 			return errors.New(`contract creation without any data provided`)
 		}
-		args.TxType = new(utils.Uint64)
-		*(*uint64)(args.Gas) = uint64(types.Binary)
 	}
 	return nil
 }
@@ -288,6 +286,7 @@ func (u *UranusAPI) Call(args CallArgs, reply *map[string]interface{}) error {
 	if err := vmError(); err != nil {
 		return err
 	}
+
 	ret := map[string]interface{}{}
 	ret["result"] = res
 	ret["gasUsed"] = gasused

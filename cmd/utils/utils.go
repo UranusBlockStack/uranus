@@ -39,7 +39,8 @@ var (
 	CoreURL        string
 	DefaultCoreURL = utils.EnvString("URANUS_URL", "http://localhost:8000")
 	urlPrefix      = "http://"
-	OneLine        bool // Streamline pattern, Output less and better content
+
+	OneLine bool // Streamline pattern, Output less and better content
 )
 
 // MustRPCClient Wraper rpc's client
@@ -76,6 +77,7 @@ func PrintJSON(data interface{}) {
 }
 
 func PrintJSONList(data interface{}) {
+
 	value := reflect.ValueOf(data)
 
 	if value.Kind() != reflect.Slice {

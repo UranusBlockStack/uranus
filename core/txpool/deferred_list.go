@@ -100,14 +100,14 @@ func (d *deferredList) Range(f func(hash utils.Hash, t *timeActionHash) bool) {
 }
 
 func (d *deferredList) getAction(hash utils.Hash) *types.Action {
-	d.Lock()
-	defer d.Unlock()
+	d.RLock()
+	defer d.RUnlock()
 	return d.all[hash]
 }
 
 func (d *deferredList) addAction(a *types.Action) {
-	d.RLock()
-	defer d.RUnlock()
+	d.Lock()
+	defer d.Unlock()
 	d.all[a.Hash()] = a
 }
 

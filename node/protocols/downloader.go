@@ -266,7 +266,7 @@ func (d *Downloader) syncWithPeer(p *peer, hash utils.Hash, td *big.Int) (err er
 
 	log.Infof("Synchronising with the network", "peer", p.id, "head", hash, "td", td)
 	defer func(start time.Time) {
-		log.Infof("Synchronisation terminated", "elapsed", time.Since(start))
+		log.Info("Synchronisation terminated", "elapsed", time.Since(start))
 	}(time.Now())
 
 	number, err := d.findAncestor(p)

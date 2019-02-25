@@ -7,7 +7,7 @@ log-format: "text"
 # node-datadir: 
 
 # HTTP and RPC server listening interface
-rpc-host: "localhost"
+rpc-host: "0.0.0.0"
 
 # HTTP and RPC server listening port
 rpc-port: 8000
@@ -21,22 +21,22 @@ txpool-pricebump: 1
 txpool-pricelimit: 10
 
 # Minimum number of executable transaction slots guaranteed per account
-txpool-accountslots: 16
+txpool-accountslots: 10240
 
 # Maximum number of non-executable transaction slots permitted per account
-txpool-accountqueue: 4096
+txpool-accountqueue: 40960
 
 # Maximum number of executable transaction slots for all accounts
-txpool-globalslots: 64
+txpool-globalslots: 40960
 
 # Minimum number of non-executable transaction slots for all accounts
-txpool-globalqueue: 1024
+txpool-globalqueue: 10240
 
 # Maximum amount of time non-executable transaction are queued
 txpool-timeout: 3h
 
 # Network listening port
-p2p-listenaddr: "127.0.0.1:7090"
+p2p-listenaddr: ":7090"
 
 # Maximum number of network peers
 p2p-maxpeers: 25

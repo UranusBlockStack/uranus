@@ -39,6 +39,7 @@ var RootCmd = &cobra.Command{
 
 func init() {
 	utils.EnvParse()
+
 	RootCmd.PersistentFlags().StringVarP(&cmdutils.CoreURL, "curl", "c", *cmdutils.DefaultCoreURL, "uranus server URL.")
 	RootCmd.PersistentFlags().BoolVarP(&cmdutils.OneLine, "oneline", "o", false, "Streamline pattern, Output less and better content.")
 }

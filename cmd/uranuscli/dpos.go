@@ -142,7 +142,7 @@ var getConfirmedBlockNumberCmd = &cobra.Command{
 }
 
 var getBFTConfirmedBlockNumberCmd = &cobra.Command{
-	Use:   "GetBFTConfirmedBlockNumber ",
+	Use:   "getBFTConfirmedBlockNumber ",
 	Short: "Returns the bft confirmed block height.",
 	Long:  `Returns the bft confirmed block height.`,
 	Args:  cobra.NoArgs,

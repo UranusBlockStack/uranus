@@ -124,6 +124,7 @@ func (g *Genesis) ToBlock(chain *Chain) (*types.Block, state.Database) {
 			statedb.SetState(addr, key, value)
 		}
 	}
+
 	dposContext, err := types.NewDposContextFromProto(statedb.Database().TrieDB(), &types.DposContextProto{})
 	if err != nil {
 		panic(err)
@@ -146,6 +147,11 @@ func (g *Genesis) ToBlock(chain *Chain) (*types.Block, state.Database) {
 	if err != nil {
 		panic(err)
 	}
+
+	if err := triedb.Commit(root, false); err != nil {
+		panic(err)
+	}
+
 	dposContextProto := dposContext.ToProto()
 	head := &types.BlockHeader{
 		Height:       new(big.Int).SetUint64(g.Height),
@@ -160,6 +166,5 @@ func (g *Genesis) ToBlock(chain *Chain) (*types.Block, state.Database) {
 		StateRoot:    root,
 		DposContext:  dposContextProto,
 	}
-
 	return types.NewBlock(head, nil, nil, nil), statedb.Database()
 }

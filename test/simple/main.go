@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"math"
 	"math/big"
@@ -65,6 +66,13 @@ func getnonce(addr utils.Address) uint64 {
 
 func main() {
 	signer := types.Signer{}
+
+	rpcHost := flag.String("h", "http://localhost:8000", "RPC host地址")
+	testMode := flag.String("mode", "all", "输入启动类型:all,binary,combine,candidate")
+
+	flag.Parse()
+	rpchost = *rpcHost
+
 	issuePrivHex := "289c2857d4598e37fb9647507e47a309d6133539bf21a8b9cb6df88fd5232032"
 	issuerNonce := uint64(0)
 	issueValue := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(100))
@@ -82,38 +90,49 @@ func main() {
 		priv, _ := crypto.GenerateKey()
 		addr := crypto.PubkeyToAddress(priv.PublicKey)
 
-		//transfer
-		txTransfer := types.NewTransaction(types.Binary, issuerNonce, issueValue, gasLimit, gasPrice, nil, []*utils.Address{&addr}...)
-		txTransfer.SignTx(signer, issuerPriv)
-		sendrawtransaction(txTransfer)
-		issuerNonce++
+		if *testMode == "all" || *testMode == "combine" || *testMode == "binary" {
+			//transfer
+			txTransfer := types.NewTransaction(types.Binary, issuerNonce, issueValue, gasLimit, gasPrice, nil, []*utils.Address{&addr}...)
+			txTransfer.SignTx(signer, issuerPriv)
+			sendrawtransaction(txTransfer)
+			issuerNonce++
+		}
 
 		// sleep for miner, insufficient funds for gas * price + value
 		time.Sleep(6 * time.Second)
 
 		nonce := uint64(0)
-		// reg producers
-		txReg := types.NewTransaction(types.LoginCandidate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
-		txReg.SignTx(signer, priv)
-		sendrawtransaction(txReg)
-		nonce++
 
-		// vote
-		txVote := types.NewTransaction(types.Delegate, nonce, new(big.Int).Div(issueValue, big.NewInt(2)), gasLimit, gasPrice, nil, []*utils.Address{&addr}...)
-		txVote.SignTx(signer, priv)
-		sendrawtransaction(txVote)
-		nonce++
+		if *testMode == "all" || *testMode == "combine" || *testMode == "candidate" {
+			// reg producers
+			txReg := types.NewTransaction(types.LoginCandidate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
+			txReg.SignTx(signer, priv)
+			sendrawtransaction(txReg)
+			nonce++
+		}
 
-		// unvote
-		txUnvote := types.NewTransaction(types.UnDelegate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
-		txUnvote.SignTx(signer, priv)
-		sendrawtransaction(txUnvote)
-		nonce++
+		if *testMode == "all" {
+			// vote
+			txVote := types.NewTransaction(types.Delegate, nonce, new(big.Int).Div(issueValue, big.NewInt(2)), gasLimit, gasPrice, nil, []*utils.Address{&addr}...)
+			txVote.SignTx(signer, priv)
+			sendrawtransaction(txVote)
+			nonce++
+		}
 
-		// unreg
-		txUnReg := types.NewTransaction(types.LogoutCandidate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
-		txUnReg.SignTx(signer, priv)
-		sendrawtransaction(txUnReg)
-		nonce++
+		if *testMode == "all" {
+			// unvote
+			txUnvote := types.NewTransaction(types.UnDelegate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
+			txUnvote.SignTx(signer, priv)
+			sendrawtransaction(txUnvote)
+			nonce++
+		}
+
+		if *testMode == "all" || *testMode == "combine" || *testMode == "candidate" {
+			// unreg
+			txUnReg := types.NewTransaction(types.LogoutCandidate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
+			txUnReg.SignTx(signer, priv)
+			sendrawtransaction(txUnReg)
+			nonce++
+		}
 	}
 }

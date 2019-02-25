@@ -154,41 +154,44 @@ func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposC
 	if err := gp.SubGas(gas); err != nil {
 		return nil, 0, false, err
 	}
+
 	snapshot := statedb.Snapshot()
 	dpossnapshot := dposContext.Snapshot()
 	switch tx.Type() {
 	case types.LoginCandidate:
 		if err := dposContext.BecomeCandidate(from); err != nil {
 			statedb.RevertToSnapshot(snapshot)
-			dpossnapshot.RevertToSnapShot(dpossnapshot)
 			return nil, gas, false, err
 		}
 	case types.LogoutCandidate:
 		if err := dposContext.KickoutCandidate(from); err != nil {
-			statedb.RevertToSnapshot(snapshot)
-			return nil, gas, false, err
-		}
-	case types.Delegate:
-		statedb.SetDelegateTimestamp(from, timestamp)
-		statedb.SubBalance(from, tx.Value())
-		statedb.SetLockedBalance(from, tx.Value())
-		if err := dposContext.Delegate(from, tx.Tos()); err != nil {
 			dpossnapshot.RevertToSnapShot(dpossnapshot)
 			statedb.RevertToSnapshot(snapshot)
 			return nil, gas, false, err
 		}
-	case types.UnDelegate:
+	case types.Delegate:
 		if new(big.Int).Sub(statedb.GetBalance(from), tx.Value()).Sign() > 0 {
 			statedb.SetDelegateTimestamp(from, timestamp)
 			statedb.SubBalance(from, tx.Value())
 			statedb.SetLockedBalance(from, tx.Value())
 			if err := dposContext.Delegate(from, tx.Tos()); err != nil {
-				return nil, gas, true, err
+				dpossnapshot.RevertToSnapShot(dpossnapshot)
+				statedb.RevertToSnapshot(snapshot)
+				return nil, gas, false, err
 			}
 		} else {
 			dpossnapshot.RevertToSnapShot(dpossnapshot)
 			statedb.RevertToSnapshot(snapshot)
 			return nil, gas, false, fmt.Errorf("delegate balance insufficient")
+		}
+
+	case types.UnDelegate:
+		statedb.ResetDelegateTimestamp(from)
+		// todo validate tos
+		if err := dposContext.UnDelegate(from); err != nil {
+			dpossnapshot.RevertToSnapShot(dpossnapshot)
+			statedb.RevertToSnapshot(snapshot)
+			return nil, gas, false, err
 		}
 		e.addAction(from, tx)
 	case types.Redeem:

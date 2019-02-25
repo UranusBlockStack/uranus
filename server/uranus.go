@@ -97,11 +97,9 @@ func New(ctx *node.Context, config *UranusConfig) (*Uranus, error) {
 	if chainCfg.DelayEpcho > 0 {
 		dpos.Option.DelayEpcho = chainCfg.DelayEpcho
 	}
-
 	if chainCfg.MaxConfirmedNum > 0 {
 		dpos.Option.MaxConfirmedNum = chainCfg.MaxConfirmedNum
 	}
-
 	dpos := dpos.NewDpos(mux, chainDb, statedb, uranus.wallet.SignHash, "coinbase")
 
 	// blockchain

@@ -56,7 +56,6 @@ type Backend interface {
 	Accounts() (wallet.Accounts, error)
 	ImportRawKey(privkey string, passphrase string) (utils.Address, error)
 	ExportRawKey(addr utils.Address, passphrase string) (string, error)
-
 	// forecast backend
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 	// evm
@@ -73,7 +72,6 @@ type Backend interface {
 	Stop() error
 	SetCoinbase(utils.Address) error
 
-	// dpos
 	GetConfirmedBlockNumber() (*big.Int, error)
 	GetBFTConfirmedBlockNumber() (*big.Int, error)
 }

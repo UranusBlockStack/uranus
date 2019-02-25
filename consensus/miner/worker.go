@@ -66,6 +66,10 @@ func (w *Work) applyActions(blockchain consensus.IBlockChain, actions []*types.A
 }
 
 func (w *Work) applyTransactions(blockchain consensus.IBlockChain, txs *types.TransactionsByPriceAndNonce, timestamp int64) error {
+	tstart := time.Now()
+	defer func() {
+		log.Infof("applyTransactions block number: %v, txs: %v, time: %v ... ep %v", w.Block.Height(), len(w.txs), w.Block.Time(), time.Now().Sub(tstart))
+	}()
 	gp := new(utils.GasPool).AddGas(w.Block.BlockHeader().GasLimit)
 	var (
 		coalescedLogs []*types.Log
@@ -73,12 +77,12 @@ func (w *Work) applyTransactions(blockchain consensus.IBlockChain, txs *types.Tr
 	for {
 		// If we don't have enough gas for any further transactions then we're done
 		if gp.Gas() < params.TxGas {
-			log.Debugf("Not enough gas for further transactions gp: %v", gp)
+			log.Debugf("Not enough gas for further transactions", "timestamp", w.Block.Time(), "gas", gp)
 			break
 		}
 
-		if time.Now().UnixNano() > timestamp {
-			log.Warn("Not enough time for further transactions")
+		if now := time.Now().UnixNano(); now > timestamp {
+			log.Warn("Not enough time for further transactions", "timestamp", w.Block.Time(), "now", now, "next", timestamp)
 			break
 		}
 
