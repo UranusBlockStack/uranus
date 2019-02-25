@@ -62,7 +62,6 @@ func testGetBFTBlockHeight() (bft int64) {
 	return
 }
 
-
 func testGetBlockInfo(h int64, time *uint64) (addr string, cntTxs int64, sizeBlock uint, err error) {
 	req := rpcapi.GetBlockByHeightArgs{}
 	req.BlockHeight = new(rpcapi.BlockHeight)
@@ -322,10 +321,10 @@ func main() {
 			for ttimestamp-privts >= 2*intervaltime {
 
 				if ttimestamp-privts >= epoch {
-					count := uint64((ttimestamp-privts)/epoch)
+					count := uint64((ttimestamp - privts) / epoch)
 					timeStamp = privts + (count * epoch)
-					fmt.Println("\r\n Lost several epoch(s):" , count)
-				}else{
+					fmt.Println("\r\n Lost several epoch(s):", count)
+				} else {
 					timeStamp = privts + intervaltime
 					if (timeStamp%epoch)%(uint64(*blockRepeat)*intervaltime) == 0 && ttimestamp-timeStamp >= uint64(*blockRepeat)*intervaltime {
 						printDetails(utils.Address{}.String(), -1)

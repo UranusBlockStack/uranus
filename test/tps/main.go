@@ -195,17 +195,19 @@ func main() {
 		useAutoDelay = false
 		if *intTxDelay >= 0 {
 			delay = (uint)(*intTxDelay)
-		}else{
+		} else {
 			fmt.Println("交易延迟不能为负值.")
 			delay = 10
 		}
-	}else{
+	} else {
 		useAutoDelay = true
 		delay = 100
 	}
 
 	boolCheckNonce := true
-	if *noAutoNonceCheck {boolCheckNonce = false}
+	if *noAutoNonceCheck {
+		boolCheckNonce = false
+	}
 
 	if !useTxTranster && !useTxVoter && !useTxCandidate {
 		useTxTranster = true
