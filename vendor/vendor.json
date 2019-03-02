@@ -315,6 +315,12 @@
 			"revisionTime": "2018-01-11T11:10:38Z"
 		},
 		{
+			"checksumSHA1": "asZBHvcTKF5gVlI7AYnMlLXRYys=",
+			"path": "golang.org/x/crypto/sha3",
+			"revision": "8dd112bcdc25174059e45e07517d9fc663123347",
+			"revisionTime": "2019-02-28T09:13:53Z"
+		},
+		{
 			"checksumSHA1": "ag6CP2CjfMRiJxDuBDVKytu5sR8=",
 			"path": "golang.org/x/net/html",
 			"revision": "5ccada7d0a7ba9aeb5d3aca8d3501b4c2a509fec",

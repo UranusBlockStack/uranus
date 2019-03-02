@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
-	"github.com/UranusBlockStack/uranus/common/crypto/sha3"
+	"golang.org/x/crypto/sha3"
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/mtp"
@@ -160,7 +160,7 @@ func updateMintCnt(parentBlockTime, currentBlockTime int64, validator utils.Addr
 }
 
 func sigHash(header *types.BlockHeader) (hash utils.Hash) {
-	hasher := sha3.NewKeccak256()
+	hasher := sha3.NewLegacyKeccak256()
 	rlp.Encode(hasher, []interface{}{
 		header.PreviousHash,
 		header.Miner,

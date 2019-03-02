@@ -22,7 +22,7 @@ import (
 	"fmt"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
-	"github.com/UranusBlockStack/uranus/common/crypto/sha3"
+	"golang.org/x/crypto/sha3"
 	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
@@ -181,7 +181,7 @@ func (d *DposContext) Copy() *DposContext {
 }
 
 func (d *DposContext) Root() (h utils.Hash) {
-	hw := sha3.NewKeccak256()
+	hw := sha3.NewLegacyKeccak256()
 	rlp.Encode(hw, d.epochTrie.Hash())
 	rlp.Encode(hw, d.delegateTrie.Hash())
 	rlp.Encode(hw, d.candidateTrie.Hash())
@@ -244,7 +244,7 @@ func (d *DposContext) ToProto() *DposContextProto {
 }
 
 func (p *DposContextProto) Root() (h utils.Hash) {
-	hw := sha3.NewKeccak256()
+	hw := sha3.NewLegacyKeccak256()
 	rlp.Encode(hw, p.EpochHash)
 	rlp.Encode(hw, p.DelegateHash)
 	rlp.Encode(hw, p.CandidateHash)

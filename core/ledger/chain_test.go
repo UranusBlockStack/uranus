@@ -23,7 +23,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/UranusBlockStack/uranus/common/crypto/sha3"
+	"golang.org/x/crypto/sha3"
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
@@ -126,7 +126,7 @@ func TestHeaderStorage(t *testing.T) {
 	if entry := chain.getHeader(header.Hash()); entry == nil {
 		t.Fatalf("Stored header RLP not found")
 	} else {
-		hasher := sha3.NewKeccak256()
+		hasher := sha3.NewLegacyKeccak256()
 		data, _ := rlp.EncodeToBytes(entry)
 		hasher.Write(data)
 

@@ -21,7 +21,7 @@ import (
 	"hash"
 	"sync"
 
-	"github.com/UranusBlockStack/uranus/common/crypto/sha3"
+	"golang.org/x/crypto/sha3"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 )
@@ -37,7 +37,7 @@ type hasher struct {
 // hashers live in a global db.
 var hasherPool = sync.Pool{
 	New: func() interface{} {
-		return &hasher{tmp: new(bytes.Buffer), sha: sha3.NewKeccak256()}
+		return &hasher{tmp: new(bytes.Buffer), sha: sha3.NewLegacyKeccak256()}
 	},
 }
 

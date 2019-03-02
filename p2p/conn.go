@@ -36,7 +36,7 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/crypto/secp256k1"
-	"github.com/UranusBlockStack/uranus/common/crypto/sha3"
+	"golang.org/x/crypto/sha3"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/p2p/discover"
 	"github.com/UranusBlockStack/uranus/p2p/ecies"
@@ -197,10 +197,10 @@ func (h *encHandshake) secrets(auth, authResp []byte) (secrets, error) {
 		MAC:      crypto.Keccak256(ecdheSecret, aesSecret),
 	}
 
-	mac1 := sha3.NewKeccak256()
+	mac1 := sha3.NewLegacyKeccak256()
 	mac1.Write(xor(s.MAC, h.respNonce))
 	mac1.Write(auth)
-	mac2 := sha3.NewKeccak256()
+	mac2 := sha3.NewLegacyKeccak256()
 	mac2.Write(xor(s.MAC, h.initNonce))
 	mac2.Write(authResp)
 	if h.initiator {
