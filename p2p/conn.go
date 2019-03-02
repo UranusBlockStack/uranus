@@ -36,10 +36,10 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/crypto/secp256k1"
-	"golang.org/x/crypto/sha3"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/p2p/discover"
 	"github.com/UranusBlockStack/uranus/p2p/ecies"
+	"golang.org/x/crypto/sha3"
 )
 
 const (

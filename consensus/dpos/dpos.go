@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
-	"golang.org/x/crypto/sha3"
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/mtp"
@@ -22,6 +21,7 @@ import (
 	"github.com/UranusBlockStack/uranus/feed"
 	"github.com/UranusBlockStack/uranus/params"
 	lru "github.com/hashicorp/golang-lru"
+	"golang.org/x/crypto/sha3"
 )
 
 var Option = &option{

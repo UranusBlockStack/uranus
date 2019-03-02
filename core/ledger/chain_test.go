@@ -23,11 +23,11 @@ import (
 	"os"
 	"testing"
 
-	"golang.org/x/crypto/sha3"
 	"github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
+	"golang.org/x/crypto/sha3"
 )
 
 func createTestDB(t *testing.T) (string, *db.LDB) {

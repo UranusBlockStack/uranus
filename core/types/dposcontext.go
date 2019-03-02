@@ -22,10 +22,10 @@ import (
 	"fmt"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
-	"golang.org/x/crypto/sha3"
 	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"golang.org/x/crypto/sha3"
 )
 
 type Confirmed struct {

@@ -21,9 +21,9 @@ import (
 	"hash"
 	"sync"
 
-	"golang.org/x/crypto/sha3"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	"golang.org/x/crypto/sha3"
 )
 
 type hasher struct {
