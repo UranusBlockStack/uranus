@@ -54,9 +54,9 @@ type peer struct {
 	td   *big.Int
 	lock sync.RWMutex
 
-	existedTxs       *set.Set
-	existedBlocks    *set.Set
-	existedConfirmed *set.Set
+	existedTxs       set.Interface
+	existedBlocks    set.Interface
+	existedConfirmed set.Interface
 	quit             chan struct{}
 }
 
@@ -66,9 +66,9 @@ func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 		version:          version,
 		rw:               rw,
 		id:               fmt.Sprintf("%x", p.ID().Bytes()[:8]),
-		existedTxs:       set.New(),
-		existedBlocks:    set.New(),
-		existedConfirmed: set.New(),
+		existedTxs:       set.New(set.ThreadSafe),
+		existedBlocks:    set.New(set.ThreadSafe),
+		existedConfirmed: set.New(set.ThreadSafe),
 		quit:             make(chan struct{}),
 	}
 }

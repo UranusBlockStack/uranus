@@ -24,8 +24,7 @@ import (
 	"time"
 
 	"github.com/UranusBlockStack/uranus/common/utils"
-
-	"gopkg.in/fatih/set.v0"
+	set "gopkg.in/fatih/set.v0"
 )
 
 type relativeHashFetcherFn func(utils.Hash) error
@@ -39,7 +38,7 @@ type peer struct {
 	rep          int32
 	capacity     int32
 	started      time.Time
-	ignored      *set.Set
+	ignored      set.Interface
 	getRelHashes relativeHashFetcherFn
 	getAbsHashes absoluteHashFetcherFn
 	getBlocks    blockFetcherFn
@@ -53,7 +52,7 @@ func newPeer(id string, head utils.Hash, getRelHashes relativeHashFetcherFn, get
 		getRelHashes: getRelHashes,
 		getAbsHashes: getAbsHashes,
 		getBlocks:    getBlocks,
-		ignored:      set.New(),
+		ignored:      set.New(set.ThreadSafe),
 	}
 }
 

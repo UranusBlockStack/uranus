@@ -94,7 +94,7 @@ type Downloader struct {
 	queue  *queue
 	peers  *peerSet
 	checks map[utils.Hash]*crossCheck
-	banned *set.Set
+	banned set.Interface
 
 	interrupt int32
 
@@ -144,7 +144,7 @@ func NewDownloader(mux *feed.TypeMux, hasBlock hashCheckFn, getBlock blockRetrie
 		blockCh:     make(chan blockPack, 1),
 		processCh:   make(chan bool, 1),
 	}
-	downloader.banned = set.New()
+	downloader.banned = set.New(set.ThreadSafe)
 	return downloader
 }
 
