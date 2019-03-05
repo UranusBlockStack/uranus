@@ -143,7 +143,7 @@ func (e *Executor) ExecTransaction(author *utils.Address,
 }
 
 func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposContext, tx *types.Transaction, statedb *state.StateDB, gp *utils.GasPool) ([]byte, uint64, bool, error) {
-	gas, _ := txpool.IntrinsicGas(tx.Payload(), false)
+	gas, _ := txpool.IntrinsicGas(tx.Payload(), tx.Type(), false)
 	from, _ := tx.Sender(types.Signer{})
 	feeval := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 	if statedb.GetBalance(from).Cmp(feeval) < 0 {

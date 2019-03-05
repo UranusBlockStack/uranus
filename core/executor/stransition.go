@@ -129,7 +129,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	contractCreation := st.tx.Tos() == nil
 
 	// Pay intrinsic gas
-	gas, err := txpool.IntrinsicGas(st.data, contractCreation)
+	gas, err := txpool.IntrinsicGas(st.data, st.tx.Type(), contractCreation)
 	if err != nil {
 		return nil, 0, false, err
 	}

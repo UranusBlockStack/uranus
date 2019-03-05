@@ -381,7 +381,7 @@ func (tp *TxPool) validateTx(tx *types.Transaction) error {
 	if tp.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
 		return ErrInsufficientFunds
 	}
-	intrGas, err := IntrinsicGas(tx.Payload(), len(tx.Tos()) == 0 && tx.Type() == types.Binary)
+	intrGas, err := IntrinsicGas(tx.Payload(), tx.Type(), len(tx.Tos()) == 0 && tx.Type() == types.Binary)
 	if err != nil {
 		return err
 	}

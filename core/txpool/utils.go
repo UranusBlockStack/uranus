@@ -64,10 +64,12 @@ func TxDifference(a, b types.Transactions) types.Transactions {
 }
 
 // IntrinsicGas computes the 'intrinsic gas' for a message with the given data.
-func IntrinsicGas(data []byte, contractCreation bool) (uint64, error) {
+func IntrinsicGas(data []byte, tp types.TxType, contractCreation bool) (uint64, error) {
 	// Set the starting gas for the raw transaction
 	var gas uint64
-	if contractCreation {
+	if tp == types.Delegate || tp == types.UnDelegate {
+		return gas, nil
+	} else if contractCreation {
 		gas = params.TxGasContractCreation
 	} else {
 		gas = params.TxGas
