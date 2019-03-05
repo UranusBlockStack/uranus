@@ -24,6 +24,7 @@ import (
 
 type ChainConfig struct {
 	ChainID          *big.Int `json:"chainId"`
+	MaxDelegateState *big.Int `json:"maxDelegateState"`
 	BlockInterval    int64    `json:"blockInterval"`
 	BlockRepeat      int64    `json:"blockRepeat"`
 	MaxValidatorSize int64    `json:"epchoValidators"`

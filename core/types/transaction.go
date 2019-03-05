@@ -107,6 +107,9 @@ func (tx *Transaction) Validate(cfg *params.ChainConfig) error {
 		if cnt := uint64(len(tx.Tos())); cnt > cfg.MaxVotes || cnt < 0 {
 			return fmt.Errorf("tos was required but not greater than %v", cfg.MaxVotes)
 		}
+		if cfg.MaxDelegateState != nil && cfg.MaxDelegateState.Cmp(tx.Value()) < 0 {
+			return fmt.Errorf("delegate state was required but not greater than %v", cfg.MaxDelegateState)
+		}
 	case Redeem:
 		fallthrough
 	case UnDelegate:
