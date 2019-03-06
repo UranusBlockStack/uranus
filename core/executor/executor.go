@@ -186,6 +186,13 @@ func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposC
 		}
 
 	case types.UnDelegate:
+		ss := int64(time.Second)
+		ttimestamp := statedb.GetDelegateTimestamp(from).Int64()
+		tt := time.Unix(ttimestamp/ss, ttimestamp%ss)
+		t := time.Unix(timestamp.Int64()/ss, timestamp.Int64()%ss)
+		if d := t.Sub(tt); d < time.Duration(60*ss*e.config.MinDelegateDuration) {
+			return nil, gas, false, fmt.Errorf("min delegate duration insufficient, %s < %s", d, time.Duration(60*ss*e.config.MinDelegateDuration))
+		}
 		statedb.ResetDelegateTimestamp(from)
 		// todo validate tos
 		if err := dposContext.UnDelegate(from); err != nil {

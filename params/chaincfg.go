@@ -23,17 +23,18 @@ import (
 )
 
 type ChainConfig struct {
-	ChainID          *big.Int `json:"chainId"`
-	MaxDelegateState *big.Int `json:"maxDelegateState"`
-	BlockInterval    int64    `json:"blockInterval"`
-	BlockRepeat      int64    `json:"blockRepeat"`
-	MaxValidatorSize int64    `json:"epchoValidators"`
-	DelayEpcho       int64    `json:"delayepcho"`
-	MaxConfirmedNum  int64    `json:"maxConfirmedNum"`
-	GenesisCandidate string   `json:"candiate"`
-	MinStartQuantity *big.Int `json:"startQuantity"`
-	MaxVotes         uint64   `json:"votes"`
-	DelayDuration    *big.Int `json:"refund"`
+	ChainID             *big.Int `json:"chainId"`
+	MaxDelegateState    *big.Int `json:"maxDelegateState"`
+	MinDelegateDuration int64    `json:"minDelegateDuration"`
+	BlockInterval       int64    `json:"blockInterval"`
+	BlockRepeat         int64    `json:"blockRepeat"`
+	MaxValidatorSize    int64    `json:"epchoValidators"`
+	DelayEpcho          int64    `json:"delayepcho"`
+	MaxConfirmedNum     int64    `json:"maxConfirmedNum"`
+	GenesisCandidate    string   `json:"candiate"`
+	MinStartQuantity    *big.Int `json:"startQuantity"`
+	MaxVotes            uint64   `json:"votes"`
+	DelayDuration       *big.Int `json:"refund"`
 }
 
 // String implements fmt.Stringer.
@@ -43,22 +44,24 @@ func (c ChainConfig) String() string {
 }
 
 var TestChainConfig = &ChainConfig{
-	ChainID:          big.NewInt(0),
-	GenesisCandidate: "0x970e8128ab834e8eac17ab8e3812f010678cf791",
-	MinStartQuantity: big.NewInt(100),
-	MaxVotes:         30,
-	DelayDuration:    big.NewInt(72 * 3600),
-	BlockInterval:    int64(3000 * time.Millisecond),
-	BlockRepeat:      12,
-	MaxValidatorSize: 3,
+	ChainID:             big.NewInt(0),
+	GenesisCandidate:    "0x970e8128ab834e8eac17ab8e3812f010678cf791",
+	MinStartQuantity:    big.NewInt(100),
+	MaxVotes:            30,
+	DelayDuration:       big.NewInt(72 * 3600),
+	BlockInterval:       int64(3000 * time.Millisecond),
+	BlockRepeat:         12,
+	MaxValidatorSize:    3,
+	MinDelegateDuration: 60,
 }
 var DefaultChainConfig = &ChainConfig{
-	ChainID:          big.NewInt(1),
-	GenesisCandidate: "0x970e8128ab834e8eac17ab8e3812f010678cf791",
-	MinStartQuantity: big.NewInt(100),
-	MaxVotes:         30,
-	DelayDuration:    big.NewInt(72 * 3600),
-	BlockInterval:    int64(500 * time.Millisecond),
-	BlockRepeat:      12,
-	MaxValidatorSize: 3,
+	ChainID:             big.NewInt(1),
+	GenesisCandidate:    "0x970e8128ab834e8eac17ab8e3812f010678cf791",
+	MinStartQuantity:    big.NewInt(100),
+	MaxVotes:            30,
+	DelayDuration:       big.NewInt(72 * 3600),
+	BlockInterval:       int64(500 * time.Millisecond),
+	BlockRepeat:         12,
+	MaxValidatorSize:    3,
+	MinDelegateDuration: 60,
 }

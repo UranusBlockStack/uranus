@@ -10,7 +10,8 @@
 		"startQuantity": 10000000000000000000000000,
 		"votes": 30,
 		"refund": 259200,
-		"maxDelegateState":100000000000000000000	
+		"maxDelegateState":1000000000000000000000,
+		"minDelegateDuration": 60	
 	},
 	"nonce": "0x1",
 	"timestamp": "0x1579dc827e390000",
