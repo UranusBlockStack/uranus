@@ -24,7 +24,7 @@ import (
 
 type ChainConfig struct {
 	ChainID             *big.Int `json:"chainId"`
-	MaxDelegateState    *big.Int `json:"maxDelegateState"`
+	MinDelegateState    *big.Int `json:"minDelegateState"`
 	MinDelegateDuration int64    `json:"minDelegateDuration"`
 	BlockInterval       int64    `json:"blockInterval"`
 	BlockRepeat         int64    `json:"blockRepeat"`
