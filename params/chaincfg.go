@@ -25,6 +25,7 @@ import (
 type ChainConfig struct {
 	ChainID             *big.Int `json:"chainId"`
 	MinDelegateState    *big.Int `json:"minDelegateState"`
+	MinDelegatePercent  *big.Int `json:"minDelegatePercent"`
 	MinDelegateDuration int64    `json:"minDelegateDuration"`
 	BlockInterval       int64    `json:"blockInterval"`
 	BlockRepeat         int64    `json:"blockRepeat"`
@@ -45,6 +46,9 @@ func (c ChainConfig) String() string {
 
 var TestChainConfig = &ChainConfig{
 	ChainID:             big.NewInt(0),
+	MinDelegateState:    new(big.Int).Mul(big.NewInt(1000), big.NewInt(18)),
+	MinDelegatePercent:  big.NewInt(10),
+	MinDelegateDuration: int64(time.Hour / time.Second),
 	GenesisCandidate:    "0x970e8128ab834e8eac17ab8e3812f010678cf791",
 	MinStartQuantity:    big.NewInt(100),
 	MaxVotes:            30,
@@ -52,10 +56,13 @@ var TestChainConfig = &ChainConfig{
 	BlockInterval:       int64(3000 * time.Millisecond),
 	BlockRepeat:         12,
 	MaxValidatorSize:    3,
-	MinDelegateDuration: 60,
 }
+
 var DefaultChainConfig = &ChainConfig{
 	ChainID:             big.NewInt(1),
+	MinDelegateState:    new(big.Int).Mul(big.NewInt(1000), big.NewInt(18)),
+	MinDelegatePercent:  big.NewInt(10),
+	MinDelegateDuration: int64(time.Hour / time.Second),
 	GenesisCandidate:    "0x970e8128ab834e8eac17ab8e3812f010678cf791",
 	MinStartQuantity:    big.NewInt(100),
 	MaxVotes:            30,
@@ -63,5 +70,4 @@ var DefaultChainConfig = &ChainConfig{
 	BlockInterval:       int64(500 * time.Millisecond),
 	BlockRepeat:         12,
 	MaxValidatorSize:    3,
-	MinDelegateDuration: 60,
 }

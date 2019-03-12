@@ -1,6 +1,7 @@
 package dpos
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -15,12 +16,14 @@ import (
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
+	"github.com/UranusBlockStack/uranus/params"
 )
 
 type EpochContext struct {
 	TimeStamp   int64
 	DposContext *types.DposContext
 	Statedb     *state.StateDB
+	Config      *params.ChainConfig
 }
 
 func (ec *EpochContext) lookupValidator(now int64) (validator utils.Address, err error) {
@@ -127,6 +130,7 @@ func (ec *EpochContext) CountVotes() (votes map[utils.Address]*big.Int, total *b
 			existCandidate = iterCandidate.Next()
 			continue
 		}
+		selfscore := big.NewInt(0)
 		for existDelegator {
 			delegator := delegateIterator.Value
 			score, ok := votes[candidateAddr]
@@ -135,12 +139,20 @@ func (ec *EpochContext) CountVotes() (votes map[utils.Address]*big.Int, total *b
 			}
 			delegatorAddr := utils.BytesToAddress(delegator)
 			weight := statedb.GetLockedBalance(delegatorAddr)
+			if bytes.Compare(delegatorAddr.Bytes(), candidateAddr.Bytes()) == 0 {
+				selfscore = new(big.Int).Add(selfscore, weight)
+			}
 			total = new(big.Int).Add(total, weight)
 			score.Add(score, weight)
 			votes[candidateAddr] = score
 			existDelegator = delegateIterator.Next()
 		}
-		votes[candidateAddr] = new(big.Int).Mul(votes[candidateAddr], big.NewInt(int64(candidateInfo.Weight)))
+		if score, ok := votes[candidateAddr]; ok {
+			if ec.Config.MinDelegatePercent != nil && new(big.Int).Add(selfscore, ec.Config.MinDelegatePercent).Cmp(score) < 0 {
+				votes[candidateAddr] = selfscore
+			}
+			votes[candidateAddr] = new(big.Int).Mul(votes[candidateAddr], big.NewInt(int64(candidateInfo.Weight)))
+		}
 		existCandidate = iterCandidate.Next()
 	}
 	return votes, total, nil

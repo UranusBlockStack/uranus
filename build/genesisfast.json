@@ -1,6 +1,9 @@
 {
 	"config": {
 		"chainId": 1,
+		"minDelegateState": 18000,
+		"minDelegatePercent": 10,
+		"minDelegateDuration": 3600,
 		"blockInterval": 500000000,
 		"blockRepeat": 12,
 		"epchoValidators": 3,
@@ -9,9 +12,7 @@
 		"candiate": "0x970e8128ab834e8eac17ab8e3812f010678cf791",
 		"startQuantity": 10000000000000000000000000,
 		"votes": 30,
-		"refund": 259200,
-		"maxDelegateState":1000000000000000000000,
-		"minDelegateDuration": 60	
+		"refund": 259200
 	},
 	"nonce": "0x1",
 	"timestamp": "0x1579dc827e390000",

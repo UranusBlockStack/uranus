@@ -262,7 +262,7 @@ func (d *Dpos) VerifySeal(chain consensus.IChainReader, header *types.BlockHeade
 	if err != nil {
 		return err
 	}
-	epochContext := &EpochContext{DposContext: dposContext}
+	epochContext := &EpochContext{DposContext: dposContext, Config: chain.Config()}
 	validator, err := epochContext.lookupValidator(header.TimeStamp.Int64())
 	if err != nil {
 		return err
@@ -456,7 +456,7 @@ func (d *Dpos) CheckValidator(chain consensus.IChainReader, lastBlock *types.Blo
 	if err != nil {
 		return err
 	}
-	epochContext := &EpochContext{DposContext: dposContext}
+	epochContext := &EpochContext{DposContext: dposContext, Config: chain.Config()}
 	validator, err := epochContext.lookupValidator(now)
 	if err != nil {
 		return err
@@ -481,6 +481,7 @@ func (d *Dpos) Finalize(chain consensus.IChainReader, header *types.BlockHeader,
 		Statedb:     state,
 		DposContext: dposContext,
 		TimeStamp:   header.TimeStamp.Int64(),
+		Config:      chain.Config(),
 	}
 	parent := chain.GetBlockByHash(header.PreviousHash)
 	if timeOfFirstBlock == 0 {
