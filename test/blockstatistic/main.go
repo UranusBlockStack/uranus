@@ -194,10 +194,17 @@ func main() {
 		return
 	}
 
+	var firstTimeStamp, firstEpcho uint64
+	if _, _, _, err := testGetBlockInfo(1, &firstTimeStamp); err != nil {
+		return
+	}
+	firstEpcho = firstTimeStamp / epoch
+
 	var timeStart, timeEnd, timeStamp, privts uint64
 	var totalTxsCount, totalBlockSize int64
 	var maxTxs int64
 	var maxSize int64
+	var epchoNum uint64
 
 	for i := startH; i <= endH; i++ {
 		var addr string
@@ -230,7 +237,11 @@ func main() {
 		totalBlockSize += int64(sizeBlock)
 
 		printDetails := func(newaddr string, ch int64) {
-			if (timeStamp%epoch)/(uint64(*blockRepeat)*intervaltime) != ((timeStamp-intervaltime)%epoch)/(uint64(*blockRepeat)*intervaltime) {
+			if tepchoNum := timeStamp / epoch; epchoNum != tepchoNum {
+				fmt.Printf("\n==========epcho %d==========", tepchoNum-firstEpcho+1)
+				epchoNum = tepchoNum
+			}
+			if (timeStamp%epoch)/(uint64(*blockRepeat)*intervaltime) != (timeStamp%epoch-intervaltime)/(uint64(*blockRepeat)*intervaltime) {
 				fmt.Printf("\n%s:", newaddr)
 			}
 
