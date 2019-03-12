@@ -20,7 +20,11 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"os"
+	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -149,6 +153,19 @@ func (srv *Server) Start() (err error) {
 		srv.listener = listener
 		srv.wg.Add(1)
 		go srv.listenLoop()
+	}
+
+	os.Mkdir(filepath.Join(srv.Config.NodeDatabase, "addPeer"), 0775)
+	dir, _ := ioutil.ReadDir(filepath.Join(srv.Config.NodeDatabase, "addPeer"))
+	for _, finfo := range dir {
+		if finfo.IsDir() {
+			continue
+		}
+		node, err := discover.ParseNode(fmt.Sprintf("enode://%s", path.Base(finfo.Name())))
+		if err != nil {
+			continue
+		}
+		srv.BootNodes = append(srv.BootNodes, node)
 	}
 
 	srv.wg.Add(1)
@@ -312,12 +329,16 @@ running:
 			}
 		case n := <-srv.addnode:
 			log.Debugf("Adding static node %v", n.String())
+			if file, err := os.Create(filepath.Join(srv.NodeDatabase, "addPeer", strings.TrimPrefix(n.String(), "enode://"))); err == nil {
+				defer file.Close()
+			}
 			dialstate.AddStatic(n)
 		case n := <-srv.removenode:
 			log.Debugf("Removing static node %v", n.String())
 			if p, ok := peers[n.ID]; ok {
 				p.Disconnect("remove")
 			}
+			os.Remove(filepath.Join(srv.NodeDatabase, "addPeer", strings.TrimPrefix(n.String(), "enode://")))
 			dialstate.RemoveStatic(n)
 		case c := <-srv.addpeer:
 			err := srv.protoHandshakeChecks(peers, c)
