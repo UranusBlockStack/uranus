@@ -97,7 +97,7 @@ func dbHandles() int {
 		log.Errorf("Failed to retrieve file descriptor allowance: %v", err)
 	}
 	if limit < 2048 {
-		if err := fdlimit.Raise(2048); err != nil {
+		if _, err := fdlimit.Raise(2048); err != nil {
 			log.Errorf("Failed to raise file descriptor allowance: %v", err)
 		}
 	}

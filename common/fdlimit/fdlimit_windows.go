@@ -16,19 +16,28 @@
 
 package fdlimit
 
-import "errors"
+import "fmt"
 
-func Raise(max uint64) error {
-	if max > 16384 {
-		return errors.New("file descriptor limit (16384) reached")
+// hardlimit is the number of file descriptors allowed at max by the kernel.
+const hardlimit = 16384
+
+// Raise tries to maximize the file descriptor allowance of this process
+// to the maximum hard-limit allowed by the OS.
+func Raise(max uint64) (uint64, error) {
+	if max > hardlimit {
+		return hardlimit, fmt.Errorf("file descriptor limit (%d) reached", hardlimit)
 	}
-	return nil
+	return max, nil
 }
 
+// Current retrieves the number of file descriptors allowed to be opened by this
+// process.
 func Current() (int, error) {
-	return 16384, nil
+	return hardlimit, nil
 }
 
+// Maximum retrieves the maximum number of file descriptors this process is
+// allowed to request for itself.
 func Maximum() (int, error) {
 	return Current()
 }

@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-func TestFileLimit(t *testing.T) {
+func TestFileDescriptorLimits(t *testing.T) {
 	target := 4096
 	hardlimit, err := Maximum()
 	if err != nil {
@@ -34,7 +34,7 @@ func TestFileLimit(t *testing.T) {
 	if limit, err := Current(); err != nil || limit <= 0 {
 		t.Fatalf("failed to retrieve file descriptor limit (%d): %v", limit, err)
 	}
-	if err := Raise(uint64(target)); err != nil {
+	if _, err := Raise(uint64(target)); err != nil {
 		t.Fatalf("failed to raise file allowance")
 	}
 	if limit, err := Current(); err != nil || limit < target {

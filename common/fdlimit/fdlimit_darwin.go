@@ -14,14 +14,16 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
 
-// +build linux netbsd openbsd solaris
-
 package fdlimit
 
 import "syscall"
 
+// hardlimit is the number of file descriptors allowed at max by the kernel.
+const hardlimit = 10240
+
 // Raise tries to maximize the file descriptor allowance of this process
 // to the maximum hard-limit allowed by the OS.
+// Returns the size it was set to (may differ from the desired 'max')
 func Raise(max uint64) (uint64, error) {
 	// Get the current limit
 	var limit syscall.Rlimit
@@ -56,9 +58,14 @@ func Current() (int, error) {
 // Maximum retrieves the maximum number of file descriptors this process is
 // allowed to request for itself.
 func Maximum() (int, error) {
+	// Retrieve the maximum allowed by dynamic OS limits
 	var limit syscall.Rlimit
 	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit); err != nil {
 		return 0, err
+	}
+	// Cap it to OPEN_MAX (10240) because macos is a special snowflake
+	if limit.Max > hardlimit {
+		limit.Max = hardlimit
 	}
 	return int(limit.Max), nil
 }
