@@ -22,7 +22,8 @@ import (
 	"time"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
-	ldb "github.com/UranusBlockStack/uranus/common/db"
+	mdb "github.com/UranusBlockStack/uranus/common/db/memorydb"
+
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/vm"
@@ -99,7 +100,7 @@ func Execute(code, input []byte, cfg *Config) ([]byte, *state.StateDB, error) {
 	setDefaults(cfg)
 
 	if cfg.State == nil {
-		cfg.State, _ = state.New(utils.Hash{}, state.NewDatabase(ldb.NewMemDatabase()))
+		cfg.State, _ = state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 	}
 	var (
 		address = utils.BytesToAddress([]byte("contract"))
@@ -129,7 +130,7 @@ func Create(input []byte, cfg *Config) ([]byte, utils.Address, uint64, error) {
 	setDefaults(cfg)
 
 	if cfg.State == nil {
-		cfg.State, _ = state.New(utils.Hash{}, state.NewDatabase(ldb.NewMemDatabase()))
+		cfg.State, _ = state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 	}
 	var (
 		vmenv  = NewEnv(cfg)

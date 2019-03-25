@@ -57,7 +57,6 @@ var TestChainConfig = &ChainConfig{
 	BlockRepeat:         12,
 	MaxValidatorSize:    3,
 }
-
 var DefaultChainConfig = &ChainConfig{
 	ChainID:             big.NewInt(1),
 	MinDelegateState:    new(big.Int).Mul(big.NewInt(1000), big.NewInt(18)),

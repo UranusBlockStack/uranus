@@ -19,13 +19,13 @@ package mtp
 import (
 	"testing"
 
-	"github.com/UranusBlockStack/uranus/common/db"
+	mdb "github.com/UranusBlockStack/uranus/common/db/memorydb"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIter(t *testing.T) {
-	trie, _ := New(utils.Hash{}, NewDatabase(db.NewMemDatabase()))
+	trie, _ := New(utils.Hash{}, NewDatabase(mdb.New()))
 	vals := []struct{ k, v string }{
 		{"hello", "world"},
 		{"key", "value"},
@@ -54,7 +54,7 @@ func TestIter(t *testing.T) {
 }
 
 func TestPrefixIterator(t *testing.T) {
-	trie, _ := New(utils.Hash{}, NewDatabase(db.NewMemDatabase()))
+	trie, _ := New(utils.Hash{}, NewDatabase(mdb.New()))
 	vals := []struct{ k, v string }{
 		{"do", "verb"},
 		{"ether", "wookiedoo"},
@@ -129,16 +129,16 @@ func TestPrefixIterator(t *testing.T) {
 	}
 
 	expect = map[string]string{
-		"do":     "verb",
-		"ether":  "wookiedoo",
-		"horse":  "stallion",
-		"shaman": "horse",
-		"doge":   "coin",
-		"dog":    "puppy",
+		"do":                            "verb",
+		"ether":                         "wookiedoo",
+		"horse":                         "stallion",
+		"shaman":                        "horse",
+		"doge":                          "coin",
+		"dog":                           "puppy",
 		"somethingveryoddindeedthis is": "myothernodedata",
-		"drive":   "car",
-		"dollar":  "cny",
-		"dxracer": "chair",
+		"drive":                         "car",
+		"dollar":                        "cny",
+		"dxracer":                       "chair",
 	}
 	found = make(map[string]string)
 	it = NewIterator(trie.PrefixIterator(nil))

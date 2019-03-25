@@ -19,13 +19,13 @@ package mtp
 import (
 	"testing"
 
-	"github.com/UranusBlockStack/uranus/common/db"
+	mdb "github.com/UranusBlockStack/uranus/common/db/memorydb"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestInsert(t *testing.T) {
-	trie, _ := New(utils.Hash{}, NewDatabase(db.NewMemDatabase()))
+	trie, _ := New(utils.Hash{}, NewDatabase(mdb.New()))
 
 	trie.Update([]byte("hello"), []byte("world"))
 	trie.Update([]byte("key"), []byte("value"))
@@ -35,7 +35,7 @@ func TestInsert(t *testing.T) {
 	root := trie.Hash()
 	assert.Equal(t, exp, root)
 
-	trie, _ = New(utils.Hash{}, NewDatabase(db.NewMemDatabase()))
+	trie, _ = New(utils.Hash{}, NewDatabase(mdb.New()))
 
 	trie.Update([]byte("A"), []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
 
@@ -48,7 +48,7 @@ func TestInsert(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	trie, _ := New(utils.Hash{}, NewDatabase(db.NewMemDatabase()))
+	trie, _ := New(utils.Hash{}, NewDatabase(mdb.New()))
 	trie.Update([]byte("hello"), []byte("world"))
 	trie.Update([]byte("key"), []byte("value"))
 	trie.Update([]byte("123"), []byte("456"))
@@ -69,7 +69,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	trie, _ := New(utils.Hash{}, NewDatabase(db.NewMemDatabase()))
+	trie, _ := New(utils.Hash{}, NewDatabase(mdb.New()))
 
 	vals := []struct{ k, v string }{
 		{"hello", "world"},
@@ -92,7 +92,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestMissingRoot(t *testing.T) {
-	db := db.NewMemDatabase()
+	db := mdb.New()
 	trie, err := New(utils.HexToHash("0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"), NewDatabase(db))
 	if trie != nil {
 		t.Error("New returned non-nil trie for invalid root")

@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
-	"github.com/UranusBlockStack/uranus/common/db"
+	mdb "github.com/UranusBlockStack/uranus/common/db/memorydb"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
@@ -70,7 +70,7 @@ func pricedTransaction(nonce uint64, gaslimit uint64, gasprice *big.Int, key *ec
 }
 
 func setupTxPool() (*TxPool, *ecdsa.PrivateKey) {
-	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 	blockchain := &testBlockChain{statedb, 1000000, new(feed.Feed)}
 
 	key, _ := crypto.GenerateKey()
@@ -155,7 +155,7 @@ func (c *testChain) State() (*state.StateDB, error) {
 	// a state change between those fetches.
 	stdb := c.statedb
 	if *c.trigger {
-		c.statedb, _ = state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+		c.statedb, _ = state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 		// simulate that the new head block included tx0 and tx1
 		c.statedb.SetNonce(c.address, 2)
 		c.statedb.SetBalance(c.address, new(big.Int).SetUint64(amount))

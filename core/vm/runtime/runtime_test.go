@@ -21,7 +21,8 @@ import (
 	"testing"
 
 	// "github.com/ethereum/go-ethereum/accounts/abi"
-	ldb "github.com/UranusBlockStack/uranus/common/db"
+
+	mdb "github.com/UranusBlockStack/uranus/common/db/memorydb"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/vm"
@@ -93,7 +94,7 @@ func TestExecute(t *testing.T) {
 }
 
 func TestCall(t *testing.T) {
-	state, _ := state.New(utils.Hash{}, state.NewDatabase(ldb.NewMemDatabase()))
+	state, _ := state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 	address := utils.HexToAddress("0x0a")
 	state.SetCode(address, []byte{
 		byte(vm.PUSH1), 10,

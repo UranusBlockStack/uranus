@@ -134,7 +134,7 @@ func (t *TrieWarp) Copy() *TrieWarp {
 	return &cpy
 }
 
-func (t *TrieWarp) Prove(key []byte, fromLevel uint, proofDb db.Putter) error {
+func (t *TrieWarp) Prove(key []byte, fromLevel uint, proofDb db.Writer) error {
 	return t.trie.Prove(key, fromLevel, proofDb)
 }
 

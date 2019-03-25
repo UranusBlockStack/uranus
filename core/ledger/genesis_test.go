@@ -20,7 +20,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/UranusBlockStack/uranus/common/db"
+	mdb "github.com/UranusBlockStack/uranus/common/db/memorydb"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/params"
@@ -28,7 +28,7 @@ import (
 )
 
 func TestDefaultGenesis(t *testing.T) {
-	block, _ := DefaultGenesis().ToBlock(NewChain(db.NewMemDatabase()))
+	block, _ := DefaultGenesis().ToBlock(NewChain(mdb.New()))
 	assert.Equal(t, block.Hash().Hex(), "0x437ccc55c2785859205318c2906d955e2cb35b76cb46f88e1df1611732f4d09c")
 }
 

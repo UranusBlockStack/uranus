@@ -29,18 +29,17 @@ import (
 	"testing/quick"
 	"time"
 
-	check "gopkg.in/check.v1"
-
-	ldb "github.com/UranusBlockStack/uranus/common/db"
+	mdb "github.com/UranusBlockStack/uranus/common/db/memorydb"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
+	check "gopkg.in/check.v1"
 )
 
 // Tests that updating a state trie does not leak any database writes prior to
 // actually committing the state.
 func TestUpdateLeaks(t *testing.T) {
 	// Create an empty state database
-	db := ldb.NewMemDatabase()
+	db := mdb.New()
 	state, _ := New(utils.Hash{}, NewDatabase(db))
 
 	// Update it with some accounts
@@ -61,18 +60,19 @@ func TestUpdateLeaks(t *testing.T) {
 		state.IntermediateRoot(false)
 	}
 	// Ensure that no data was leaked into the database
-	for _, key := range db.Keys() {
-		value, _ := db.Get(key)
-		t.Errorf("State leaked into database: %x -> %x", key, value)
+	it := db.NewIterator()
+	for it.Next() {
+		t.Errorf("State leaked into database: %x -> %x", it.Key(), it.Value())
 	}
+	it.Release()
 }
 
 // Tests that no intermediate state of an object is stored into the database,
 // only the one right before the commit.
 func TestIntermediateLeaks(t *testing.T) {
 	// Create two state databases, one transitioning to the final state, the other final from the beginning
-	transDb := ldb.NewMemDatabase()
-	finalDb := ldb.NewMemDatabase()
+	transDb := mdb.New()
+	finalDb := mdb.New()
 	transState, _ := New(utils.Hash{}, NewDatabase(transDb))
 	finalState, _ := New(utils.Hash{}, NewDatabase(finalDb))
 
@@ -111,16 +111,20 @@ func TestIntermediateLeaks(t *testing.T) {
 	if _, err := finalState.Commit(false); err != nil {
 		t.Fatalf("failed to commit final state: %v", err)
 	}
-	for _, key := range finalDb.Keys() {
+	it := finalDb.NewIterator()
+	for it.Next() {
+		key := it.Key()
 		if _, err := transDb.Get(key); err != nil {
-			val, _ := finalDb.Get(key)
-			t.Errorf("entry missing from the transition database: %x -> %x", key, val)
+			t.Errorf("entry missing from the transition database: %x -> %x", key, it.Value())
 		}
 	}
-	for _, key := range transDb.Keys() {
+	it.Release()
+
+	it = transDb.NewIterator()
+	for it.Next() {
+		key := it.Key()
 		if _, err := finalDb.Get(key); err != nil {
-			val, _ := transDb.Get(key)
-			t.Errorf("extra entry in the transition database: %x -> %x", key, val)
+			t.Errorf("extra entry in the transition database: %x -> %x", key, it.Value())
 		}
 	}
 }
@@ -130,7 +134,7 @@ func TestIntermediateLeaks(t *testing.T) {
 // https://github.com/ethereum/go-ethereum/pull/15549.
 func TestCopy(t *testing.T) {
 	// Create a random state test to copy and modify "independently"
-	orig, _ := New(utils.Hash{}, NewDatabase(ldb.NewMemDatabase()))
+	orig, _ := New(utils.Hash{}, NewDatabase(mdb.New()))
 
 	for i := byte(0); i < 255; i++ {
 		obj := orig.GetOrNewStateObject(utils.BytesToAddress([]byte{i}))
@@ -365,7 +369,7 @@ func (test *snapshotTest) String() string {
 func (test *snapshotTest) run() bool {
 	// Run all actions and create snapshots.
 	var (
-		state, _     = New(utils.Hash{}, NewDatabase(ldb.NewMemDatabase()))
+		state, _     = New(utils.Hash{}, NewDatabase(mdb.New()))
 		snapshotRevs = make([]int, len(test.snapshots))
 		sindex       = 0
 	)
@@ -458,7 +462,7 @@ func (s *StateSuite) TestTouchDelete(c *check.C) {
 // TestCopyOfCopy tests that modified objects are carried over to the copy, and the copy of the copy.
 // See https://github.com/ethereum/go-ethereum/pull/15225#issuecomment-380191512
 func TestCopyOfCopy(t *testing.T) {
-	sdb, _ := New(utils.Hash{}, NewDatabase(ldb.NewMemDatabase()))
+	sdb, _ := New(utils.Hash{}, NewDatabase(mdb.New()))
 	addr := utils.HexToAddress("aaaa")
 	sdb.SetBalance(addr, big.NewInt(42))
 	sdb.SetLockedBalance(addr, big.NewInt(41))

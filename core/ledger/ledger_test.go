@@ -19,15 +19,15 @@ package ledger
 import (
 	"testing"
 
-	"github.com/UranusBlockStack/uranus/common/db"
+	mdb "github.com/UranusBlockStack/uranus/common/db/memorydb"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRewindChain(t *testing.T) {
-	stateCache := state.NewDatabase(db.NewMemDatabase())
-	ledger := New(&Config{}, db.NewMemDatabase(), func(hash utils.Hash) bool {
+	stateCache := state.NewDatabase(mdb.New())
+	ledger := New(&Config{}, mdb.New(), func(hash utils.Hash) bool {
 		_, err := stateCache.OpenTrie(hash)
 		return err == nil
 	})

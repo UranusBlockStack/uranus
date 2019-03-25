@@ -143,6 +143,7 @@ func Decode(r io.Reader, val interface{}) error {
 // The input must contain exactly one value and no trailing data.
 func DecodeBytes(b []byte, val interface{}) error {
 	r := bytes.NewReader(b)
+
 	stream := streamPool.Get().(*Stream)
 	defer streamPool.Put(stream)
 
@@ -864,6 +865,7 @@ func (s *Stream) Reset(r io.Reader, inputLimit uint64) {
 	if s.uintbuf == nil {
 		s.uintbuf = make([]byte, 8)
 	}
+	s.byteval = 0
 }
 
 // Kind returns the kind and size of the next value in the

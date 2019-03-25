@@ -19,7 +19,9 @@ package node
 import (
 	"reflect"
 
-	ldb "github.com/UranusBlockStack/uranus/common/db"
+	"github.com/UranusBlockStack/uranus/common/db"
+	ldb "github.com/UranusBlockStack/uranus/common/db/leveldb"
+	mdb "github.com/UranusBlockStack/uranus/common/db/memorydb"
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/p2p"
 	"github.com/UranusBlockStack/uranus/rpc"
@@ -32,12 +34,12 @@ type Context struct {
 }
 
 // OpenDatabase opens an existing database.
-func (ctx *Context) OpenDatabase(name string, cache int, handles int) (ldb.Database, error) {
+func (ctx *Context) OpenDatabase(name string, cache int, handles int) (db.Database, error) {
 	if ctx.config.DataDir == "" {
-		return ldb.NewMemDatabase(), nil
+		return mdb.New(), nil
 	}
 	log.Debugf("database dir: %v", ctx.config.resolvePath(name))
-	db, err := ldb.NewLDB(ctx.config.resolvePath(name), cache, handles)
+	db, err := ldb.New(ctx.config.resolvePath(name), cache, handles)
 	if err != nil {
 		return nil, err
 	}

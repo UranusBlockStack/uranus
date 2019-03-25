@@ -68,7 +68,7 @@ type Trie interface {
 	Hash() utils.Hash
 	NodeIterator(startKey []byte) mtp.NodeIterator
 	GetKey([]byte) []byte // TODO(fjl): remove this when SecureTrie is removed
-	Prove(key []byte, fromLevel uint, proofDb ldb.Putter) error
+	Prove(key []byte, fromLevel uint, proofDb ldb.Writer) error
 }
 
 // NewDatabase creates a backing store for state. The returned database is safe for
@@ -173,6 +173,6 @@ func (m cachedTrie) Commit(onleaf mtp.LeafCallback) (utils.Hash, error) {
 	return root, err
 }
 
-func (m cachedTrie) Prove(key []byte, fromLevel uint, proofDb ldb.Putter) error {
+func (m cachedTrie) Prove(key []byte, fromLevel uint, proofDb ldb.Writer) error {
 	return m.TrieWarp.Prove(key, fromLevel, proofDb)
 }

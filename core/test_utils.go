@@ -22,6 +22,7 @@ import (
 	"math/big"
 
 	"github.com/UranusBlockStack/uranus/common/db"
+	ldb "github.com/UranusBlockStack/uranus/common/db/leveldb"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/consensus"
 	"github.com/UranusBlockStack/uranus/core/ledger"
@@ -43,7 +44,7 @@ func newLegitimate(engine consensus.Engine, n int) (db.Database, *BlockChain, er
 		return nil, nil, err
 	}
 
-	ldb, err := db.NewLDB(dir, 0, 0)
+	ldb, err := ldb.New(dir, 0, 0)
 	if err != nil {
 		return nil, nil, err
 	}

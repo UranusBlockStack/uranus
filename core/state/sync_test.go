@@ -23,6 +23,7 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	ldb "github.com/UranusBlockStack/uranus/common/db"
+	mdb "github.com/UranusBlockStack/uranus/common/db/memorydb"
 	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 )
@@ -38,7 +39,7 @@ type testAccount struct {
 // makeTestState create a sample test state to test node-wise reconstruction.
 func makeTestState() (Database, utils.Hash, []*testAccount) {
 	// Create an empty state
-	db := NewDatabase(ldb.NewMemDatabase())
+	db := NewDatabase(mdb.New())
 	state, _ := New(utils.Hash{}, db)
 
 	// Fill it with some arbitrary data
@@ -124,7 +125,7 @@ func checkStateConsistency(db ldb.Database, root utils.Hash) error {
 // Tests that an empty state is not scheduled for syncing.
 func TestEmptyStateSync(t *testing.T) {
 	empty := utils.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
-	if req := NewStateSync(empty, ldb.NewMemDatabase()).Missing(1); len(req) != 0 {
+	if req := NewStateSync(empty, mdb.New()).Missing(1); len(req) != 0 {
 		t.Errorf("content requested for empty state: %v", req)
 	}
 }
@@ -139,7 +140,7 @@ func testIterativeStateSync(t *testing.T, batch int) {
 	srcDb, srcRoot, srcAccounts := makeTestState()
 
 	// Create a destination state and sync with the scheduler
-	dstDb := ldb.NewMemDatabase()
+	dstDb := mdb.New()
 	sched := NewStateSync(srcRoot, dstDb)
 
 	queue := append([]utils.Hash{}, sched.Missing(batch)...)
@@ -171,7 +172,7 @@ func TestIterativeDelayedStateSync(t *testing.T) {
 	srcDb, srcRoot, srcAccounts := makeTestState()
 
 	// Create a destination state and sync with the scheduler
-	dstDb := ldb.NewMemDatabase()
+	dstDb := mdb.New()
 	sched := NewStateSync(srcRoot, dstDb)
 
 	queue := append([]utils.Hash{}, sched.Missing(0)...)
@@ -208,7 +209,7 @@ func testIterativeRandomStateSync(t *testing.T, batch int) {
 	srcDb, srcRoot, srcAccounts := makeTestState()
 
 	// Create a destination state and sync with the scheduler
-	dstDb := ldb.NewMemDatabase()
+	dstDb := mdb.New()
 	sched := NewStateSync(srcRoot, dstDb)
 
 	queue := make(map[utils.Hash]struct{})
@@ -248,7 +249,7 @@ func TestIterativeRandomDelayedStateSync(t *testing.T) {
 	srcDb, srcRoot, srcAccounts := makeTestState()
 
 	// Create a destination state and sync with the scheduler
-	dstDb := ldb.NewMemDatabase()
+	dstDb := mdb.New()
 	sched := NewStateSync(srcRoot, dstDb)
 
 	queue := make(map[utils.Hash]struct{})
@@ -295,7 +296,7 @@ func TestIncompleteStateSync(t *testing.T) {
 	checkTrieConsistency(srcDb.TrieDB().DiskDB().(ldb.Database), srcRoot)
 
 	// Create a destination state and sync with the scheduler
-	dstDb := ldb.NewMemDatabase()
+	dstDb := mdb.New()
 	sched := NewStateSync(srcRoot, dstDb)
 
 	added := []utils.Hash{}

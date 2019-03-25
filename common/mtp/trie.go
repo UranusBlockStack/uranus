@@ -511,7 +511,7 @@ func (t *Trie) hashRoot(db *Database, onleaf LeafCallback) (node, node, error) {
 	return h.hash(t.root, db, true)
 }
 
-func (t *Trie) Prove(key []byte, fromLevel uint, proofDb db.Putter) error {
+func (t *Trie) Prove(key []byte, fromLevel uint, proofDb db.Writer) error {
 	// Collect all nodes on the path to key.
 	key = keybytesToHex(key)
 	nodes := []node{}

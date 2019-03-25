@@ -23,20 +23,20 @@ import (
 	"os"
 	"testing"
 
-	"github.com/UranusBlockStack/uranus/common/db"
+	ldb "github.com/UranusBlockStack/uranus/common/db/leveldb"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
 	"golang.org/x/crypto/sha3"
 )
 
-func createTestDB(t *testing.T) (string, *db.LDB) {
+func createTestDB(t *testing.T) (string, *ldb.Database) {
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatalf("failed to create temporary : %v", err)
 	}
 
-	ldb, err := db.NewLDB(dir, 0, 0)
+	ldb, err := ldb.New(dir, 0, 0)
 	if err != nil {
 		t.Fatalf("failed to create test db: %v", err)
 	}

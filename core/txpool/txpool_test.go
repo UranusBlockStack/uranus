@@ -26,7 +26,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/UranusBlockStack/uranus/common/crypto"
-	"github.com/UranusBlockStack/uranus/common/db"
+	mdb "github.com/UranusBlockStack/uranus/common/db/memorydb"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
@@ -43,7 +43,7 @@ func TestStateChangeDuringTransactionPoolReset(t *testing.T) {
 	var (
 		key, _     = crypto.GenerateKey()
 		address    = crypto.PubkeyToAddress(key.PublicKey)
-		statedb, _ = state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+		statedb, _ = state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 		trigger    = false
 	)
 
@@ -190,7 +190,7 @@ func TestTransactionChainFork(t *testing.T) {
 
 	addr := crypto.PubkeyToAddress(key.PublicKey)
 	resetState := func() {
-		statedb, _ := state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+		statedb, _ := state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 		statedb.AddBalance(addr, big.NewInt(100000000000000))
 
 		pool.chain = &testBlockChain{statedb, 1000000, new(feed.Feed)}
@@ -219,7 +219,7 @@ func TestTransactionDoubleNonce(t *testing.T) {
 
 	addr := crypto.PubkeyToAddress(key.PublicKey)
 	resetState := func() {
-		statedb, _ := state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+		statedb, _ := state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 		statedb.AddBalance(addr, big.NewInt(100000000000000))
 
 		pool.chain = &testBlockChain{statedb, 1000000, new(feed.Feed)}
@@ -408,7 +408,7 @@ func TestTransactionPostponing(t *testing.T) {
 	t.Parallel()
 
 	// Create the pool to test the postponing with
-	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 	blockchain := &testBlockChain{statedb, 1000000, new(feed.Feed)}
 
 	pool := New(testTxPoolConfig, params.TestChainConfig, blockchain)
@@ -607,7 +607,7 @@ func TestTransactionQueueGlobalLimiting(t *testing.T) {
 	t.Parallel()
 
 	// Create the pool to test the limit enforcement with
-	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 	blockchain := &testBlockChain{statedb, 1000000, new(feed.Feed)}
 
 	config := DefaultTxPoolConfig
@@ -655,7 +655,7 @@ func TestTransactionQueueTimeLimiting(t *testing.T) {
 	timeoutInterval = time.Second
 
 	// Create the pool to test the non-expiration enforcement
-	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 	blockchain := &testBlockChain{statedb, 1000000, new(feed.Feed)}
 
 	config := DefaultTxPoolConfig
@@ -799,7 +799,7 @@ func TestTransactionPendingGlobalLimiting(t *testing.T) {
 	t.Parallel()
 
 	// Create the pool to test the limit enforcement with
-	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 	blockchain := &testBlockChain{statedb, 1000000, new(feed.Feed)}
 
 	config := DefaultTxPoolConfig
@@ -845,7 +845,7 @@ func TestTransactionCapClearsFromAll(t *testing.T) {
 	t.Parallel()
 
 	// Create the pool to test the limit enforcement with
-	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 	blockchain := &testBlockChain{statedb, 1000000, new(feed.Feed)}
 
 	config := DefaultTxPoolConfig
@@ -876,7 +876,7 @@ func TestTransactionPendingMinimumAllowance(t *testing.T) {
 	t.Parallel()
 
 	// Create the pool to test the limit enforcement with
-	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 	blockchain := &testBlockChain{statedb, 1000000, new(feed.Feed)}
 
 	config := DefaultTxPoolConfig
@@ -919,7 +919,7 @@ func TestTransactionPoolRepricing(t *testing.T) {
 	t.Parallel()
 
 	// Create the pool to test the pricing enforcement with
-	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 	blockchain := &testBlockChain{statedb, 1000000, new(feed.Feed)}
 
 	pool := New(testTxPoolConfig, params.TestChainConfig, blockchain)
@@ -1022,7 +1022,7 @@ func TestTransactionPoolRepricing(t *testing.T) {
 func TestTransactionPoolUnderpricing(t *testing.T) {
 	t.Parallel()
 	// Create the pool to test the pricing enforcement with
-	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 	blockchain := &testBlockChain{statedb, 1000000, new(feed.Feed)}
 
 	config := DefaultTxPoolConfig
@@ -1100,7 +1100,7 @@ func TestTransactionPoolStableUnderpricing(t *testing.T) {
 	t.Parallel()
 
 	// Create the pool to test the pricing enforcement with
-	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 	blockchain := &testBlockChain{statedb, 1000000, new(feed.Feed)}
 
 	config := DefaultTxPoolConfig
@@ -1166,7 +1166,7 @@ func TestTransactionReplacement(t *testing.T) {
 	t.Parallel()
 
 	// Create the pool to test the pricing enforcement with
-	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 	blockchain := &testBlockChain{statedb, 1000000, new(feed.Feed)}
 
 	pool := New(testTxPoolConfig, params.TestChainConfig, blockchain)
@@ -1243,7 +1243,7 @@ func TestTransactionStatusCheck(t *testing.T) {
 	t.Parallel()
 
 	// Create the pool to test the status retrievals with
-	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(db.NewMemDatabase()))
+	statedb, _ := state.New(utils.Hash{}, state.NewDatabase(mdb.New()))
 	blockchain := &testBlockChain{statedb, 1000000, new(feed.Feed)}
 
 	pool := New(testTxPoolConfig, params.TestChainConfig, blockchain)

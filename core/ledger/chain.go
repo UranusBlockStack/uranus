@@ -146,7 +146,7 @@ func (c *Chain) getTransactions(txHash utils.Hash) types.StorageTxs {
 func (c *Chain) getTransaction(txHash utils.Hash) *types.StorageTx {
 	data, err := c.db.Get(keyTransacton(txHash))
 	if err != nil {
-		log.Fatalf("Failed to get transaction RLP hash: %v, err: %v", txHash, err)
+		log.Errorf("Failed to get transaction RLP hash: %v, err: %v", txHash, err)
 	}
 	if len(data) == 0 {
 		return nil
@@ -166,7 +166,6 @@ func (c *Chain) putTransactions(blockHash utils.Hash, blockHeight uint64, txs ty
 		hashs[k] = v.Hash()
 		c.putTransaction(v.Hash(), blockHash, uint64(k), blockHeight, v)
 	}
-
 	data, err := rlp.EncodeToBytes(hashs)
 	if err != nil {
 		log.Fatalf("Failed to RLP encode transactions err: %v", err)

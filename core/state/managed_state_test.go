@@ -19,14 +19,14 @@ package state
 import (
 	"testing"
 
-	ldb "github.com/UranusBlockStack/uranus/common/db"
+	mdb "github.com/UranusBlockStack/uranus/common/db/memorydb"
 	"github.com/UranusBlockStack/uranus/common/utils"
 )
 
 var addr = utils.BytesToAddress([]byte("test"))
 
 func create() (*ManagedState, *account) {
-	statedb, _ := New(utils.Hash{}, NewDatabase(ldb.NewMemDatabase()))
+	statedb, _ := New(utils.Hash{}, NewDatabase(mdb.New()))
 	ms := ManageState(statedb)
 	ms.StateDB.SetNonce(addr, 100)
 	ms.accounts[addr] = newAccount(ms.StateDB.getStateObject(addr))

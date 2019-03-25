@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"testing"
 
-	ldb "github.com/UranusBlockStack/uranus/common/db"
+	mdb "github.com/UranusBlockStack/uranus/common/db"
 	"github.com/UranusBlockStack/uranus/common/utils"
 )
 
@@ -51,7 +51,9 @@ func TestNodeIteratorCoverage(t *testing.T) {
 			t.Errorf("state entry not reported %x", hash)
 		}
 	}
-	for _, key := range db.TrieDB().DiskDB().(*ldb.MemDatabase).Keys() {
+	it := db.TrieDB().DiskDB().(mdb.Database).NewIterator()
+	for it.Next() {
+		key := it.Key()
 		if bytes.HasPrefix(key, []byte("secure-key-")) {
 			continue
 		}
@@ -59,4 +61,5 @@ func TestNodeIteratorCoverage(t *testing.T) {
 			t.Errorf("state entry not reported %x", key)
 		}
 	}
+	it.Release()
 }

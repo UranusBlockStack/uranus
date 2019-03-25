@@ -9,6 +9,8 @@ import (
 	"math/rand"
 	"sort"
 
+	"github.com/UranusBlockStack/uranus/params"
+
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/log"
 	"github.com/UranusBlockStack/uranus/common/mtp"
@@ -16,7 +18,6 @@ import (
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/state"
 	"github.com/UranusBlockStack/uranus/core/types"
-	"github.com/UranusBlockStack/uranus/params"
 )
 
 type EpochContext struct {

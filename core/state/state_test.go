@@ -23,13 +23,13 @@ import (
 	"time"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
-	ldb "github.com/UranusBlockStack/uranus/common/db"
+	mdb "github.com/UranusBlockStack/uranus/common/db/memorydb"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	checker "gopkg.in/check.v1"
 )
 
 type StateSuite struct {
-	db    *ldb.MemDatabase
+	db    *mdb.Database
 	state *StateDB
 }
 
@@ -96,7 +96,7 @@ func (s *StateSuite) TestDump(c *checker.C) {
 }
 
 func (s *StateSuite) SetUpTest(c *checker.C) {
-	s.db = ldb.NewMemDatabase()
+	s.db = mdb.New()
 	s.state, _ = New(utils.Hash{}, NewDatabase(s.db))
 }
 
@@ -143,7 +143,7 @@ func (s *StateSuite) TestSnapshotEmpty(c *checker.C) {
 // use testing instead of checker because checker does not support
 // printing/logging in tests (-check.vv does not work)
 func TestSnapshot2(t *testing.T) {
-	state, _ := New(utils.Hash{}, NewDatabase(ldb.NewMemDatabase()))
+	state, _ := New(utils.Hash{}, NewDatabase(mdb.New()))
 
 	stateobjaddr0 := toAddr([]byte("so0"))
 	stateobjaddr1 := toAddr([]byte("so1"))

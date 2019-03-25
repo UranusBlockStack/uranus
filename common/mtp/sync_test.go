@@ -19,23 +19,23 @@ package mtp
 import (
 	"testing"
 
-	"github.com/UranusBlockStack/uranus/common/db"
+	mdb "github.com/UranusBlockStack/uranus/common/db/memorydb"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEmptySync(t *testing.T) {
 	// test utils.Hash{}
-	testdb := NewDatabase(db.NewMemDatabase())
+	testdb := NewDatabase(mdb.New())
 	empty1, _ := New(utils.Hash{}, testdb)
-	if req := NewSync(empty1.Hash(), db.NewMemDatabase(), nil).Missing(1); len(req) != 0 {
+	if req := NewSync(empty1.Hash(), mdb.New(), nil).Missing(1); len(req) != 0 {
 		t.Errorf(" content requested for empty trie: %v", req)
 	}
 
 	// test emptyRoot
-	testdb = NewDatabase(db.NewMemDatabase())
+	testdb = NewDatabase(mdb.New())
 	empty2, _ := New(emptyRoot, testdb)
-	if req := NewSync(empty2.Hash(), db.NewMemDatabase(), nil).Missing(1); len(req) != 0 {
+	if req := NewSync(empty2.Hash(), mdb.New(), nil).Missing(1); len(req) != 0 {
 		t.Errorf("tcontent requested for empty trie: %v", req)
 	}
 }
@@ -46,7 +46,7 @@ func TestIterativeSyncBatched(t *testing.T)    { testIterativeSync(t, 100) }
 func testIterativeSync(t *testing.T, batch int) {
 	srcDb, srcTrie, srcData := makeTestTrie()
 
-	diskdb := db.NewMemDatabase()
+	diskdb := mdb.New()
 	trieMemdb := NewDatabase(diskdb)
 	sched := NewSync(srcTrie.Hash(), diskdb, nil)
 
@@ -76,7 +76,7 @@ func TestIterativeRandomSyncBatched(t *testing.T)    { testIterativeRandomSync(t
 
 func testIterativeRandomSync(t *testing.T, batch int) {
 	srcDb, srcTrie, srcData := makeTestTrie()
-	diskdb := db.NewMemDatabase()
+	diskdb := mdb.New()
 	trieMemdb := NewDatabase(diskdb)
 	sched := NewSync(srcTrie.Hash(), diskdb, nil)
 
@@ -110,7 +110,7 @@ func testIterativeRandomSync(t *testing.T, batch int) {
 func TestIterativeDelayedSync(t *testing.T) {
 	srcDb, srcTrie, srcData := makeTestTrie()
 
-	diskdb := db.NewMemDatabase()
+	diskdb := mdb.New()
 	trieMemdb := NewDatabase(diskdb)
 	sched := NewSync(srcTrie.Hash(), diskdb, nil)
 
@@ -138,7 +138,7 @@ func TestIterativeDelayedSync(t *testing.T) {
 func TestIterativeRandomDelayedSync(t *testing.T) {
 	srcDb, srcTrie, srcData := makeTestTrie()
 
-	diskdb := db.NewMemDatabase()
+	diskdb := mdb.New()
 	trieMemdb := NewDatabase(diskdb)
 	sched := NewSync(srcTrie.Hash(), diskdb, nil)
 
@@ -177,7 +177,7 @@ func TestIterativeRandomDelayedSync(t *testing.T) {
 
 func TestDuplicateAvoidanceSync(t *testing.T) {
 	srcDb, srcTrie, srcData := makeTestTrie()
-	diskdb := db.NewMemDatabase()
+	diskdb := mdb.New()
 	trieMemdb := NewDatabase(diskdb)
 	sched := NewSync(srcTrie.Hash(), diskdb, nil)
 
@@ -214,7 +214,7 @@ func TestIncompleteSync(t *testing.T) {
 	srcDb, srcTrie, _ := makeTestTrie()
 
 	// Create a destination trie and sync with the scheduler
-	diskdb := db.NewMemDatabase()
+	diskdb := mdb.New()
 	triedb := NewDatabase(diskdb)
 	sched := NewSync(srcTrie.Hash(), diskdb, nil)
 
@@ -263,7 +263,7 @@ func TestIncompleteSync(t *testing.T) {
 }
 
 func makeTestTrie() (*Database, *Trie, map[string][]byte) {
-	trieMemdb := NewDatabase(db.NewMemDatabase())
+	trieMemdb := NewDatabase(mdb.New())
 	trie, _ := New(utils.Hash{}, trieMemdb)
 
 	// Fill it with some arbitrary data

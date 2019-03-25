@@ -19,7 +19,7 @@ package types
 import (
 	"testing"
 
-	"github.com/UranusBlockStack/uranus/common/db"
+	mdb "github.com/UranusBlockStack/uranus/common/db/memorydb"
 	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
@@ -27,7 +27,7 @@ import (
 )
 
 func TestDposContextSnapshot(t *testing.T) {
-	dbMem := db.NewMemDatabase()
+	dbMem := mdb.New()
 	db := mtp.NewDatabase(dbMem)
 	dposContext, err := NewDposContext(db)
 	if err != nil {
@@ -55,7 +55,7 @@ func TestDposContextBecomeCandidate(t *testing.T) {
 		utils.HexToAddress("0xa60a3886b552ff9992cfcd208ec1152079e046c2"),
 		utils.HexToAddress("0x4e080e49f62694554871e669aeb4ebe17c4a9670"),
 	}
-	dbMem := db.NewMemDatabase()
+	dbMem := mdb.New()
 	db := mtp.NewDatabase(dbMem)
 	dposContext, err := NewDposContext(db)
 	if err != nil {
@@ -89,7 +89,7 @@ func TestDposContextKickoutCandidate(t *testing.T) {
 		utils.HexToAddress("0xa60a3886b552ff9992cfcd208ec1152079e046c2"),
 		utils.HexToAddress("0x4e080e49f62694554871e669aeb4ebe17c4a9670"),
 	}
-	dbMem := db.NewMemDatabase()
+	dbMem := mdb.New()
 	db := mtp.NewDatabase(dbMem)
 	dposContext, err := NewDposContext(db)
 	if err != nil {
@@ -146,7 +146,7 @@ func TestDposContextDelegateAndUnDelegate(t *testing.T) {
 	candidate := utils.HexToAddress("0x44d1ce0b7cb3588bca96151fe1bc05af38f91b6e")
 	newCandidate := utils.HexToAddress("0xa60a3886b552ff9992cfcd208ec1152079e046c2")
 	delegator := utils.HexToAddress("0x4e080e49f62694554871e669aeb4ebe17c4a9670")
-	dbMem := db.NewMemDatabase()
+	dbMem := mdb.New()
 	db := mtp.NewDatabase(dbMem)
 	dposContext, err := NewDposContext(db)
 	if err != nil {
@@ -224,7 +224,7 @@ func TestDposContextValidators(t *testing.T) {
 		utils.HexToAddress("0x4e080e49f62694554871e669aeb4ebe17c4a9670"),
 	}
 
-	dbMem := db.NewMemDatabase()
+	dbMem := mdb.New()
 	db := mtp.NewDatabase(dbMem)
 	dposContext, err := NewDposContext(db)
 	if err != nil {
