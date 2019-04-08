@@ -676,6 +676,14 @@ func (tab *Table) bucket(sha utils.Hash) *bucket {
 	return tab.buckets[d-bucketMinDistance-1]
 }
 
+// Add attempts to add the given node its corresponding bucket. If the
+// bucket has space available, adding the node succeeds immediately.
+// Otherwise, the node is added if the least recently active node in
+// the bucket does not respond to a ping packet.
+func (tab *Table) Add(new *Node) {
+	tab.add(new)
+}
+
 // add attempts to add the given node its corresponding bucket. If the
 // bucket has space available, adding the node succeeds immediately.
 // Otherwise, the node is added if the least recently active node in

@@ -36,7 +36,10 @@ run:
 	@./build/uranus
 stop:
 clear:
+	-rm -rf ./build/bin 
+release: test 
+	@goreleaser --snapshot --rm-dist 
 test:
 	go test $(TEST)
 
-.PHONY: all run stop clear test
+.PHONY: all run stop clear test release

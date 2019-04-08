@@ -282,6 +282,7 @@ outer:
 			break outer
 		}
 		log.Warnf("Failed to mint the block, timestamp %v err %v", timestamp, err)
+		time.Sleep(time.Duration(dpos.Option.BlockInterval / 10))
 	}
 }
 

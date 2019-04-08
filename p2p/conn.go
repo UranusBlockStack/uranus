@@ -35,7 +35,6 @@ import (
 	"time"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
-	"github.com/UranusBlockStack/uranus/common/crypto/secp256k1"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/p2p/discover"
 	"github.com/UranusBlockStack/uranus/p2p/ecies"
@@ -251,7 +250,7 @@ func (h *encHandshake) makeAuthMsg(prv *ecdsa.PrivateKey, token []byte) (*authMs
 	if _, err := rand.Read(h.initNonce); err != nil {
 		return nil, err
 	}
-	h.randomPrivKey, err = ecies.GenerateKey(rand.Reader, secp256k1.S256(), nil)
+	h.randomPrivKey, err = ecies.GenerateKey(rand.Reader, crypto.S256(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +319,7 @@ func (h *encHandshake) handleAuthMsg(msg *authMsgV4, prv *ecdsa.PrivateKey) erro
 	h.remotePub = ecies.ImportECDSAPublic(rpub)
 
 	if h.randomPrivKey == nil {
-		h.randomPrivKey, err = ecies.GenerateKey(rand.Reader, secp256k1.S256(), nil)
+		h.randomPrivKey, err = ecies.GenerateKey(rand.Reader, crypto.S256(), nil)
 		if err != nil {
 			return err
 		}
@@ -331,7 +330,7 @@ func (h *encHandshake) handleAuthMsg(msg *authMsgV4, prv *ecdsa.PrivateKey) erro
 		return err
 	}
 	signedMsg := xor(token, h.initNonce)
-	remoteRandomPub, err := secp256k1.RecoverPubkey(signedMsg, msg.Signature[:])
+	remoteRandomPub, err := crypto.EcrecoverToByte(signedMsg, msg.Signature[:])
 	if err != nil {
 		return err
 	}

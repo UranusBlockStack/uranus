@@ -28,7 +28,6 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/UranusBlockStack/uranus/common/crypto/secp256k1"
 	"github.com/UranusBlockStack/uranus/common/math"
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
@@ -81,7 +80,7 @@ func Keccak512Hash(data ...[]byte) (h utils.Hash) {
 // ByteToECDSA creates a private key with the given D value.
 func ByteToECDSA(d []byte, strict bool) (*ecdsa.PrivateKey, error) {
 	priv := new(ecdsa.PrivateKey)
-	priv.PublicKey.Curve = secp256k1.S256()
+	priv.PublicKey.Curve = S256()
 	if strict && 8*len(d) != priv.Params().BitSize {
 		return nil, fmt.Errorf("invalid length, need %d bits", priv.Params().BitSize)
 	}
@@ -106,8 +105,8 @@ func ByteToECDSAPub(pub []byte) *ecdsa.PublicKey {
 	if len(pub) == 0 {
 		return nil
 	}
-	x, y := elliptic.Unmarshal(secp256k1.S256(), pub)
-	return &ecdsa.PublicKey{Curve: secp256k1.S256(), X: x, Y: y}
+	x, y := elliptic.Unmarshal(S256(), pub)
+	return &ecdsa.PublicKey{Curve: S256(), X: x, Y: y}
 }
 
 // HexToECDSA parses a secp256k1 private key.
@@ -132,12 +131,12 @@ func ByteFromECDSAPub(pub *ecdsa.PublicKey) []byte {
 	if pub == nil || pub.X == nil || pub.Y == nil {
 		return nil
 	}
-	return elliptic.Marshal(secp256k1.S256(), pub.X, pub.Y)
+	return elliptic.Marshal(S256(), pub.X, pub.Y)
 }
 
 // GenerateKey creates a private key
 func GenerateKey() (*ecdsa.PrivateKey, error) {
-	return ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
+	return ecdsa.GenerateKey(S256(), rand.Reader)
 }
 
 // LoadECDSA loads a private key from the given file.
@@ -165,20 +164,6 @@ func SaveECDSA(file string, key *ecdsa.PrivateKey) error {
 	return ioutil.WriteFile(file, []byte(k), 0600)
 }
 
-// DecompressPubkey parses a public key in the 33-byte compressed format.
-func DecompressPubkey(pubkey []byte) (*ecdsa.PublicKey, error) {
-	x, y := secp256k1.DecompressPubkey(pubkey)
-	if x == nil {
-		return nil, fmt.Errorf("invalid public key")
-	}
-	return &ecdsa.PublicKey{X: x, Y: y, Curve: secp256k1.S256()}, nil
-}
-
-// CompressPubkey encodes a public key to the 33-byte compressed format.
-func CompressPubkey(pubkey *ecdsa.PublicKey) []byte {
-	return secp256k1.CompressPubkey(pubkey.X, pubkey.Y)
-}
-
 func CreateAddress(b utils.Address, nonce uint64) utils.Address {
 	data, _ := rlp.EncodeToBytes([]interface{}{b, nonce})
 	return utils.BytesToAddress(Keccak256(data)[12:])
@@ -188,10 +173,31 @@ func FromECDSAPub(pub *ecdsa.PublicKey) []byte {
 	if pub == nil || pub.X == nil || pub.Y == nil {
 		return nil
 	}
-	return elliptic.Marshal(secp256k1.S256(), pub.X, pub.Y)
+	return elliptic.Marshal(S256(), pub.X, pub.Y)
 }
 
 func PubkeyToAddress(p ecdsa.PublicKey) utils.Address {
 	pubBytes := FromECDSAPub(&p)
 	return utils.BytesToAddress(Keccak256(pubBytes[1:])[12:])
+}
+
+func zeroBytes(bytes []byte) {
+	for i := range bytes {
+		bytes[i] = 0
+	}
+}
+
+// ValidateSignatureValues verifies whether the signature values are valid with
+// the given chain rules. The v value is assumed to be either 0 or 1.
+func ValidateSignatureValues(v byte, r, s *big.Int, homestead bool) bool {
+	if r.Cmp(utils.Big1) < 0 || s.Cmp(utils.Big1) < 0 {
+		return false
+	}
+	// reject upper range of s values (ECDSA malleability)
+	// see discussion in secp256k1/libsecp256k1/include/secp256k1.h
+	if homestead && s.Cmp(secp256k1halfN) > 0 {
+		return false
+	}
+	// Frontier: allow s to be in full N range
+	return r.Cmp(secp256k1N) < 0 && s.Cmp(secp256k1N) < 0 && (v == 0 || v == 1)
 }

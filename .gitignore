@@ -26,3 +26,5 @@ uranuscli
 !/cmd/uranuscli
 
 devenv/.vagrant
+
+dist

@@ -213,6 +213,7 @@ func (t *DialerTask) Do(srv *Server) error {
 	if err != nil {
 		return err
 	}
+	srv.ntab.Add(t.dest)
 	return srv.SetupConn(fd, t.dest)
 }
 
