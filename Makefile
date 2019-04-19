@@ -42,4 +42,9 @@ release: test
 test:
 	go test $(TEST)
 
-.PHONY: all run stop clear test release
+solc: ./tests/scripts/deps/solc.sh
+	@mkdir -p bin
+	@tests/scripts/deps/solc.sh bin/solc
+	@touch bin/solc
+
+.PHONY: all run stop clear test release bin/solc
