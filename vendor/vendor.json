@@ -524,5 +524,6 @@
 			"revision": "51d6538a90f86fe93ac480b35f37b2be17fef232",
 			"revisionTime": "2018-11-15T11:05:04Z"
 		}
-	]
+	],
+	"rootPath": "github.com/UranusBlockStack/uranus"
 }
