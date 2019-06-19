@@ -171,6 +171,11 @@ func (u *Uranus) APIs() []rpc.API {
 			Version:   "0.0.1",
 			Service:   rpcapi.NewDposAPI(u.uranusAPI),
 		},
+		{
+			Namespace: "Debug",
+			Version:   "0.0.1",
+			Service:   nil,
+		},
 	}
 }
 
