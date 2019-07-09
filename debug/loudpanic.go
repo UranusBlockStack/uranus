@@ -14,21 +14,12 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the uranus library. If not, see <http://www.gnu.org/licenses/>.
 
-package main
+package debug
 
-import (
-	"github.com/UranusBlockStack/uranus/common/log"
-	"github.com/UranusBlockStack/uranus/debug"
-	"github.com/UranusBlockStack/uranus/node"
-	"github.com/UranusBlockStack/uranus/server"
-)
+import "runtime/debug"
 
-// StartConfig cmd start uranus config
-type StartConfig struct {
-	CfgFile      string
-	GenesisFile  string `mapstructure:"genesis"`
-	LogConfig    *log.Config
-	NodeConfig   *node.Config
-	UranusConfig *server.UranusConfig
-	DebugConfig  *debug.Config
+// LoudPanic panics in a way that gets all goroutine stacks printed on stderr.
+func LoudPanic(x interface{}) {
+	debug.SetTraceback("all")
+	panic(x)
 }

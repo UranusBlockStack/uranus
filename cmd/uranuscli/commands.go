@@ -70,4 +70,9 @@ func AddCommands() {
 	RootCmd.AddCommand(getVoterInfoCmd)
 	RootCmd.AddCommand(getBFTConfirmedBlockNumberCmd)
 
+	// debug command
+	RootCmd.AddCommand(memStatsCmd, gcStatsCmd, cpuProfileCmd,
+		goTraceCmd, blockProfileCmd, mutexProfileCmd, writeMemProfileCmd,
+		stacksCmd, freeOSMemoryCmd)
+
 }
