@@ -16,13 +16,16 @@
 
 language: go
 
-go:
-  - 1.9.2
+go: 1.12
 
-install:
-#  - mkdir -p $HOME/gopath/src/github.com/uranus
-#  - rsync -az ${TRAVIS_BUILD_DIR}/ $HOME/gopath/src/github.com/uranus
-#  - export TRAVIS_BUILD_DIR=$HOME/gopath/src/github.com/uranus
-#  - cd $HOME/gopath/src/github.com/uranus
-  - make test
-  - make all  
+matrix:
+  include:
+    - os: linux   
+      before_install:
+        - make all
+      script: travis_wait 30 make test
+
+    - os: osx
+      before_install:
+        - make all
+      script: travis_wait 30 make test
