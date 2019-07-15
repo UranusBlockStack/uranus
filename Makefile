@@ -15,7 +15,37 @@
 # along with the uranus library. If not, see <http:#www.gnu.org/licenses/>.
 
 TEST = $(shell go list ./... |grep -v test)
+GOFILES_NOVENDOR := $(shell go list -f "{{.Dir}}" ./...)
+
+### Check and format code 
+
+# check the code for style standards; currently enforces go formatting.
+# display output first, then check for success	
+.PHONY: check
+check:
+	@echo "Checking code for formatting style compliance."
+	@gofmt -l -d ${GOFILES_NOVENDOR}
+	@gofmt -l ${GOFILES_NOVENDOR} | read && echo && echo "Your marmot has found a problem with the formatting style of the code." 1>&2 && exit 1 || true
+
+# fmt runs gofmt -w on the code, modifying any files that do not match
+# the style guide.
+.PHONY: fmt
+fmt:
+	@echo "Correcting any formatting style corrections."
+	@gofmt -l -w ${GOFILES_NOVENDOR}
+
+### Test
+.PHONY: test
+test:
+	@echo "Testing uranus all packages"
+	@go test $(TEST)
+
+### Building project
+
+# build all targets 
+.PHONY: all
 all:
+	@echo "Building all targets(uranus,uranuscli)."
 	@go install ./cmd/uranus
 	go build ./cmd/uranus
 	mv uranus ./build
@@ -23,6 +53,9 @@ all:
 	@go install ./cmd/uranuscli
 	go build ./cmd/uranuscli
 	mv uranuscli ./build
+
+# build all targets in windows 
+.PHONY: win
 win:
 	@go install ./cmd/uranus
 	go build ./cmd/uranus
@@ -32,14 +65,19 @@ win:
 	go build ./cmd/uranuscli
 	@move /y uranuscli.exe ./build >NUL
 	@dir .\build\uranus*
-run:
-	@./build/uranus
-stop:
-clear:
-	-rm -rf ./build/bin 
-release: test 
-	@goreleaser --snapshot --rm-dist 
-test:
-	go test $(TEST)
 
-.PHONY: all run stop clear test release
+### Clean up
+
+# clean removes the target folder containing build artefacts
+.PHONY: clean
+clean:
+	@echo "Clean uranus executable file."
+	-rm ./build/uranus 
+	-rm ./build/uranuscli
+
+### Release
+.PHONY: release
+release: test 
+	@echo "Making uranus release."
+	@goreleaser --snapshot --rm-dist 
+
