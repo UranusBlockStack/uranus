@@ -43,7 +43,7 @@ test:
 ### Building project
 
 # build all targets 
-.PHONY: all
+.PHONY: check fmt all
 all:
 	@echo "Building all targets(uranus,uranuscli)."
 	@go install ./cmd/uranus
@@ -81,3 +81,8 @@ release: test
 	@echo "Making uranus release."
 	@goreleaser --snapshot --rm-dist 
 
+### solc
+.PHONY: solc
+solc: 
+	@scripts/solc.sh ./build/solc
+	@touch build/solc
