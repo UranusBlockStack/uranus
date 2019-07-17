@@ -25,6 +25,7 @@ import (
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
 	"github.com/spf13/cobra"
+	jww "github.com/spf13/jwalterweatherman"
 )
 
 var (
@@ -46,14 +47,14 @@ var callCmd = &cobra.Command{
 	Short: "call a contract",
 	Long:  `All contract could callable. This is Seele contract simulator's`,
 	Run: func(cmd *cobra.Command, args []string) {
-		callContract(contractHexAddr)
+		callContract()
 	},
 }
 
-func callContract(contractHexAddr string) {
+func callContract() {
 	db, statedb, bcStore, dispose, err := preprocessContract()
 	if err != nil {
-		fmt.Println("failed to prepare the simulator environment,", err.Error())
+		jww.ERROR.Println("failed to prepare the simulator environment,", err.Error())
 		return
 	}
 	defer dispose()
@@ -61,62 +62,56 @@ func callContract(contractHexAddr string) {
 	// Get the invoking address
 	from := getFromAddress(statedb)
 	if from.IsEmpty() {
+		jww.ERROR.Println("Empty from address")
 		return
 	}
-
 	// Contract address
 	contractAddr := getContractAddress(db)
 	if contractAddr.IsEmpty() {
+		jww.ERROR.Println("Empty contract address")
 		return
 	}
 
 	// Input message to call contract
 	input := getContractInputMsg(db, contractAddr.Bytes())
 	if len(input) == 0 {
+		jww.ERROR.Println("Get contract input is empty,", contractAddr.String())
 		return
 	}
 
 	// Call method and input parameters
-	msg, err := utils.HexToBytes(input)
-	if err != nil {
-		fmt.Println("Invalid input message,", err.Error())
-		return
-	}
+	msg := utils.HexToBytes(utils.RemovePrefix(input))
 
 	// Create a call message transaction
-	callContractTx, err := types.NewMessageTransaction(from, contractAddr, big.NewInt(0), big.NewInt(1), math.MaxUint64, DefaultNonce, msg)
-	if err != nil {
-		fmt.Println("failed to create message tx,", err.Error())
-		return
-	}
+	callContractTx := types.NewTransaction(types.Binary, DefaultNonce, big.NewInt(0), math.MaxUint64, big.NewInt(1), msg, &contractAddr)
 
-	receipt, err := processContract(statedb, bcStore, callContractTx)
+	result, receipt, err := processContract(from, statedb, bcStore, callContractTx)
 	if err != nil {
-		fmt.Println("failed to call contract,", err.Error())
+		jww.FEEDBACK.Println("failed to call contract,", err.Error())
 		return
 	}
 
 	// Print the result
-	fmt.Println()
-	fmt.Println("contract called successfully")
+	jww.FEEDBACK.Println()
+	jww.FEEDBACK.Println("contract called successfully")
 
-	if len(receipt.Result) > 0 {
-		fmt.Println("Result (raw):", receipt.Result)
-		fmt.Println("Result (hex):", utils.BytesToHex(receipt.Result))
-		fmt.Println("Result (big):", new(big.Int).SetBytes(receipt.Result))
+	if len(result) > 0 {
+		jww.FEEDBACK.Println("Result (raw):", result)
+		jww.FEEDBACK.Println("Result (hex):", utils.BytesToHex(result))
+		jww.FEEDBACK.Println("Result (big):", new(big.Int).SetBytes(result))
 	}
 
 	for i, log := range receipt.Logs {
 		fmt.Printf("Log[%v]:\n", i)
-		fmt.Println("\taddress:", log.Address.Hex())
+		jww.FEEDBACK.Println("\taddress:", log.Address.Hex())
 		if len(log.Topics) == 1 {
-			fmt.Println("\ttopics:", log.Topics[0].Hex())
+			jww.FEEDBACK.Println("\ttopics:", log.Topics[0].Hex())
 		} else {
-			fmt.Println("\ttopics:", log.Topics)
+			jww.FEEDBACK.Println("\ttopics:", log.Topics)
 		}
 		dataLen := len(log.Data) / 32
 		for i := 0; i < dataLen; i++ {
-			fmt.Printf("\tdata[%v]: %v\n", i, log.Data[i*32:i*32+32])
+			jww.FEEDBACK.Printf("\tdata[%v]: %v\n", i, log.Data[i*32:i*32+32])
 		}
 	}
 }
@@ -125,19 +120,11 @@ func getContractAddress(db database.Database) utils.Address {
 	if len(contractHexAddr) == 0 {
 		addr := getGlobalContractAddress(db)
 		if addr.IsEmpty() {
-			fmt.Println("Contract address not specified.")
+			jww.FEEDBACK.Println("Contract address not specified.")
 		}
-
 		return addr
 	}
-
-	addr, err := utils.HexToAddress(contractHexAddr)
-	if err != nil {
-		fmt.Println("Invalid contract address,", err.Error())
-		return utils.EmptyAddress
-	}
-
-	return addr
+	return utils.HexToAddress(contractHexAddr)
 }
 
 func getContractInputMsg(db database.Database, contractAddr []byte) string {
@@ -146,18 +133,19 @@ func getContractInputMsg(db database.Database, contractAddr []byte) string {
 	}
 
 	if len(methodName) == 0 {
-		fmt.Println("Input or method not specified.")
+		jww.ERROR.Println("Input or method not specified.")
 		return ""
 	}
 
 	output := getContractCompilationOutput(db, contractAddr)
 	if output == nil {
-		fmt.Println("Cannot find the contract info in DB.")
+		jww.ERROR.Println("Cannot find the contract info in DB.")
 		return ""
 	}
 
 	method := output.getMethodByName(methodName)
 	if method == nil {
+		jww.ERROR.Println("Cannot find the method in method.")
 		return ""
 	}
 
