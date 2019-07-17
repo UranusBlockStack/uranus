@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/UranusBlockStack/uranus/common/utils"
+	jww "github.com/spf13/jwalterweatherman"
 )
 
 type solMethod struct {
@@ -44,11 +45,11 @@ func newSolMethod(funcFullName, funcHash string) solMethod {
 
 	idx := strings.IndexByte(funcFullName, '(')
 	if idx < 0 {
-		panic("the funcFullName does not contain the left bracket.")
+		jww.ERROR.Panicln("the funcFullName does not contain the left bracket.")
 	}
 
 	if funcFullName[len(funcFullName)-1] != ')' {
-		panic("the funcFullName does not end with right bracket.")
+		jww.ERROR.Panicln("the funcFullName does not end with right bracket.")
 	}
 
 	method.ShortName = funcFullName[:idx]
@@ -108,18 +109,14 @@ func (m *solMethod) encodeInput(argType, argValue string) (string, error) {
 
 		return m.encodeValue(new(big.Int).SetUint64(uintValue)), nil
 	case argType == "address":
-		addr, err := utils.HexToAddress(argValue)
-		if err != nil {
-			return "", err
+		if !utils.IsHexAddr(argValue) {
+			return "", fmt.Errorf("Is not a address %v", argValue)
 		}
 
+		addr := utils.HexToAddress(argValue)
 		return m.encodeValue(addr.Big()), nil
 	case strings.HasPrefix(argType, "byte"):
-		b, err := utils.HexToBytes(argValue)
-		if err != nil {
-			return "", err
-		}
-
+		b := utils.HexToBytes(argValue)
 		return m.encodeValue(new(big.Int).SetBytes(b)), nil
 	default:
 		return "", errors.New("not implemented yet")

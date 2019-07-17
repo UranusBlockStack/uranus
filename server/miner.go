@@ -64,7 +64,7 @@ func (m *MinerBakend) ExecActions(statedb *state.StateDB, actions []*types.Actio
 // ExecTransaction exectue transaction return receipt
 func (m *MinerBakend) ExecTransaction(author *utils.Address, dposcontext *types.DposContext,
 	gp *utils.GasPool, statedb *state.StateDB, header *types.BlockHeader,
-	tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
+	tx *types.Transaction, usedGas *uint64, cfg vm.Config) ([]byte, *types.Receipt, uint64, error) {
 	return m.u.blockchain.ExecTransaction(author, dposcontext, gp, statedb, header, tx, usedGas, cfg)
 }
 

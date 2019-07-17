@@ -36,7 +36,7 @@ var getLatestBlockHeightCmd = &cobra.Command{
 		result := new(utils.Uint64)
 		cmdutils.ClientCall("BlockChain.GetLatestBlockHeight", nil, &result)
 		if cmdutils.OneLine {
-			jww.FEEDBACK.Print(result.String(), " Latest Height:", strconv.FormatInt((int64)(*result), 10))
+			jww.FEEDBACK.Println(result.String(), " Latest Height:", strconv.FormatInt((int64)(*result), 10))
 		} else {
 			cmdutils.PrintJSON(result)
 		}

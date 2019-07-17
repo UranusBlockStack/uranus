@@ -27,14 +27,20 @@ import (
 )
 
 // NewEVMContext creates a new context for use in the EVM.
-func NewEVMContext(tx *types.Transaction, bheader *types.BlockHeader, ledger *ledger.Ledger, engine consensus.Engine, author *utils.Address) vm.Context {
-	var beneficiary utils.Address
+func NewEVMContext(tx *types.Transaction, bheader *types.BlockHeader, ledger *ledger.Ledger, engine consensus.Engine, author, txFrom *utils.Address) vm.Context {
+	var beneficiary, from utils.Address
+
 	if author == nil {
 		beneficiary = bheader.Miner
 	} else {
 		beneficiary = *author
 	}
-	from, _ := tx.Sender(types.Signer{})
+
+	if txFrom == nil {
+		from, _ = tx.Sender(types.Signer{})
+	} else {
+		from = *txFrom
+	}
 
 	vm := vm.Context{
 		CanTransfer: CanTransfer,

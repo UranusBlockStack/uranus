@@ -27,6 +27,7 @@ import (
 
 	"github.com/UranusBlockStack/uranus/common/rlp"
 	"github.com/UranusBlockStack/uranus/common/utils"
+	jww "github.com/spf13/jwalterweatherman"
 )
 
 type solCompileOutput struct {
@@ -38,7 +39,11 @@ func (output *solCompileOutput) EncodeRLP(w io.Writer) error {
 	value := make([][]byte, 0)
 
 	for k, v := range output.FunctionHashMap {
-		value = append(value, []byte(k), utils.SerializePanic(v))
+		vb, err := rlp.Serialize(v)
+		if err != nil {
+			return err
+		}
+		value = append(value, []byte(k), vb)
 	}
 
 	return rlp.Encode(w, value)
@@ -51,7 +56,7 @@ func (output *solCompileOutput) DecodeRLP(s *rlp.Stream) error {
 	}
 
 	var kvs [][]byte
-	if err := utils.Deserialize(raw, &kvs); err != nil {
+	if err := rlp.Deserialize(raw, &kvs); err != nil {
 		return err
 	}
 
@@ -62,7 +67,7 @@ func (output *solCompileOutput) DecodeRLP(s *rlp.Stream) error {
 		value := kvs[2*i+1]
 
 		m := solMethod{}
-		if err := utils.Deserialize(value, &m); err != nil {
+		if err := rlp.Deserialize(value, &m); err != nil {
 			return err
 		}
 
@@ -74,16 +79,16 @@ func (output *solCompileOutput) DecodeRLP(s *rlp.Stream) error {
 
 // compile compiles the specified solidity file and returns the compilation outputs
 // and dispose method to clear the compilation resources. Returns nil if any error occurrred.
-func compile(solFilePath string) (*solCompileOutput, func()) {
-	if !utils.FileOrFolderExists(solFilePath) {
-		fmt.Println("The specified solidity file does not exist,", solFile)
+func compile(solFilePath, solcPath string) (*solCompileOutput, func()) {
+	if is, err := utils.IsDirExist(solFilePath); err != nil && !is {
+		jww.ERROR.Println("The specified solidity file does not exist,", solFile, err)
 		return nil, nil
 	}
 
 	// output to temp dir
 	tempDir, err := ioutil.TempDir("", "SolCompile-")
 	if err != nil {
-		fmt.Println("Failed to create temp folder for solidity compilation,", err.Error())
+		jww.ERROR.Println("Failed to create temp folder for solidity compilation,", err.Error())
 		return nil, nil
 	}
 
@@ -96,9 +101,9 @@ func compile(solFilePath string) (*solCompileOutput, func()) {
 
 	// run solidity compilation command
 	cmdArgs := fmt.Sprintf("--optimize --bin --hashes -o %v %v", tempDir, solFile)
-	cmd := exec.Command("solc", strings.Split(cmdArgs, " ")...)
+	cmd := exec.Command(solcPath, strings.Split(cmdArgs, " ")...)
 	if err = cmd.Run(); err != nil {
-		fmt.Println("Failed to compile the solidity file,", err.Error())
+		jww.ERROR.Println("Failed to compile the solidity file,", err.Error())
 		return nil, nil
 	}
 
@@ -129,7 +134,7 @@ func compile(solFilePath string) (*solCompileOutput, func()) {
 	}
 
 	if err = filepath.Walk(tempDir, walkFunc); err != nil {
-		fmt.Println("Failed to walk through the compilation temp folder,", err.Error())
+		jww.ERROR.Println("Failed to walk through the compilation temp folder,", err.Error())
 		return nil, nil
 	}
 
@@ -171,7 +176,7 @@ func (output *solCompileOutput) getMethodByName(name string) *solMethod {
 		}
 
 		if len(method.ShortName) > 0 {
-			fmt.Println("Short method name not supported for overloaded methods:")
+			jww.ERROR.Println("Short method name not supported for overloaded methods:")
 			output.funcHashesUsage()
 			return nil
 		}
@@ -180,7 +185,7 @@ func (output *solCompileOutput) getMethodByName(name string) *solMethod {
 	}
 
 	if len(method.ShortName) == 0 {
-		fmt.Println("Cannot find the specified method name, please call below methods:")
+		jww.ERROR.Println("Cannot find the specified method name, please call below methods:")
 		output.funcHashesUsage()
 	}
 

@@ -74,7 +74,7 @@ func (e *Executor) ExecBlock(block *types.Block, statedb *state.StateDB, cfg vm.
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions() {
 		statedb.Prepare(tx.Hash(), block.Hash(), i)
-		receipt, _, err := e.ExecTransaction(nil, block.DposCtx(), gp, statedb, header, tx, usedGas, cfg)
+		_, receipt, _, err := e.ExecTransaction(nil, nil, block.DposCtx(), gp, statedb, header, tx, usedGas, cfg)
 		if err != nil {
 			return nil, nil, 0, err
 		}
@@ -96,32 +96,33 @@ func (e *Executor) ExecActions(statedb *state.StateDB, actions []*types.Action) 
 }
 
 // ExecTransaction attempts to execute a transaction to the given state database and uses the input parameters for its environment.
-func (e *Executor) ExecTransaction(author *utils.Address,
+func (e *Executor) ExecTransaction(author, txFrom *utils.Address,
 	dposContext *types.DposContext,
 	gp *utils.GasPool, statedb *state.StateDB, header *types.BlockHeader,
-	tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
+	tx *types.Transaction, usedGas *uint64, cfg vm.Config) ([]byte, *types.Receipt, uint64, error) {
 	var (
 		gas    uint64
 		failed bool
 		err    error
+		result []byte
 	)
 
 	if tx.Type() == types.Binary {
 
 		// Create a new context to be used in the EVM environment
-		context := NewEVMContext(tx, header, e.ledger, e.engine, author)
+		context := NewEVMContext(tx, header, e.ledger, e.engine, author, txFrom)
 		// Create a new environment which holds all relevant informationabout the transaction and calling mechanisms.
 		vmenv := vm.NewEVM(context, statedb, e.config, cfg)
 		// Apply the transaction to the current state (included in the env)
-		_, gas, failed, err = ExecStateTransition(vmenv, tx, gp)
+		result, gas, failed, err = ExecStateTransition(txFrom, vmenv, tx, gp)
 		if err != nil {
-			return nil, 0, err
+			return nil, nil, 0, err
 		}
 	} else {
 		var vmerr error
-		_, gas, failed, vmerr = e.applyDposMessage(header.TimeStamp, dposContext, tx, statedb, gp)
+		gas, failed, vmerr = e.applyDposMessage(header.TimeStamp, dposContext, tx, statedb, gp)
 		if vmerr == vm.ErrInsufficientBalance {
-			return nil, 0, vmerr
+			return nil, nil, 0, vmerr
 		}
 	}
 
@@ -133,26 +134,31 @@ func (e *Executor) ExecTransaction(author *utils.Address,
 	receipt.GasUsed = gas
 	// create contract
 	if tx.Tos() == nil {
-		from, _ := tx.Sender(types.Signer{})
+		var from utils.Address
+		if txFrom == nil {
+			from, _ = tx.Sender(types.Signer{})
+		} else {
+			from = *txFrom
+		}
 		receipt.ContractAddress = crypto.CreateAddress(from, tx.Nonce())
 	}
 	// Set the receipt logs and create a bloom for filtering
 	receipt.Logs = statedb.GetLogs(tx.Hash())
 	receipt.LogsBloom = types.CreateBloom(types.Receipts{receipt})
-	return receipt, gas, err
+	return result, receipt, gas, err
 }
 
-func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposContext, tx *types.Transaction, statedb *state.StateDB, gp *utils.GasPool) ([]byte, uint64, bool, error) {
+func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposContext, tx *types.Transaction, statedb *state.StateDB, gp *utils.GasPool) (uint64, bool, error) {
 	gas, _ := txpool.IntrinsicGas(tx.Payload(), tx.Type(), false)
 	from, _ := tx.Sender(types.Signer{})
 	feeval := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 	if statedb.GetBalance(from).Cmp(feeval) < 0 {
-		return nil, gas, false, errInsufficientBalanceForGas
+		return gas, false, errInsufficientBalanceForGas
 	}
 	statedb.SubBalance(from, feeval)
 	statedb.SetNonce(from, tx.Nonce()+1)
 	if err := gp.SubGas(gas); err != nil {
-		return nil, 0, false, err
+		return 0, false, err
 	}
 
 	snapshot := statedb.Snapshot()
@@ -161,13 +167,13 @@ func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposC
 	case types.LoginCandidate:
 		if err := dposContext.BecomeCandidate(from); err != nil {
 			statedb.RevertToSnapshot(snapshot)
-			return nil, gas, false, err
+			return gas, false, err
 		}
 	case types.LogoutCandidate:
 		if err := dposContext.KickoutCandidate(from); err != nil {
 			dpossnapshot.RevertToSnapShot(dpossnapshot)
 			statedb.RevertToSnapshot(snapshot)
-			return nil, gas, false, err
+			return gas, false, err
 		}
 	case types.Delegate:
 		if new(big.Int).Sub(statedb.GetBalance(from), tx.Value()).Sign() > 0 {
@@ -177,12 +183,12 @@ func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposC
 			if err := dposContext.Delegate(from, tx.Tos()); err != nil {
 				dpossnapshot.RevertToSnapShot(dpossnapshot)
 				statedb.RevertToSnapshot(snapshot)
-				return nil, gas, false, err
+				return gas, false, err
 			}
 		} else {
 			dpossnapshot.RevertToSnapShot(dpossnapshot)
 			statedb.RevertToSnapshot(snapshot)
-			return nil, gas, false, fmt.Errorf("delegate balance insufficient")
+			return gas, false, fmt.Errorf("delegate balance insufficient")
 		}
 
 	case types.UnDelegate:
@@ -191,26 +197,26 @@ func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposC
 		tt := time.Unix(ttimestamp/ss, ttimestamp%ss)
 		t := time.Unix(timestamp.Int64()/ss, timestamp.Int64()%ss)
 		if d := t.Sub(tt); d < time.Duration(60*ss*e.config.MinDelegateDuration) {
-			return nil, gas, false, fmt.Errorf("min delegate duration insufficient, %s < %s", d, time.Duration(60*ss*e.config.MinDelegateDuration))
+			return gas, false, fmt.Errorf("min delegate duration insufficient, %s < %s", d, time.Duration(60*ss*e.config.MinDelegateDuration))
 		}
 		statedb.ResetDelegateTimestamp(from)
 		// todo validate tos
 		if err := dposContext.UnDelegate(from); err != nil {
 			dpossnapshot.RevertToSnapShot(dpossnapshot)
 			statedb.RevertToSnapshot(snapshot)
-			return nil, gas, false, err
+			return gas, false, err
 		}
 		e.addAction(from, tx)
 	case types.Redeem:
 		timestamp := statedb.GetDelegateTimestamp(from)
 		if new(big.Int).Sub(big.NewInt(time.Now().Unix()), timestamp).Cmp(e.chain.Config().DelayDuration) < 0 {
-			return nil, 0, false, nil
+			return 0, false, nil
 		}
 		lockedBalance := statedb.GetLockedBalance(from)
 		statedb.AddBalance(from, lockedBalance)
 		statedb.UnLockBalance(from)
 	}
-	return nil, gas, true, nil
+	return gas, true, nil
 }
 
 func (e *Executor) addAction(sender utils.Address, tx *types.Transaction) {

@@ -53,7 +53,7 @@ type IBlockChain interface {
 	GetCurrentInfo() (*types.Block, *state.StateDB, error)
 	WriteBlockWithState(*types.Block, types.Receipts, *state.StateDB) (bool, error)
 	ExecActions(statedb *state.StateDB, actions []*types.Action)
-	ExecTransaction(*utils.Address, *types.DposContext, *utils.GasPool, *state.StateDB, *types.BlockHeader, *types.Transaction, *uint64, vm.Config) (*types.Receipt, uint64, error)
+	ExecTransaction(*utils.Address, *types.DposContext, *utils.GasPool, *state.StateDB, *types.BlockHeader, *types.Transaction, *uint64, vm.Config) ([]byte, *types.Receipt, uint64, error)
 }
 
 type IChainReader interface {

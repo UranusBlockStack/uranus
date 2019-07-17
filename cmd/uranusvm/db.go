@@ -17,10 +17,10 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
+	jww "github.com/spf13/jwalterweatherman"
 )
 
 func init() {
@@ -28,15 +28,14 @@ func init() {
 }
 
 var dbCmd = &cobra.Command{
-	Use:   "initdb",
-	Short: "init or clean db",
-	Long:  "create a new db or clean the data of existing db for simulator",
+	Use:   "cleandb",
+	Short: "clean db",
+	Long:  "clean the data of existing db for simulator",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := os.RemoveAll(defaultDir); err != nil {
-			fmt.Println("Failed to init db:", err.Error())
+			jww.ERROR.Println("Failed to init db:", err.Error())
 			return
 		}
-
-		fmt.Println("db initiated successfully:", defaultDir)
+		jww.FEEDBACK.Println("db cleaned successfully:", defaultDir)
 	},
 }
