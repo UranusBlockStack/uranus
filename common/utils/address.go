@@ -17,6 +17,7 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -31,6 +32,9 @@ const (
 	addrPrefix  = "0x"
 	addressSize = 20
 )
+
+// EmptyAddress presents an empty address
+var EmptyAddress = Address{}
 
 var addressT = reflect.TypeOf(Address{})
 
@@ -114,6 +118,16 @@ func (a *Address) UnmarshalText(input []byte) error {
 // UnmarshalJSON parses a hash in hex syntax.
 func (a *Address) UnmarshalJSON(input []byte) error {
 	return UnmarshalFixedJSON(addressT, input, a[:])
+}
+
+// Equal checks if this address is the same with the specified address b.
+func (a *Address) Equal(b Address) bool {
+	return bytes.Equal(a[:], b[:])
+}
+
+// IsEmpty returns true if this address is empty. Otherwise, false.
+func (a *Address) IsEmpty() bool {
+	return a.Equal(EmptyAddress)
 }
 
 // NoprefixedAddress allows marshaling an Address without 0x prefix.
