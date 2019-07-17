@@ -17,12 +17,12 @@
 package main
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/spf13/cobra"
+	jww "github.com/spf13/jwalterweatherman"
 )
 
 var (
@@ -54,18 +54,18 @@ var newCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		_, statedb, _, dispose, err := preprocessContract()
 		if err != nil {
-			fmt.Println("Failed to prepare the simulator environment,", err.Error())
+			jww.ERROR.Println("Failed to prepare the simulator environment,", err.Error())
 			return
 		}
 		defer dispose()
 
-		// Generate a random address
+		// Generate a random
 		addr := *crypto.MustGenerateRandomAddress()
 		statedb.CreateAccount(addr)
 		statedb.SetBalance(addr, new(big.Int).SetUint64(balance))
 		statedb.SetNonce(addr, DefaultNonce)
 
-		fmt.Println("The new account address is ", addr.Hex())
+		jww.FEEDBACK.Println("The new account address is ", addr.Hex())
 	},
 }
 
@@ -76,19 +76,15 @@ var setCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		_, statedb, _, dispose, err := preprocessContract()
 		if err != nil {
-			fmt.Println("Failed to prepare the simulator environment,", err.Error())
+			jww.ERROR.Println("Failed to prepare the simulator environment,", err.Error())
 			return
 		}
 		defer dispose()
 
-		addr, err := utils.HexToAddress(account)
-		if err != nil {
-			fmt.Println("Invalid account address,", err.Error())
-			return
-		}
+		addr := utils.HexToAddress(account)
 
 		if !statedb.Exist(addr) {
-			fmt.Println("Input a non-existence account address ", account)
+			jww.ERROR.Println("Input a non-existence account address ", account)
 			return
 		}
 
@@ -96,7 +92,7 @@ var setCmd = &cobra.Command{
 		bigIntBalance := new(big.Int).SetUint64(balance)
 		statedb.SetBalance(addr, bigIntBalance)
 
-		fmt.Println("Set the balance successfully, the balance of the account is ", utils.BigToDecimal(bigIntBalance.Mul(bigIntBalance, utils.SeeleToFan)))
+		jww.FEEDBACK.Println("Set the balance successfully, the balance of the account is ", bigIntBalance.String())
 	},
 }
 
@@ -107,17 +103,12 @@ var getCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		_, statedb, _, dispose, err := preprocessContract()
 		if err != nil {
-			fmt.Println("Failed to prepare the simulator environment,", err.Error())
+			jww.ERROR.Println("Failed to prepare the simulator environment,", err.Error())
 			return
 		}
 		defer dispose()
 
-		addr, err := utils.HexToAddress(account)
-		if err != nil {
-			fmt.Println("Invalid account address,", err.Error())
-			return
-		}
-
-		fmt.Println("The balance of the account is ", utils.BigToDecimal(statedb.GetBalance(addr).Mul(statedb.GetBalance(addr), utils.SeeleToFan)))
+		addr := utils.HexToAddress(account)
+		jww.FEEDBACK.Println("The balance of the account is ", statedb.GetBalance(addr).String())
 	},
 }
