@@ -164,6 +164,34 @@ func SaveECDSA(file string, key *ecdsa.PrivateKey) error {
 	return ioutil.WriteFile(file, []byte(k), 0600)
 }
 
+// GenerateKeyPair generates public key and private key
+func GenerateKeyPair() (*utils.Address, *ecdsa.PrivateKey, error) {
+	keypair, err := GenerateKey()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	id := PubkeyToAddress(keypair.PublicKey)
+	return &id, keypair, nil
+}
+
+// GenerateRandomAddress generates and returns a random address.
+func GenerateRandomAddress() (*utils.Address, error) {
+	addr, _, err := GenerateKeyPair()
+	return addr, err
+}
+
+// MustGenerateRandomAddress generates and returns a random address.
+// Panic on any error.
+func MustGenerateRandomAddress() *utils.Address {
+	address, err := GenerateRandomAddress()
+	if err != nil {
+		panic(err)
+	}
+
+	return address
+}
+
 func CreateAddress(b utils.Address, nonce uint64) utils.Address {
 	data, _ := rlp.EncodeToBytes([]interface{}{b, nonce})
 	return utils.BytesToAddress(Keccak256(data)[12:])
