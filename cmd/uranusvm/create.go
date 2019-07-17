@@ -17,7 +17,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"math/big"
 	"path/filepath"
@@ -26,12 +25,14 @@ import (
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/core/types"
 	"github.com/spf13/cobra"
+	jww "github.com/spf13/jwalterweatherman"
 )
 
 var (
-	code    string
-	solFile string
-	account string
+	code         string
+	solFile      string
+	solcCompiler string
+	account      string
 
 	defaultDir = filepath.Join(cmdutils.DefaultDataDir(), "simulator")
 )
@@ -39,6 +40,7 @@ var (
 func init() {
 	createCmd.Flags().StringVarP(&code, "code", "c", "", "the binary code of the smart contract to create, or the name of a readable file that contains the binary contract code in the local directory(Required)")
 	createCmd.Flags().StringVarP(&solFile, "file", "f", "", "solidity file path")
+	createCmd.Flags().StringVarP(&solcCompiler, "solc", "s", "./build/solc", "solc compiler path")
 	createCmd.Flags().StringVarP(&account, "account", "a", "", "the account address(Default is random and has 1 seele)")
 	rootCmd.AddCommand(createCmd)
 }
@@ -54,14 +56,14 @@ var createCmd = &cobra.Command{
 
 func createContract() {
 	if len(solFile) == 0 && len(code) == 0 {
-		fmt.Println("Code or solidity file not specified.")
+		jww.ERROR.Println("Code or solidity file not specified.")
 		return
 	}
 
 	// compile solidity file if specified.
 	var compileOutput *solCompileOutput
 	if len(solFile) > 0 {
-		output, dispose := compile(solFile)
+		output, dispose := compile(solFile, solcCompiler)
 		if output == nil {
 			return
 		}
@@ -76,15 +78,11 @@ func createContract() {
 		code = string(bytecode)
 	}
 
-	bytecode, err := utils.HexToBytes(code)
-	if err != nil {
-		fmt.Println("Invalid code format,", err.Error())
-		return
-	}
+	bytecode := utils.HexToBytes(utils.RemovePrefix(code))
 
-	db, statedb, bcStore, dispose, err := preprocessContract()
+	db, statedb, exec, dispose, err := preprocessContract()
 	if err != nil {
-		fmt.Println("Failed to prepare the simulator environment,", err.Error())
+		jww.FEEDBACK.Println("Failed to prepare the simulator environment,", err.Error())
 		return
 	}
 	defer dispose()
@@ -98,27 +96,23 @@ func createContract() {
 	// Create a contract
 	//createContractTx, err := types.NewContractTransaction(from, big.NewInt(0), big.NewInt(1), math.MaxUint64, DefaultNonce, bytecode)
 	accountNonce := statedb.GetNonce(from)
-	createContractTx, err := types.NewContractTransaction(from, big.NewInt(0), big.NewInt(1), uint64(3000000), accountNonce, bytecode)
-	if err != nil {
-		fmt.Println("Failed to create contract tx,", err.Error())
-		return
-	}
+	createContractTx := types.NewTransaction(types.Binary, accountNonce, big.NewInt(0), uint64(3000000), big.NewInt(1), bytecode)
 
-	receipt, err := processContract(statedb, bcStore, createContractTx)
+	_, receipt, err := processContract(from, statedb, exec, createContractTx)
 	if err != nil {
-		fmt.Println("Failed to create contract,", err.Error())
+		jww.FEEDBACK.Println("Failed to create contract,", err.Error())
 		return
 	}
 
 	// Print the contract Address
-	fmt.Println()
-	fmt.Println("contract created successfully")
-	fmt.Println("Contract address:", utils.BytesToHex(receipt.ContractAddress))
+	jww.FEEDBACK.Println()
+	jww.FEEDBACK.Println("contract created successfully")
+	jww.FEEDBACK.Println("Contract address:", receipt.ContractAddress.Hex())
 
 	// Save contract info
-	setGlobalContractAddress(db, utils.BytesToHex(receipt.ContractAddress))
+	setGlobalContractAddress(db, receipt.ContractAddress)
 
 	if compileOutput != nil {
-		setContractCompilationOutput(db, receipt.ContractAddress, compileOutput)
+		setContractCompilationOutput(db, receipt.ContractAddress.Bytes(), compileOutput)
 	}
 }
