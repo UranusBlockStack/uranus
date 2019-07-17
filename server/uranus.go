@@ -30,6 +30,7 @@ import (
 	"github.com/UranusBlockStack/uranus/core/ledger"
 	"github.com/UranusBlockStack/uranus/core/txpool"
 	"github.com/UranusBlockStack/uranus/core/vm"
+	"github.com/UranusBlockStack/uranus/debug"
 	"github.com/UranusBlockStack/uranus/feed"
 	"github.com/UranusBlockStack/uranus/node"
 	"github.com/UranusBlockStack/uranus/p2p"
@@ -170,6 +171,11 @@ func (u *Uranus) APIs() []rpc.API {
 			Namespace: "Dpos",
 			Version:   "0.0.1",
 			Service:   rpcapi.NewDposAPI(u.uranusAPI),
+		},
+		{
+			Namespace: "Debug",
+			Version:   "0.0.1",
+			Service:   debug.Handler,
 		},
 	}
 }

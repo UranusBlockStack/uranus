@@ -25,6 +25,7 @@ import (
 	"github.com/UranusBlockStack/uranus/consensus/miner"
 	"github.com/UranusBlockStack/uranus/core/ledger"
 	"github.com/UranusBlockStack/uranus/core/txpool"
+	"github.com/UranusBlockStack/uranus/debug"
 	"github.com/UranusBlockStack/uranus/node"
 	"github.com/UranusBlockStack/uranus/p2p"
 	"github.com/UranusBlockStack/uranus/params"
@@ -38,6 +39,7 @@ func defaultStartConfig() *StartConfig {
 		LogConfig:    log.DefaultConfig,
 		NodeConfig:   defaultNodeConfig(),
 		UranusConfig: defaultUranusConfig(),
+		DebugConfig:  debug.DefaultConfig(),
 	}
 }
 

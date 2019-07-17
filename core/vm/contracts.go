@@ -22,10 +22,10 @@ import (
 	"math/big"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
+	"github.com/UranusBlockStack/uranus/common/crypto/bn256"
 	"github.com/UranusBlockStack/uranus/common/math"
 	"github.com/UranusBlockStack/uranus/common/utils"
 	"github.com/UranusBlockStack/uranus/params"
-	"github.com/ethereum/go-ethereum/crypto/bn256"
 	"golang.org/x/crypto/ripemd160"
 )
 

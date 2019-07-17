@@ -18,6 +18,7 @@ package main
 
 import (
 	"github.com/UranusBlockStack/uranus/common/log"
+	"github.com/UranusBlockStack/uranus/debug"
 	"github.com/UranusBlockStack/uranus/node"
 	"github.com/UranusBlockStack/uranus/server"
 )
@@ -29,4 +30,5 @@ type StartConfig struct {
 	LogConfig    *log.Config
 	NodeConfig   *node.Config
 	UranusConfig *server.UranusConfig
+	DebugConfig  *debug.Config
 }
