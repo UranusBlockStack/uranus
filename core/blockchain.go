@@ -40,11 +40,6 @@ import (
 	"github.com/UranusBlockStack/uranus/params"
 )
 
-// Processor is an interface for processing blocks using a given initial state.
-type Processor interface {
-	Process(block *types.Block, statedb *state.StateDB, cfg vm.Config) (types.Receipts, []*types.Log, uint64, error)
-}
-
 // BlockChain manages chain imports, reverts, chain reorganisations.
 type BlockChain struct {
 	*ledger.Ledger
@@ -293,8 +288,8 @@ func (bc *BlockChain) execBlock(block *types.Block) (types.Receipts, []*types.Lo
 func (bc *BlockChain) ExecTransaction(author *utils.Address,
 	dposcontext *types.DposContext,
 	gp *utils.GasPool, statedb *state.StateDB, header *types.BlockHeader,
-	tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
-	return bc.executor.ExecTransaction(author, dposcontext, gp, statedb, header, tx, usedGas, cfg)
+	tx *types.Transaction, usedGas *uint64, cfg vm.Config) ([]byte, *types.Receipt, uint64, error) {
+	return bc.executor.ExecTransaction(author, nil, dposcontext, gp, statedb, header, tx, usedGas, cfg)
 }
 
 // ExecActions execute actions
