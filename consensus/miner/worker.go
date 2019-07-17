@@ -146,7 +146,7 @@ func (w *Work) applyTransactions(blockchain consensus.IBlockChain, txs *types.Tr
 func (w *Work) commitTransaction(tx *types.Transaction, bc consensus.IBlockChain, GasUsed *uint64, gp *utils.GasPool) (error, []*types.Log) {
 	snap := w.state.Snapshot()
 	dposSnap := w.dposContext.Snapshot()
-	receipt, _, err := bc.ExecTransaction(&w.Block.BlockHeader().Miner, w.dposContext, gp, w.state, w.Block.BlockHeader(), tx, GasUsed, vm.Config{})
+	_, receipt, _, err := bc.ExecTransaction(&w.Block.BlockHeader().Miner, w.dposContext, gp, w.state, w.Block.BlockHeader(), tx, GasUsed, vm.Config{})
 	if err != nil {
 		w.state.RevertToSnapshot(snap)
 		w.dposContext.RevertToSnapShot(dposSnap)

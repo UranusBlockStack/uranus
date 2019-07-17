@@ -63,7 +63,7 @@ func New(file string, cache int, handles int) (*Database, error) {
 	if handles < minHandles {
 		handles = minHandles
 	}
-	log.Infof("Allocated cache and file handles cache: %v,handles: %v", cache, handles)
+	log.Debugf("Allocated cache and file handles cache: %v,handles: %v", cache, handles)
 	// Open the db and recover any potential corruptions
 	db, err := leveldb.OpenFile(file, &opt.Options{
 		OpenFilesCacheCapacity: handles,

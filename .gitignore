@@ -25,6 +25,9 @@ uranus
 uranuscli
 !/cmd/uranuscli
 
+uranusvm
+!/cmd/uranusvm
+
 devenv/.vagrant
 
 solc

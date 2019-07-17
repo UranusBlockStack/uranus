@@ -46,8 +46,13 @@ type StateTransition struct {
 }
 
 // NewStateTransition initialises and returns a new state transition object.
-func NewStateTransition(evm *vm.EVM, tx *types.Transaction, gp *utils.GasPool) *StateTransition {
-	from, _ := tx.Sender(types.Signer{})
+func NewStateTransition(txFrom *utils.Address, evm *vm.EVM, tx *types.Transaction, gp *utils.GasPool) *StateTransition {
+	var from utils.Address
+	if txFrom == nil {
+		from, _ = tx.Sender(types.Signer{})
+	} else {
+		from = *txFrom
+	}
 	return &StateTransition{
 		gp:       gp,
 		evm:      evm,
@@ -74,8 +79,8 @@ func NewStateTransitionForApi(evm *vm.EVM, from utils.Address, tx *types.Transac
 }
 
 // ExecStateTransition computes the new state by applying the given message against the old state within the environment.
-func ExecStateTransition(evm *vm.EVM, tx *types.Transaction, gp *utils.GasPool) ([]byte, uint64, bool, error) {
-	return NewStateTransition(evm, tx, gp).TransitionDb()
+func ExecStateTransition(txfrom *utils.Address, evm *vm.EVM, tx *types.Transaction, gp *utils.GasPool) ([]byte, uint64, bool, error) {
+	return NewStateTransition(txfrom, evm, tx, gp).TransitionDb()
 }
 
 // to returns the recipient of the message.

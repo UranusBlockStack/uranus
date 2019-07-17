@@ -54,6 +54,10 @@ all:
 	go build ./cmd/uranuscli
 	mv uranuscli ./build
 
+	@go install ./cmd/uranusvm
+	go build ./cmd/uranusvm
+	mv uranusvm ./build
+
 # build all targets in windows 
 .PHONY: win
 win:
@@ -86,3 +90,4 @@ release: test
 solc: 
 	@scripts/solc.sh ./build/solc
 	@touch build/solc
+

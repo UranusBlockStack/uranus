@@ -93,6 +93,13 @@ func isHex(str string) bool {
 	return true
 }
 
+func RemovePrefix(s string) string {
+	if hasHexPrefix(s) {
+		s = s[2:]
+	}
+	return s
+}
+
 // BytesToHex returns the hexadecimal encoding of d.
 func BytesToHex(d []byte) string {
 	return hex.EncodeToString(d)
