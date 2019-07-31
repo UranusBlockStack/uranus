@@ -41,7 +41,7 @@ func (s *StateSuite) TestDump(c *checker.C) {
 	// generate a few entries
 	obj1 := s.state.GetOrNewStateObject(toAddr([]byte{0x01}))
 	obj1.AddBalance(big.NewInt(22))
-	obj1.LockBalance(big.NewInt(21))
+	obj1.SetLockedBalance(big.NewInt(21))
 	obj2 := s.state.GetOrNewStateObject(toAddr([]byte{0x01, 0x02}))
 	obj2.SetDelegateTimestamp(utils.Big1)
 	obj2.SetCode(crypto.Keccak256Hash([]byte{3, 3, 3, 3, 3, 3, 3}), []byte{3, 3, 3, 3, 3, 3, 3})
@@ -56,7 +56,7 @@ func (s *StateSuite) TestDump(c *checker.C) {
 	// check that dump contains the state objects that are in trie
 	got := s.state.Dump()
 	want := `{
-    "root": "d485966c4d81727844c42ed0472bf08148af75ae93821e1620ab1ef7936a1ef3",
+    "root": "2f06435cc39be7bb0db2dc3c7a18a4d09ee2d5d766210f30ecfd73e2ed1cd628",
     "accounts": {
         "0000000000000000000000000000000000000001": {
             "balance": "22",
@@ -158,7 +158,7 @@ func TestSnapshot2(t *testing.T) {
 	// db, trie are already non-empty values
 	so0 := state.getStateObject(stateobjaddr0)
 
-	so0.LockBalance(big.NewInt(41))
+	so0.SetLockedBalance(big.NewInt(41))
 	so0.SetDelegateTimestamp(big.NewInt(time.Now().Unix()))
 
 	so0.SetBalance(big.NewInt(42))
@@ -174,7 +174,7 @@ func TestSnapshot2(t *testing.T) {
 	// and one with deleted == true
 	so1 := state.getStateObject(stateobjaddr1)
 
-	so1.LockBalance(big.NewInt(51))
+	so1.SetLockedBalance(big.NewInt(51))
 	so1.SetDelegateTimestamp(big.NewInt(time.Now().Unix()))
 
 	so1.SetBalance(big.NewInt(52))

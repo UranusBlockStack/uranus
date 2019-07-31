@@ -139,7 +139,7 @@ func TestCopy(t *testing.T) {
 	for i := byte(0); i < 255; i++ {
 		obj := orig.GetOrNewStateObject(utils.BytesToAddress([]byte{i}))
 		obj.AddBalance(big.NewInt(int64(i)))
-		obj.LockBalance(big.NewInt(int64(i)))
+		obj.SetLockedBalance(big.NewInt(int64(i)))
 
 		orig.updateStateObject(obj)
 	}
@@ -153,10 +153,10 @@ func TestCopy(t *testing.T) {
 		copyObj := copy.GetOrNewStateObject(utils.BytesToAddress([]byte{i}))
 
 		origObj.AddBalance(big.NewInt(2 * int64(i)))
-		origObj.LockBalance(big.NewInt(2 * int64(i)))
+		origObj.SetLockedBalance(big.NewInt(2 * int64(i)))
 
 		copyObj.AddBalance(big.NewInt(3 * int64(i)))
-		copyObj.LockBalance(big.NewInt(3 * int64(i)))
+		copyObj.SetLockedBalance(big.NewInt(3 * int64(i)))
 
 		orig.updateStateObject(origObj)
 		copy.updateStateObject(copyObj)
