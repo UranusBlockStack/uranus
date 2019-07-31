@@ -69,6 +69,35 @@ var getBalanceCmd = &cobra.Command{
 	},
 }
 
+var getLockedBalanceCmd = &cobra.Command{
+	Use:   "getLockedBalance <address> [height]",
+	Short: "returns the locked amount of wei for the given address in the state of the given block number.",
+	Long:  `returns the locked amount of wei for the given address in the state of the given block number.`,
+	Args:  cobra.RangeArgs(1, 2),
+	Run: func(cmd *cobra.Command, args []string) {
+		result := new(utils.Big)
+
+		req := &rpcapi.GetBalanceArgs{}
+		switch len(args) {
+		case 1:
+			req.Address = utils.HexToAddress(cmdutils.IsHexAddr(args[0]))
+		case 2:
+			req.Address = utils.HexToAddress(cmdutils.IsHexAddr(args[0]))
+			req.BlockHeight = cmdutils.GetBlockheight(args[1])
+		}
+
+		cmdutils.ClientCall("Uranus.GetLockedBalance", req, &result)
+		if cmdutils.OneLine {
+			x := big.NewInt(0).Div(result.ToInt(), big.NewInt(1e14))
+			y := float64(x.Int64())
+			y /= 1e4
+			jww.FEEDBACK.Print(result.String(), " URAC:", strconv.FormatFloat(y, 'f', -1, 64))
+		} else {
+			cmdutils.PrintJSON(result)
+		}
+	},
+}
+
 var getNonceCmd = &cobra.Command{
 	Use:   "getNonce <address> [height]",
 	Short: "returns nonce for the given address.",

@@ -50,6 +50,7 @@ func AddCommands() {
 	// uranus command
 	RootCmd.AddCommand(suggestGasPriceCmd)
 	RootCmd.AddCommand(getBalanceCmd)
+	RootCmd.AddCommand(getLockedBalanceCmd)
 	RootCmd.AddCommand(getNonceCmd)
 	RootCmd.AddCommand(getCodeCmd)
 	RootCmd.AddCommand(sendRawTransactionCmd)

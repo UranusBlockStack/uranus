@@ -75,6 +75,16 @@ func (u *UranusAPI) GetBalance(args GetBalanceArgs, reply *utils.Big) error {
 	return nil
 }
 
+// GetLockedBalance returns the locked amount of wei for the given address in the state of the given block number
+func (u *UranusAPI) GetLockedBalance(args GetBalanceArgs, reply *utils.Big) error {
+	state, err := u.getState(args.getBlockHeight())
+	if err != nil {
+		return err
+	}
+	*reply = *(*utils.Big)(state.GetLockedBalance(args.Address))
+	return nil
+}
+
 type GetNonceArgs struct {
 	GetBalanceArgs
 }
