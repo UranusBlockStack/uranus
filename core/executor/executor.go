@@ -166,6 +166,7 @@ func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposC
 	switch tx.Type() {
 	case types.LoginCandidate:
 		if err := dposContext.BecomeCandidate(from); err != nil {
+			dpossnapshot.RevertToSnapShot(dpossnapshot)
 			statedb.RevertToSnapshot(snapshot)
 			return gas, false, err
 		}

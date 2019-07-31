@@ -310,6 +310,13 @@ func (d *DposContext) KickoutCandidate(candidateAddr utils.Address) error {
 
 func (d *DposContext) BecomeCandidate(candidateAddr utils.Address) error {
 	candidate := candidateAddr.Bytes()
+	candidateInTrie, err := d.candidateTrie.TryGet(candidate)
+	if err != nil {
+		return err
+	}
+	if candidateInTrie != nil {
+		return fmt.Errorf(" %v alreay is candidate", candidateAddr)
+	}
 	candidateInfo := &CandidateInfo{
 		Addr:   candidateAddr,
 		Weight: 100,
