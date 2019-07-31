@@ -85,6 +85,36 @@ func (u *UranusAPI) GetLockedBalance(args GetBalanceArgs, reply *utils.Big) erro
 	return nil
 }
 
+// GetDelegateTimestamp returns the locked amount of wei for the given address in the state of the given block number
+func (u *UranusAPI) GetDelegateTimestamp(args GetBalanceArgs, reply *utils.Big) error {
+	state, err := u.getState(args.getBlockHeight())
+	if err != nil {
+		return err
+	}
+	*reply = *(*utils.Big)(state.GetDelegateTimestamp(args.Address))
+	return nil
+}
+
+// GetUnLockedBalance returns the unlocked amount of wei for the given address in the state of the given block number
+func (u *UranusAPI) GetUnLockedBalance(args GetBalanceArgs, reply *utils.Big) error {
+	state, err := u.getState(args.getBlockHeight())
+	if err != nil {
+		return err
+	}
+	*reply = *(*utils.Big)(state.GetUnLockedBalance(args.Address))
+	return nil
+}
+
+// GetUnDelegateTimestamp returns the unlocked amount of wei for the given address in the state of the given block number
+func (u *UranusAPI) GetUnDelegateTimestamp(args GetBalanceArgs, reply *utils.Big) error {
+	state, err := u.getState(args.getBlockHeight())
+	if err != nil {
+		return err
+	}
+	*reply = *(*utils.Big)(state.GetUnDelegateTimestamp(args.Address))
+	return nil
+}
+
 type GetNonceArgs struct {
 	GetBalanceArgs
 }
