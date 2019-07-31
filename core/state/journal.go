@@ -121,11 +121,16 @@ type (
 		account *utils.Address
 		prev    *big.Int
 	}
-	delegateAddressesChange struct {
-		account   *utils.Address
-		prevAddrs []*utils.Address
-	}
 	delegateTimestampChange struct {
+		account *utils.Address
+		prev    *big.Int
+	}
+
+	unlockedBalanceChange struct {
+		account *utils.Address
+		prev    *big.Int
+	}
+	undelegateTimestampChange struct {
 		account *utils.Address
 		prev    *big.Int
 	}
@@ -210,14 +215,18 @@ func (ch codeChange) dirtied() *utils.Address {
 }
 
 func (ch lockedBalanceChange) revert(s *StateDB) {
-	s.getStateObject(*ch.account).setLockBalance(ch.prev)
+	s.getStateObject(*ch.account).setLockedBalance(ch.prev)
 }
 
 func (ch lockedBalanceChange) dirtied() *utils.Address {
 	return ch.account
 }
 
-func (ch delegateAddressesChange) dirtied() *utils.Address {
+func (ch unlockedBalanceChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).setUnLockedBalance(ch.prev)
+}
+
+func (ch unlockedBalanceChange) dirtied() *utils.Address {
 	return ch.account
 }
 
@@ -226,6 +235,14 @@ func (ch delegateTimestampChange) revert(s *StateDB) {
 }
 
 func (ch delegateTimestampChange) dirtied() *utils.Address {
+	return ch.account
+}
+
+func (ch undelegateTimestampChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).setUnDelegateTimestamp(ch.prev)
+}
+
+func (ch undelegateTimestampChange) dirtied() *utils.Address {
 	return ch.account
 }
 

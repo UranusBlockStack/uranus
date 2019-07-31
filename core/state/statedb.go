@@ -258,6 +258,22 @@ func (s *StateDB) GetDelegateTimestamp(addr utils.Address) *big.Int {
 	return utils.Big0
 }
 
+func (s *StateDB) GetUnLockedBalance(addr utils.Address) *big.Int {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.UnLockedBalance()
+	}
+	return utils.Big0
+}
+
+func (s *StateDB) GetUnDelegateTimestamp(addr utils.Address) *big.Int {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.UnDelegateTimestamp()
+	}
+	return utils.Big0
+}
+
 // Database retrieves the low level database supporting the lower level trie ops.
 func (s *StateDB) Database() Database {
 	return s.db
@@ -333,14 +349,14 @@ func (s *StateDB) SetState(addr utils.Address, key, value utils.Hash) {
 func (s *StateDB) SetLockedBalance(addr utils.Address, amount *big.Int) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
-		stateObject.LockBalance(amount)
+		stateObject.SetLockedBalance(amount)
 	}
 }
 
-func (s *StateDB) UnLockBalance(addr utils.Address) {
+func (s *StateDB) SetUnLockedBalance(addr utils.Address, amount *big.Int) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
-		stateObject.UnLockBalance()
+		stateObject.SetUnLockedBalance(amount)
 	}
 }
 
@@ -351,10 +367,10 @@ func (s *StateDB) SetDelegateTimestamp(addr utils.Address, timestamp *big.Int) {
 	}
 }
 
-func (s *StateDB) ResetDelegateTimestamp(addr utils.Address) {
+func (s *StateDB) SetUnDelegateTimestamp(addr utils.Address, timestamp *big.Int) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
-		stateObject.ResetDelegateTimestamp()
+		stateObject.setUnDelegateTimestamp(timestamp)
 	}
 }
 

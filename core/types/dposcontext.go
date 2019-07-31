@@ -18,7 +18,6 @@ package types
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
@@ -256,6 +255,10 @@ func (p *DposContextProto) Root() (h utils.Hash) {
 
 func (d *DposContext) KickoutCandidate(candidateAddr utils.Address) error {
 	candidate := candidateAddr.Bytes()
+	if candidateInTrie, err := d.candidateTrie.TryGet(candidate); err != nil || candidateInTrie == nil {
+		return err
+	}
+
 	err := d.candidateTrie.TryDelete(candidate)
 	if err != nil {
 		if _, ok := err.(*mtp.MissingNodeError); !ok {
@@ -283,40 +286,40 @@ func (d *DposContext) KickoutCandidate(candidateAddr utils.Address) error {
 		if err := rlp.DecodeBytes(v, &oldCandidateAddrs); err != nil {
 			return err
 		}
-		for index, oldCandidateAddr := range oldCandidateAddrs {
-			if bytes.Equal(oldCandidateAddr.Bytes(), candidate) {
-				oldCandidateAddrs = append(oldCandidateAddrs[:index], oldCandidateAddrs[index+1:]...)
-				if len(oldCandidateAddrs) == 0 {
-					err = d.voteTrie.TryDelete(delegator)
-				} else {
-					if candidate, err := rlp.EncodeToBytes(oldCandidateAddrs); err != nil {
-						return err
-					} else {
-						err = d.voteTrie.TryUpdate(delegator, candidate)
-					}
-				}
-				if err != nil {
-					if _, ok := err.(*mtp.MissingNodeError); !ok {
-						return err
-					}
-				}
-
+		newCandidateAddrs := []*utils.Address{}
+		for _, candidateAddr := range oldCandidateAddrs {
+			if bytes.Equal(candidateAddr.Bytes(), candidate) == false {
+				newCandidateAddrs = append(newCandidateAddrs, candidateAddr)
 			}
 		}
 
+		if len(newCandidateAddrs) == 0 {
+			if err := d.voteTrie.TryDelete(delegator); err != nil {
+				if _, ok := err.(*mtp.MissingNodeError); !ok {
+					return err
+				}
+			}
+		} else {
+			if candidate, err := rlp.EncodeToBytes(newCandidateAddrs); err != nil {
+				return err
+			} else if err := d.voteTrie.TryUpdate(delegator, candidate); err != nil {
+				if _, ok := err.(*mtp.MissingNodeError); !ok {
+					return err
+				}
+			}
+		}
 	}
 	return nil
 }
 
 func (d *DposContext) BecomeCandidate(candidateAddr utils.Address) error {
 	candidate := candidateAddr.Bytes()
-	candidateInTrie, err := d.candidateTrie.TryGet(candidate)
-	if err != nil {
+	if candidateInTrie, err := d.candidateTrie.TryGet(candidate); err != nil {
 		return err
-	}
-	if candidateInTrie != nil {
+	} else if candidateInTrie != nil {
 		return fmt.Errorf(" %v alreay is candidate", candidateAddr)
 	}
+
 	candidateInfo := &CandidateInfo{
 		Addr:   candidateAddr,
 		Weight: 100,
@@ -355,13 +358,19 @@ func (d *DposContext) Delegate(delegatorAddr utils.Address, candidateAddrs []*ut
 			return err
 		}
 		for _, oldCandidateAddr := range oldCandidateAddrs {
-			d.delegateTrie.Delete(append(oldCandidateAddr.Bytes(), delegator...))
+			if err := d.delegateTrie.TryDelete(append(oldCandidateAddr.Bytes(), delegator...)); err != nil {
+				if _, ok := err.(*mtp.MissingNodeError); !ok {
+					return err
+				}
+			}
 		}
 	}
 
 	for _, candidateAddr := range candidateAddrs {
 		if err = d.delegateTrie.TryUpdate(append(candidateAddr.Bytes(), delegator...), delegator); err != nil {
-			return err
+			if _, ok := err.(*mtp.MissingNodeError); !ok {
+				return err
+			}
 		}
 	}
 
@@ -375,12 +384,8 @@ func (d *DposContext) Delegate(delegatorAddr utils.Address, candidateAddrs []*ut
 func (d *DposContext) UnDelegate(delegatorAddr utils.Address) error {
 	delegator := delegatorAddr.Bytes()
 	oldCandidate, err := d.voteTrie.TryGet(delegator)
-	if err != nil {
+	if oldCandidate == nil || err != nil {
 		return err
-	}
-
-	if oldCandidate == nil {
-		return errors.New("invalid candidate to undelegate")
 	}
 
 	oldCandidateAddrs := []*utils.Address{}
@@ -389,7 +394,9 @@ func (d *DposContext) UnDelegate(delegatorAddr utils.Address) error {
 	}
 	for _, oldCandidateAddr := range oldCandidateAddrs {
 		if err = d.delegateTrie.TryDelete(append(oldCandidateAddr.Bytes(), delegator...)); err != nil {
-			return err
+			if _, ok := err.(*mtp.MissingNodeError); !ok {
+				return err
+			}
 		}
 	}
 

@@ -104,24 +104,26 @@ func (tx *Transaction) Validate(cfg *params.ChainConfig) error {
 			return errors.New("binary transaction tos need not greater than 1")
 		}
 	case Delegate:
-		if cnt := uint64(len(tx.Tos())); cnt > cfg.MaxVotes || cnt < 0 {
+		if cnt := int64(len(tx.Tos())); cnt > cfg.MaxVotes {
 			return fmt.Errorf("tos was required but not greater than %v", cfg.MaxVotes)
 		}
 		if cfg.MinDelegateState != nil && cfg.MinDelegateState.Cmp(tx.Value()) > 0 {
 			return fmt.Errorf("delegate state was required but not lesser than %v", cfg.MinDelegateState)
 		}
-	case Redeem:
-		fallthrough
 	case UnDelegate:
+		if len(tx.Tos()) != 0 {
+			return errors.New("LoginCandidate、LogoutCandidate、UnDelegate、Redeem tx.tos wasn't required")
+		}
+	case Redeem:
 		fallthrough
 	case LoginCandidate:
 		fallthrough
 	case LogoutCandidate:
 		if len(tx.Tos()) != 0 {
-			return errors.New("LoginCandidate、LogoutCandidate、UnDelegate tx.tos wasn't required")
+			return errors.New("LoginCandidate、LogoutCandidate、UnDelegate、Redeem tx.tos wasn't required")
 		}
 		if tx.Value().Sign() != 0 {
-			return errors.New("LoginCandidate、LogoutCandidate、UnDelegate tx.value wasn't required")
+			return errors.New("LoginCandidate、LogoutCandidate、UnDelegate、Redeem tx.value wasn't required")
 		}
 	default:
 		return ErrInvalidType

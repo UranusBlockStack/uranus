@@ -97,6 +97,9 @@ func (s *stateObject) empty() bool {
 // These objects are stored in the main account trie.
 type Account struct {
 	// dpos
+	UnLockedBalance     *big.Int
+	UnDelegateTimestamp *big.Int
+
 	LockedBalance     *big.Int
 	DelegateTimestamp *big.Int
 
@@ -281,30 +284,28 @@ func (s *stateObject) setBalance(amount *big.Int) {
 	s.data.Balance = amount
 }
 
-func (s *stateObject) UnLockBalance() {
-	if s.LockedBalance().Sign() == 0 {
-		return
-	}
-	s.setLockBalance(utils.Big0)
-}
-
-func (s *stateObject) LockBalance(amount *big.Int) {
+func (s *stateObject) SetLockedBalance(amount *big.Int) {
 	s.db.journal.append(lockedBalanceChange{
 		account: &s.address,
 		prev:    new(big.Int).Set(s.data.LockedBalance),
 	})
-	s.setLockBalance(amount)
+	s.setLockedBalance(amount)
 }
 
-func (s *stateObject) setLockBalance(amount *big.Int) {
+func (s *stateObject) setLockedBalance(amount *big.Int) {
 	s.data.LockedBalance = amount
 }
 
-func (s *stateObject) ResetDelegateTimestamp() {
-	if s.DelegateTimestamp().Sign() == 0 {
-		return
-	}
-	s.setDelegateTimestamp(utils.Big0)
+func (s *stateObject) SetUnLockedBalance(amount *big.Int) {
+	s.db.journal.append(unlockedBalanceChange{
+		account: &s.address,
+		prev:    new(big.Int).Set(s.data.UnLockedBalance),
+	})
+	s.setUnLockedBalance(amount)
+}
+
+func (s *stateObject) setUnLockedBalance(amount *big.Int) {
+	s.data.UnLockedBalance = amount
 }
 
 func (s *stateObject) SetDelegateTimestamp(timestamp *big.Int) {
@@ -317,6 +318,18 @@ func (s *stateObject) SetDelegateTimestamp(timestamp *big.Int) {
 
 func (s *stateObject) setDelegateTimestamp(timestamp *big.Int) {
 	s.data.DelegateTimestamp = timestamp
+}
+
+func (s *stateObject) SetUnDelegateTimestamp(timestamp *big.Int) {
+	s.db.journal.append(undelegateTimestampChange{
+		account: &s.address,
+		prev:    new(big.Int).Set(s.data.UnDelegateTimestamp),
+	})
+	s.setUnDelegateTimestamp(timestamp)
+}
+
+func (s *stateObject) setUnDelegateTimestamp(timestamp *big.Int) {
+	s.data.UnDelegateTimestamp = timestamp
 }
 
 // Return the gas back to the origin. Used by the Virtual machine or Closures
@@ -399,6 +412,14 @@ func (s *stateObject) Balance() *big.Int {
 
 func (s *stateObject) Nonce() uint64 {
 	return s.data.Nonce
+}
+
+func (s *stateObject) UnLockedBalance() *big.Int {
+	return s.data.UnLockedBalance
+}
+
+func (s *stateObject) UnDelegateTimestamp() *big.Int {
+	return s.data.UnDelegateTimestamp
 }
 
 func (s *stateObject) LockedBalance() *big.Int {

@@ -34,8 +34,8 @@ type ChainConfig struct {
 	MaxConfirmedNum     int64    `json:"maxConfirmedNum"`
 	GenesisCandidate    string   `json:"candiate"`
 	MinStartQuantity    *big.Int `json:"startQuantity"`
-	MaxVotes            uint64   `json:"votes"`
-	DelayDuration       *big.Int `json:"refund"`
+	MaxVotes            int64    `json:"votes"`
+	DelayDuration       int64    `json:"refund"`
 }
 
 // String implements fmt.Stringer.
@@ -52,7 +52,7 @@ var TestChainConfig = &ChainConfig{
 	GenesisCandidate:    "0x970e8128ab834e8eac17ab8e3812f010678cf791",
 	MinStartQuantity:    big.NewInt(100),
 	MaxVotes:            30,
-	DelayDuration:       big.NewInt(72 * 3600),
+	DelayDuration:       72 * 3600,
 	BlockInterval:       int64(3000 * time.Millisecond),
 	BlockRepeat:         12,
 	MaxValidatorSize:    3,
@@ -65,7 +65,7 @@ var DefaultChainConfig = &ChainConfig{
 	GenesisCandidate:    "0x970e8128ab834e8eac17ab8e3812f010678cf791",
 	MinStartQuantity:    big.NewInt(100),
 	MaxVotes:            30,
-	DelayDuration:       big.NewInt(72 * 3600),
+	DelayDuration:       72 * 3600,
 	BlockInterval:       int64(500 * time.Millisecond),
 	BlockRepeat:         12,
 	MaxValidatorSize:    3,

@@ -89,9 +89,9 @@ func (e *Executor) ExecBlock(block *types.Block, statedb *state.StateDB, cfg vm.
 // ExecActions execute actions
 func (e *Executor) ExecActions(statedb *state.StateDB, actions []*types.Action) {
 	for _, a := range actions {
-		lb := statedb.GetLockedBalance(a.Sender)
+		lb := statedb.GetUnLockedBalance(a.Sender)
 		statedb.AddBalance(a.Sender, lb)
-		statedb.UnLockBalance(a.Sender)
+		statedb.SetUnLockedBalance(a.Sender, big.NewInt(0))
 	}
 }
 
@@ -153,12 +153,12 @@ func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposC
 	from, _ := tx.Sender(types.Signer{})
 	feeval := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 	if statedb.GetBalance(from).Cmp(feeval) < 0 {
-		return gas, false, errInsufficientBalanceForGas
+		return gas, true, errInsufficientBalanceForGas
 	}
 	statedb.SubBalance(from, feeval)
 	statedb.SetNonce(from, tx.Nonce()+1)
 	if err := gp.SubGas(gas); err != nil {
-		return 0, false, err
+		return 0, true, err
 	}
 
 	snapshot := statedb.Snapshot()
@@ -168,59 +168,69 @@ func (e *Executor) applyDposMessage(timestamp *big.Int, dposContext *types.DposC
 		if err := dposContext.BecomeCandidate(from); err != nil {
 			dpossnapshot.RevertToSnapShot(dpossnapshot)
 			statedb.RevertToSnapshot(snapshot)
-			return gas, false, err
+			return gas, true, err
 		}
 	case types.LogoutCandidate:
 		if err := dposContext.KickoutCandidate(from); err != nil {
 			dpossnapshot.RevertToSnapShot(dpossnapshot)
 			statedb.RevertToSnapshot(snapshot)
-			return gas, false, err
+			return gas, true, err
 		}
 	case types.Delegate:
-		if new(big.Int).Sub(statedb.GetBalance(from), tx.Value()).Sign() > 0 {
-			statedb.SetDelegateTimestamp(from, timestamp)
-			statedb.SubBalance(from, tx.Value())
-			statedb.SetLockedBalance(from, tx.Value())
-			if err := dposContext.Delegate(from, tx.Tos()); err != nil {
-				dpossnapshot.RevertToSnapShot(dpossnapshot)
-				statedb.RevertToSnapshot(snapshot)
-				return gas, false, err
+		if tx.Value().Sign() > 0 {
+			if new(big.Int).Sub(statedb.GetBalance(from), tx.Value()).Sign() < 0 {
+				return gas, true, fmt.Errorf("balance insufficient")
 			}
-		} else {
-			dpossnapshot.RevertToSnapShot(dpossnapshot)
-			statedb.RevertToSnapshot(snapshot)
-			return gas, false, fmt.Errorf("delegate balance insufficient")
+			statedb.SubBalance(from, tx.Value())
+			statedb.SetLockedBalance(from, new(big.Int).Add(statedb.GetLockedBalance(from), tx.Value()))
+			statedb.SetDelegateTimestamp(from, timestamp)
 		}
 
-	case types.UnDelegate:
-		ss := int64(time.Second)
-		ttimestamp := statedb.GetDelegateTimestamp(from).Int64()
-		tt := time.Unix(ttimestamp/ss, ttimestamp%ss)
-		t := time.Unix(timestamp.Int64()/ss, timestamp.Int64()%ss)
-		if d := t.Sub(tt); d < time.Duration(60*ss*e.config.MinDelegateDuration) {
-			return gas, false, fmt.Errorf("min delegate duration insufficient, %s < %s", d, time.Duration(60*ss*e.config.MinDelegateDuration))
-		}
-		statedb.ResetDelegateTimestamp(from)
-		// todo validate tos
-		if err := dposContext.UnDelegate(from); err != nil {
+		err := dposContext.Delegate(from, tx.Tos())
+		if err != nil {
 			dpossnapshot.RevertToSnapShot(dpossnapshot)
 			statedb.RevertToSnapshot(snapshot)
-			return gas, false, err
+			return gas, true, err
 		}
-		e.addAction(from, tx)
+	case types.UnDelegate:
+		if tx.Value().Sign() > 0 {
+			ttimestamp := statedb.GetDelegateTimestamp(from).Int64()
+			tt := time.Unix(ttimestamp/int64(time.Second), ttimestamp%int64(time.Second))
+			t := time.Unix(timestamp.Int64()/int64(time.Second), timestamp.Int64()%int64(time.Second))
+			if d := t.Sub(tt); d < time.Duration(60*int64(time.Second)*e.config.MinDelegateDuration) {
+				return gas, true, fmt.Errorf("min delegate duration insufficient, %s < %s", d, time.Duration(60*int64(time.Second)*e.config.MinDelegateDuration))
+			}
+
+			if new(big.Int).Sub(statedb.GetLockedBalance(from), tx.Value()).Sign() < 0 {
+				return gas, true, fmt.Errorf("lockedbalance insufficient")
+			}
+			statedb.SetLockedBalance(from, new(big.Int).Sub(statedb.GetLockedBalance(from), tx.Value()))
+			statedb.SetUnLockedBalance(from, new(big.Int).Add(statedb.GetUnLockedBalance(from), tx.Value()))
+			statedb.SetUnDelegateTimestamp(from, timestamp)
+		}
+
+		if statedb.GetLockedBalance(from).Sign() == 0 {
+			err := dposContext.UnDelegate(from)
+			if err != nil {
+				dpossnapshot.RevertToSnapShot(dpossnapshot)
+				statedb.RevertToSnapshot(snapshot)
+				return gas, true, err
+			}
+		}
 	case types.Redeem:
-		timestamp := statedb.GetDelegateTimestamp(from)
-		if new(big.Int).Sub(big.NewInt(time.Now().Unix()), timestamp).Cmp(e.chain.Config().DelayDuration) < 0 {
-			return 0, false, nil
+		ttimestamp := statedb.GetUnDelegateTimestamp(from).Int64()
+		tt := time.Unix(ttimestamp/int64(time.Second), ttimestamp%int64(time.Second))
+		t := time.Unix(timestamp.Int64()/int64(time.Second), timestamp.Int64()%int64(time.Second))
+		if t.Before(tt.Add(time.Duration(e.chain.Config().DelayDuration * int64(time.Second)))) {
+			return gas, true, fmt.Errorf("duration insufficient, after %v", tt.Add(time.Duration(e.chain.Config().DelayDuration*int64(time.Second))))
 		}
-		lockedBalance := statedb.GetLockedBalance(from)
-		statedb.AddBalance(from, lockedBalance)
-		statedb.UnLockBalance(from)
+		statedb.AddBalance(from, statedb.GetUnLockedBalance(from))
+		statedb.SetUnLockedBalance(from, big.NewInt(0))
 	}
-	return gas, true, nil
+	return gas, false, nil
 }
 
 func (e *Executor) addAction(sender utils.Address, tx *types.Transaction) {
-	a := types.NewAction(tx.Hash(), sender, big.NewInt(time.Now().Unix()), e.chain.Config().DelayDuration)
+	a := types.NewAction(tx.Hash(), sender, big.NewInt(time.Now().Unix()), big.NewInt(e.chain.Config().DelayDuration))
 	e.tp.AddAction(a)
 }

@@ -338,7 +338,7 @@ func (tp *TxPool) Actions() []*types.Action {
 	tp.mu.Lock()
 	defer tp.mu.Unlock()
 	now := big.NewInt(time.Now().Unix())
-	return tp.dList.Cap(new(big.Int).Sub(now, tp.chainconfig.DelayDuration))
+	return tp.dList.Cap(new(big.Int).Sub(now, big.NewInt(tp.chainconfig.DelayDuration)))
 }
 
 // validateTx checks whether a transaction is valid according to the consensus

@@ -17,8 +17,6 @@
 package types
 
 import (
-	"bytes"
-	"fmt"
 	"io"
 	"unsafe"
 
@@ -66,7 +64,8 @@ func NewReceipt(root []byte, failed bool, cumulativeGasUsed uint64) *Receipt {
 }
 
 type rlpReceipt struct {
-	StateOrStatus     []byte
+	State             []byte
+	Status            uint64
 	CumulativeGasUsed uint64
 	LogsBloom         bloom.Bloom
 	Logs              []*Log
@@ -74,7 +73,7 @@ type rlpReceipt struct {
 
 // EncodeRLP implements rlp.Encoder
 func (r *Receipt) EncodeRLP(w io.Writer) error {
-	return rlp.Encode(w, &rlpReceipt{r.statusEncoding(), r.CumulativeGasUsed, r.LogsBloom, r.Logs})
+	return rlp.Encode(w, &rlpReceipt{r.State, r.Status, r.CumulativeGasUsed, r.LogsBloom, r.Logs})
 }
 
 // DecodeRLP implements rlp.Decoder
@@ -83,35 +82,10 @@ func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 	if err := s.Decode(dec); err != nil {
 		return err
 	}
-	if err := r.statusDecoding(dec.StateOrStatus); err != nil {
-		return err
-	}
+	r.State = dec.State
+	r.Status = dec.Status
 	r.CumulativeGasUsed, r.LogsBloom, r.Logs = dec.CumulativeGasUsed, dec.LogsBloom, dec.Logs
 	return nil
-}
-
-func (r *Receipt) statusDecoding(postStateOrStatus []byte) error {
-	switch {
-	case bytes.Equal(postStateOrStatus, ReceiptStatusSuccessfulRLP):
-		r.Status = ReceiptStatusSuccessful
-	case bytes.Equal(postStateOrStatus, ReceiptStatusFailedRLP):
-		r.Status = ReceiptStatusFailed
-	case len(postStateOrStatus) == len(utils.Hash{}):
-		r.State = postStateOrStatus
-	default:
-		return fmt.Errorf("invalid receipt status %x", postStateOrStatus)
-	}
-	return nil
-}
-
-func (r *Receipt) statusEncoding() []byte {
-	if len(r.State) == 0 {
-		if r.Status == ReceiptStatusFailed {
-			return ReceiptStatusFailedRLP
-		}
-		return ReceiptStatusSuccessfulRLP
-	}
-	return r.State
 }
 
 // Size returns the approximate memory used by all internal contents.
@@ -129,7 +103,8 @@ func (r *Receipt) Size() utils.StorageSize {
 type ReceiptForStorage Receipt
 
 type rlpReceiptStorage struct {
-	StateOrStatus     []byte
+	State             []byte
+	Status            uint64
 	CumulativeGasUsed uint64
 	LogsBloom         bloom.Bloom
 	TransactionHash   utils.Hash
@@ -141,7 +116,8 @@ type rlpReceiptStorage struct {
 // EncodeRLP implements rlp.Encoder, and flattens all content fields of a receipt into an RLP stream.
 func (r *ReceiptForStorage) EncodeRLP(w io.Writer) error {
 	enc := &rlpReceiptStorage{
-		StateOrStatus:     (*Receipt)(r).statusEncoding(),
+		State:             r.State,
+		Status:            r.Status,
 		CumulativeGasUsed: r.CumulativeGasUsed,
 		LogsBloom:         r.LogsBloom,
 		TransactionHash:   r.TransactionHash,
@@ -160,10 +136,10 @@ func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
 	if err := s.Decode(&dec); err != nil {
 		return err
 	}
-	if err := (*Receipt)(r).statusDecoding(dec.StateOrStatus); err != nil {
-		return err
-	}
+
 	// Assign the consensus fields
+	r.State = dec.State
+	r.Status = dec.Status
 	r.CumulativeGasUsed, r.LogsBloom = dec.CumulativeGasUsed, dec.LogsBloom
 	r.Logs = make([]*Log, len(dec.Logs))
 	for i, log := range dec.Logs {
