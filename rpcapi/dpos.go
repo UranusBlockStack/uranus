@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
+	"strings"
 
 	"github.com/UranusBlockStack/uranus/common/mtp"
 	"github.com/UranusBlockStack/uranus/common/rlp"
@@ -85,9 +86,9 @@ type VoterInfo struct {
 
 type CandidateInfo struct {
 	CandidateAddr utils.Address `json:"candidate"`
-	Weight        uint64        `json:"weight"`
-	Total         *big.Int      `json:"total"`
-	Validate      *big.Int      `json:"-"`
+	Weight        utils.Uint64  `json:"weight"`
+	Total         *utils.Big    `json:"total"`
+	Validate      *utils.Big    `json:"-"`
 }
 
 type CandidateInfos []*CandidateInfo
@@ -95,13 +96,10 @@ type CandidateInfos []*CandidateInfo
 func (p CandidateInfos) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 func (p CandidateInfos) Len() int      { return len(p) }
 func (p CandidateInfos) Less(i, j int) bool {
-	if p[i].Validate.Cmp(p[j].Validate) < 0 {
-		return false
-	} else if p[i].Validate.Cmp(p[j].Validate) > 0 {
-		return true
-	} else {
-		return p[i].CandidateAddr.String() < p[j].CandidateAddr.String()
+	if p[i].Validate.ToInt().Cmp(p[j].Validate.ToInt()) == 0 {
+		return strings.Compare(p[i].CandidateAddr.String(), p[j].CandidateAddr.String()) > 0
 	}
+	return p[i].Validate.ToInt().Cmp(p[j].Validate.ToInt()) > 0
 }
 
 // GetVoter retrieves voter info at specified block
@@ -209,7 +207,7 @@ func (api *DposAPI) GetCandidates(number *BlockHeight, reply *[]*CandidateInfo) 
 	if err != nil {
 		return err
 	}
-	epochContext := &dpos.EpochContext{DposContext: dposContext, Statedb: statedb}
+	epochContext := &dpos.EpochContext{DposContext: dposContext, Statedb: statedb, Config: api.b.BlockChain().Config()}
 	candidates, err := epochContext.DposContext.GetCandidates()
 	if err != nil {
 		return err
@@ -220,10 +218,10 @@ func (api *DposAPI) GetCandidates(number *BlockHeight, reply *[]*CandidateInfo) 
 	for _, validator := range candidates {
 		candidateInfo := &CandidateInfo{
 			CandidateAddr: validator.Addr,
-			Weight:        validator.Weight,
-			Validate:      votes[validator.Addr],
+			Weight:        (utils.Uint64)(validator.Weight),
+			Validate:      (*utils.Big)(votes[validator.Addr]),
 		}
-		candidateInfo.Total = new(big.Int).Div(candidateInfo.Validate, big.NewInt(int64(validator.Weight)))
+		candidateInfo.Total = (*utils.Big)(new(big.Int).Div(candidateInfo.Validate.ToInt(), big.NewInt(int64(validator.Weight))))
 		result = append(result, candidateInfo)
 	}
 

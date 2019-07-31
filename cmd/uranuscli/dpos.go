@@ -79,7 +79,7 @@ var getCandidatesCmd = &cobra.Command{
 		cmdutils.ClientCall("Dpos.GetCandidates", req, &result)
 		if cmdutils.OneLine {
 			for i := 0; i < len(result); i++ {
-				x := big.NewInt(0).Div(result[i].Total, big.NewInt(1e14))
+				x := big.NewInt(0).Div(result[i].Total.ToInt(), big.NewInt(1e14))
 				y := float64(x.Int64())
 				y /= 1e4
 				s := fmt.Sprint("Candidate:", result[i].CandidateAddr.String(),
