@@ -25,6 +25,12 @@
 			"revisionTime": "2018-08-30T19:11:22Z"
 		},
 		{
+			"checksumSHA1": "vwNjR8772Pqs8z9ZdPFoatNI9Kg=",
+			"path": "github.com/deckarep/golang-set",
+			"revision": "699df6a3acf6867538e50931511e9dc403da108a",
+			"revisionTime": "2018-09-27T02:58:44Z"
+		},
+		{
 			"checksumSHA1": "IfDucP2AWAj+1uW+ho6NEEDG7nk=",
 			"path": "github.com/fjl/memsize",
 			"revision": "2a09253e352a56f419bd88effab0483f52da4c7d",
@@ -393,6 +399,12 @@
 		{
 			"checksumSHA1": "barUU39reQ7LdgYLA323hQ/UGy4=",
 			"path": "golang.org/x/net/html/charset",
+			"revision": "da137c7871d730100384dbcf36e6f8fa493aef5b",
+			"revisionTime": "2019-06-28T18:40:41Z"
+		},
+		{
+			"checksumSHA1": "F+tqxPGFt5x7DKZakbbMmENX1oQ=",
+			"path": "golang.org/x/net/websocket",
 			"revision": "da137c7871d730100384dbcf36e6f8fa493aef5b",
 			"revisionTime": "2019-06-28T18:40:41Z"
 		},
