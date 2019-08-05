@@ -302,7 +302,7 @@ func (srv *Server) run(dialstate dialer) {
 					for _, p := range peers {
 						ns = append(ns, p.Name())
 					}
-					log.Infof("Peers %v [%v]", len(peers), strings.Join(ns, ","))
+					log.Debugf("Peers %v [%v]", len(peers), strings.Join(ns, ","))
 				}
 				<-srv.peerOpDone
 			}

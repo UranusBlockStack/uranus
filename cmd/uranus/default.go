@@ -78,11 +78,13 @@ func defaultTxPoolConfig() *txpool.Config {
 
 func defaultNodeConfig() *node.Config {
 	return &node.Config{
-		Name: params.Identifier,
-		Host: "localhost",
-		Port: 8000,
-		Cors: []string{},
-		P2P:  defaultP2PConfig(),
+		Name:   params.Identifier,
+		Host:   "localhost",
+		Port:   8000,
+		Cors:   []string{},
+		WSHost: "localhost",
+		WSPort: 8001,
+		P2P:    defaultP2PConfig(),
 	}
 }
 

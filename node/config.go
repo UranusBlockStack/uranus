@@ -34,6 +34,10 @@ type Config struct {
 	Port int      `mapstructure:"rpc-port"`
 	Cors []string `mapstructure:"rpc-cors"`
 
+	WSHost    string   `mapstructure:"ws-host"`
+	WSPort    int      `mapstructure:"ws-port"`
+	WSOrigins []string `mapstructure:"ws-origins"`
+
 	P2P *p2p.Config
 }
 
@@ -52,6 +56,15 @@ func (c *Config) Endpoint() string {
 		return ""
 	}
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
+}
+
+// WSEndpoint resolves a websocket endpoint based on the configured host interface
+// and port parameters.
+func (c *Config) WSEndpoint() string {
+	if c.WSHost == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s:%d", c.WSHost, c.WSPort)
 }
 
 // resolvePath resolves path in the instance directory.

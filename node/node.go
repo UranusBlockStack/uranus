@@ -39,6 +39,7 @@ type communication struct {
 	listener net.Listener
 	handler  *rpc.Server
 	cors     []string
+	origins  []string
 }
 
 type Constructor func(ctx *Context) (Service, error)
@@ -48,7 +49,7 @@ type Node struct {
 	config    *Config
 	p2pConfig *p2p.Config
 
-	rpc *communication
+	rpc, websocket *communication
 
 	running         bool
 	instanceDirLock filelock.Releaser
@@ -64,6 +65,7 @@ func New(conf *Config) *Node {
 		config:       conf,
 		p2pConfig:    conf.P2P,
 		rpc:          &communication{endpoint: conf.Endpoint(), cors: conf.Cors},
+		websocket:    &communication{endpoint: conf.WSEndpoint(), origins: conf.WSOrigins},
 		running:      false,
 		serviceFuncs: []Constructor{},
 		services:     make(map[reflect.Type]Service),
@@ -198,6 +200,11 @@ func (n *Node) Start() error {
 		return err
 	}
 
+	if err := n.startWS(apis); err != nil {
+		n.stopWS()
+		return err
+	}
+
 	n.services = services
 	n.running = true
 	n.stop = make(chan struct{})
@@ -214,6 +221,7 @@ func (n *Node) startRPC(apis []rpc.API) error {
 		return err
 	}
 	n.rpc.listener = listener
+
 	log.Infof("RPC and HTTP endpoint opened: %v", n.rpc.endpoint)
 	return nil
 }
@@ -222,6 +230,28 @@ func (n *Node) stopRPC() {
 	if n.rpc.listener != nil {
 		n.rpc.listener.Close()
 		n.rpc.listener = nil
+	}
+}
+
+// startWS initializes and starts the  websocket endpoint.
+func (n *Node) startWS(apis []rpc.API) error {
+	if n.websocket.endpoint == "" {
+		return nil // RPC disabled.
+	}
+	listener, _, err := rpc.StartWSEndpoint(n.websocket.endpoint, n.websocket.origins, apis)
+	if err != nil {
+		return err
+	}
+	n.websocket.listener = listener
+
+	log.Infof("Websocket endpoint opened: %v", n.websocket.endpoint)
+	return nil
+}
+
+func (n *Node) stopWS() {
+	if n.websocket.listener != nil {
+		n.websocket.listener.Close()
+		n.websocket.listener = nil
 	}
 }
 
@@ -235,6 +265,9 @@ func (n *Node) Stop() error {
 	if !n.running {
 		return ErrNodeStopped
 	}
+
+	n.stopWS()
+	n.stopRPC()
 
 	failure := &StopError{
 		Services: make(map[reflect.Type]error),
