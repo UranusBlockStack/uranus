@@ -39,3 +39,24 @@ func StartRPCAndHTTP(endpoint string, apis []API, cors []string) (net.Listener, 
 
 	return listener, server, nil
 }
+
+// StartWSEndpoint starts a websocket endpoint
+func StartWSEndpoint(endpoint string, wsOrigins []string, apis []API) (net.Listener, *Server, error) {
+	var (
+		listener net.Listener
+		err      error
+		server   = NewServer()
+	)
+	for _, api := range apis {
+		if err := server.RegisterName(api.Namespace, api.Service); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	if listener, err = net.Listen("tcp", endpoint); err != nil {
+		return nil, nil, err
+	}
+
+	go NewWSServer(server, wsOrigins).Serve(listener)
+	return listener, server, nil
+}

@@ -189,7 +189,7 @@ func (call *Call) done() {
 // It adds a buffer to the write side of the connection so
 // the header and payload are sent as a unit.
 func NewClient(conn io.ReadWriteCloser) *Client {
-	client := NewJSONClientCodec(conn)
+	client := NewJSONClientCodec(conn, json.NewEncoder(conn).Encode, json.NewDecoder(conn).Decode)
 	return NewClientWithCodec(client)
 }
 
@@ -205,9 +205,10 @@ func NewClientWithCodec(codec ClientCodec) *Client {
 }
 
 type jsonClientCodec struct {
-	dec *json.Decoder // for reading JSON values
-	enc *json.Encoder // for writing JSON values
-	c   io.Closer
+	encode func(v interface{}) error // for writing JSON values
+	decode func(v interface{}) error // for reading JSON values
+
+	c io.Closer
 
 	// temporary work space
 	req  clientRequest
@@ -222,10 +223,10 @@ type jsonClientCodec struct {
 }
 
 // NewJSONClientCodec returns a new ClientCodec using JSON-RPC on conn.
-func NewJSONClientCodec(conn io.ReadWriteCloser) ClientCodec {
+func NewJSONClientCodec(conn io.ReadWriteCloser, encode, decode func(v interface{}) error) ClientCodec {
 	return &jsonClientCodec{
-		dec:     json.NewDecoder(conn),
-		enc:     json.NewEncoder(conn),
+		decode:  decode,
+		encode:  encode,
 		c:       conn,
 		pending: make(map[uint64]string),
 	}
@@ -244,7 +245,7 @@ func (c *jsonClientCodec) WriteRequest(r *Request, param interface{}) error {
 	c.req.Method = r.ServiceMethod
 	c.req.Params[0] = param
 	c.req.Id = r.Seq
-	return c.enc.Encode(&c.req)
+	return c.encode(&c.req)
 }
 
 type clientResponse struct {
@@ -261,7 +262,7 @@ func (r *clientResponse) reset() {
 
 func (c *jsonClientCodec) ReadResponseHeader(r *Response) error {
 	c.resp.reset()
-	if err := c.dec.Decode(&c.resp); err != nil {
+	if err := c.decode(&c.resp); err != nil {
 		return err
 	}
 

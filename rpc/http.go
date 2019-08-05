@@ -21,6 +21,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/rs/cors"
 )
@@ -35,6 +36,8 @@ type httpReadWriteNopCloser struct {
 }
 
 func (c *httpReadWriteNopCloser) Close() error { return nil }
+
+func (t *httpReadWriteNopCloser) SetWriteDeadline(time.Time) error { return nil }
 
 // NewHTTPServer creates a new HTTP RPC server around an API provider.
 func NewHTTPServer(srv *Server, cors []string) *http.Server {
