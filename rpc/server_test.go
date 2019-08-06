@@ -17,8 +17,8 @@
 package rpc
 
 import (
+	"context"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"testing"
@@ -68,11 +68,12 @@ type Argst struct {
 	A, B int
 }
 
-func TestServer(t *testing.T) {
+func TestHTTPServer(t *testing.T) {
 	var (
 		listener net.Listener
 		err      error
 	)
+
 	if listener, err = net.Listen("tcp", ":8000"); err != nil {
 		t.Errorf("TestServer error %+v", err)
 	}
@@ -81,10 +82,43 @@ func TestServer(t *testing.T) {
 
 	go NewHTTPServer(server, []string{"*"}).Serve(listener)
 	// curl -X POST  -d '{"id": 1, "method": "Arith.Multiply", "params":[{"A":1, "B":3}]}' http://localhost:8000/
-
 	client, err := DialHTTP("http://127.0.0.1:8000")
+	if err != nil {
+		t.Fatal(err)
+	}
 	var result int
-	fmt.Println("client.Call", client.Call("Arith.Multiply", Argst{A: 1, B: 2}, &result))
-	fmt.Println("result", result, err)
-	time.Sleep(2 * time.Second)
+	err = client.Call("Arith.Multiply", Argst{A: 1, B: 2}, &result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result != 200 {
+		t.Fatalf("expect 200 not %v", result)
+	}
+}
+
+func TestWSServer(t *testing.T) {
+	var (
+		listener net.Listener
+		err      error
+	)
+	if listener, err = net.Listen("tcp", ":8001"); err != nil {
+		t.Errorf("TestServer error %+v", err)
+	}
+	server := NewServer()
+	server.Register(new(Arith))
+
+	go NewWSServer(server, []string{"*"}).Serve(listener)
+	time.Sleep(100 * time.Second)
+	client, err := DialWebsocket(context.Background(), "ws://127.0.0.1:8001", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result int
+	err = client.Call("Arith.Multiply", Argst{A: 1, B: 2}, &result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result != 200 {
+		t.Fatalf("expect 200 not %v", result)
+	}
 }

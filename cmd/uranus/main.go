@@ -124,12 +124,15 @@ func init() {
 	flags.StringVarP(&startConfig.NodeConfig.DataDir, "datadir", "d", cmdutils.DefaultDataDir(), "Data directory for the databases")
 	flags.StringVar(&startConfig.NodeConfig.Host, "node_rpchost", startConfig.NodeConfig.Host, "HTTP and RPC server listening interface")
 	flags.IntVar(&startConfig.NodeConfig.Port, "node_rpcport", startConfig.NodeConfig.Port, "HTTP and RPC server listening port")
-	flags.StringArrayVar(&startConfig.NodeConfig.Cors, "node_rpccors", startConfig.NodeConfig.Cors, "HTTP and RPC accept cross origin requests")
+	flags.StringSliceVar(&startConfig.NodeConfig.Cors, "node_rpccors", startConfig.NodeConfig.Cors, "HTTP and RPC accept cross origin requests")
+	flags.StringVar(&startConfig.NodeConfig.WSHost, "node_wshost", startConfig.NodeConfig.WSHost, "Websocket server listening interface")
+	flags.IntVar(&startConfig.NodeConfig.WSPort, "node_wsport", startConfig.NodeConfig.WSPort, "Websocket server listening port")
+	flags.StringSliceVar(&startConfig.NodeConfig.WSOrigins, "node_wsorigins", startConfig.NodeConfig.WSOrigins, "Websocket accept cross origin requests")
 
 	// p2p
 	flags.StringVar(&startConfig.NodeConfig.P2P.ListenAddr, "p2p_listenaddr", startConfig.NodeConfig.P2P.ListenAddr, "p2p listening url")
 	flags.IntVar(&startConfig.NodeConfig.P2P.MaxPeers, "p2p_maxpeers", startConfig.NodeConfig.P2P.MaxPeers, "maximum number of network peers")
-	flags.StringArrayVar(&startConfig.NodeConfig.P2P.BootNodeStrs, "p2p_bootnodes", startConfig.NodeConfig.P2P.BootNodeStrs, "comma separated enode URLs for P2P discovery bootstrap")
+	flags.StringSliceVar(&startConfig.NodeConfig.P2P.BootNodeStrs, "p2p_bootnodes", startConfig.NodeConfig.P2P.BootNodeStrs, "comma separated enode URLs for P2P discovery bootstrap")
 
 	// config file
 	flags.StringVarP(&startConfig.CfgFile, "config", "c", "", "YAML configuration file")
@@ -172,6 +175,10 @@ func init() {
 	viper.BindPFlag("rpc-host", flags.Lookup("node_rpchost"))
 	viper.BindPFlag("rpc-port", flags.Lookup("node_rpcport"))
 	viper.BindPFlag("rpc-cors", flags.Lookup("node_rpccors"))
+	// node.websocket
+	viper.BindPFlag("ws-host", flags.Lookup("node_wshost"))
+	viper.BindPFlag("ws-port", flags.Lookup("node_wsport"))
+	viper.BindPFlag("ws-origins", flags.Lookup("node_wsorigins"))
 	// node.p2p
 	viper.BindPFlag("p2p-listenaddr", flags.Lookup("p2p_listenaddr"))
 	viper.BindPFlag("p2p-maxpeers", flags.Lookup("p2p_maxpeers"))
@@ -185,13 +192,13 @@ func init() {
 	viper.BindPFlag("txpool-globalqueue", flags.Lookup("txpool_globalqueue"))
 	viper.BindPFlag("txpool-timeout", flags.Lookup("txpool_timeout"))
 
-	//miner
+	// miner
 	viper.BindPFlag("miner-conbase", flags.Lookup("miner_conbase"))
 	viper.BindPFlag("miner-extradata", flags.Lookup("miner_extradata"))
 	viper.BindPFlag("miner-threads", flags.Lookup("miner_threads"))
 	viper.BindPFlag("miner-start", flags.Lookup("miner_start"))
 
-	//debug
+	// debug
 	viper.BindPFlag("debug-pprof", flags.Lookup("debug_pprof"))
 	viper.BindPFlag("debug-pprofport", flags.Lookup("debug_pprof_port"))
 	viper.BindPFlag("debug-pprofaddr", flags.Lookup("debug_pprof_addr"))
