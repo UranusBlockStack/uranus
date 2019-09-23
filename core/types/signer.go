@@ -27,14 +27,11 @@ import (
 	"github.com/UranusBlockStack/uranus/common/utils"
 )
 
-func recoverPlain(sighash utils.Hash, R, S, Vb *big.Int, Nomal bool) (utils.Address, error) {
+func recoverPlain(sighash utils.Hash, R, S, Vb *big.Int) (utils.Address, error) {
 	if Vb.BitLen() > 8 {
 		return utils.Address{}, fmt.Errorf("invalid chain id for signer --- bit length %d > 8", Vb.BitLen())
 	}
 	V := byte(Vb.Uint64() - 27)
-	if !crypto.ValidateSignatureValues(V, R, S, Nomal) {
-		return utils.Address{}, fmt.Errorf("invalid chain id for signer --- invalid v r s")
-	}
 	// encode the snature in uncompressed format
 	r, s := R.Bytes(), S.Bytes()
 	sig := make([]byte, 65)
@@ -81,7 +78,7 @@ func isProtectedV(V *big.Int) bool {
 type Signer struct{}
 
 // SignatureValues returns signature values. This signature  needs to be in the [R || S || V] format where V is 0 or 1.
-func (s Signer) SignatureValues(tx *Transaction, signature []byte) (r, sb, v *big.Int, err error) {
+func (s Signer) SignatureValues(signature []byte) (r, sb, v *big.Int, err error) {
 	if len(signature) != 65 {
 		panic(fmt.Sprintf("wrong size for signature: got %d, want 65", len(signature)))
 	}
@@ -94,6 +91,7 @@ func (s Signer) SignatureValues(tx *Transaction, signature []byte) (r, sb, v *bi
 // Hash returns the hash to be signed by the sender.
 func (s Signer) Hash(tx *Transaction) utils.Hash {
 	return rlpHash([]interface{}{
+		tx.data.Type,
 		tx.data.Nonce,
 		tx.data.GasPrice,
 		tx.data.GasLimit,

@@ -210,11 +210,11 @@ func (tx *Transaction) Sender(signer Signer) (utils.Address, error) {
 	if sender := tx.from.Load(); sender != nil {
 		return sender.(utils.Address), nil
 	}
-	r, s, v, err := signer.SignatureValues(tx, tx.data.Signature)
+	r, s, v, err := signer.SignatureValues(tx.data.Signature)
 	if err != nil {
 		return utils.Address{}, err
 	}
-	addr, err := recoverPlain(signer.Hash(tx), r, s, v, false)
+	addr, err := recoverPlain(signer.Hash(tx), r, s, v)
 	if err != nil {
 		return utils.Address{}, err
 	}
@@ -224,7 +224,7 @@ func (tx *Transaction) Sender(signer Signer) (utils.Address, error) {
 
 // ChainID returns which chain id this transaction was signed for (if at all)
 func (tx *Transaction) ChainID(signer Signer) (*big.Int, error) {
-	_, _, v, err := signer.SignatureValues(tx, tx.data.Signature)
+	_, _, v, err := signer.SignatureValues(tx.data.Signature)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +233,7 @@ func (tx *Transaction) ChainID(signer Signer) (*big.Int, error) {
 
 // Protected returns whether the transaction is protected from replay protection.
 func (tx *Transaction) Protected(signer Signer) (bool, error) {
-	_, _, v, err := signer.SignatureValues(tx, tx.data.Signature)
+	_, _, v, err := signer.SignatureValues(tx.data.Signature)
 	if err != nil {
 		return false, err
 	}

@@ -29,11 +29,49 @@ var (
 	testPrivHex = "9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658"
 	testAddrHex = "0xC08B5542D177ac6686946920409741463a15dDdB"
 	testmsg     = rlpHash([]byte("test"))
+
+	testaddr = utils.HexToAddress(testAddrHex)
+
+	testSignTx = NewTransaction(
+		Binary,
+		1,
+		big.NewInt(10000),
+		1000,
+		big.NewInt(10000),
+		[]byte("sign tx test"),
+		&testaddr,
+		&to,
+	)
 )
+
+func TestSignTx(t *testing.T) {
+	key, _ := crypto.HexToECDSA(testPrivHex)
+
+	s := new(Signer)
+
+	signHash := s.Hash(testSignTx)
+	sig, err := crypto.Sign(signHash.Bytes(), key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(s.Hash(testSignTx).String())
+	t.Log(utils.BytesToHex([]byte("sign tx test")))
+	t.Log(utils.BytesToHex(sig))
+
+	r, sb, v, err := s.SignatureValues(utils.HexToBytes("20ceb32d94ea10f50425233e5d355fa05337d23b50646839c6d0689acdd054557f867ab7e187863a6841efbc19d03ba38762fe24d49815185d5a3f4a7b196ac101"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addr, err := recoverPlain(signHash, r, sb, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, testaddr, addr)
+}
 
 func TestRecoverPlain(t *testing.T) {
 	key, _ := crypto.HexToECDSA(testPrivHex)
-	expAddr := utils.HexToAddress(testAddrHex)
 	signature, err := crypto.Sign(testmsg.Bytes(), key)
 	if err != nil {
 		t.Fatal(err)
@@ -42,9 +80,9 @@ func TestRecoverPlain(t *testing.T) {
 	s := new(big.Int).SetBytes(signature[32:64])
 	v := new(big.Int).SetBytes([]byte{signature[64] + 27})
 
-	addr, err := recoverPlain(testmsg, r, s, v, false)
+	addr, err := recoverPlain(testmsg, r, s, v)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, expAddr, addr)
+	assert.Equal(t, testaddr, addr)
 }
