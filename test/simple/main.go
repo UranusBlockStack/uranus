@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"math/rand"
 	"time"
 
 	"github.com/UranusBlockStack/uranus/common/crypto"
@@ -120,19 +121,23 @@ func main() {
 		}
 
 		if *testMode == "all" {
-			// unvote
-			txUnvote := types.NewTransaction(types.UnDelegate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
-			txUnvote.SignTx(signer, priv)
-			sendrawtransaction(txUnvote)
-			nonce++
+			if rand.Int31()%2 == 0 {
+				// unvote
+				txUnvote := types.NewTransaction(types.UnDelegate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
+				txUnvote.SignTx(signer, priv)
+				sendrawtransaction(txUnvote)
+				nonce++
+			}
 		}
 
 		if *testMode == "all" || *testMode == "combine" || *testMode == "candidate" {
-			// unreg
-			txUnReg := types.NewTransaction(types.LogoutCandidate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
-			txUnReg.SignTx(signer, priv)
-			sendrawtransaction(txUnReg)
-			nonce++
+			if rand.Int31()%2 == 0 {
+				// unreg
+				txUnReg := types.NewTransaction(types.LogoutCandidate, nonce, big.NewInt(0), gasLimit, gasPrice, nil)
+				txUnReg.SignTx(signer, priv)
+				sendrawtransaction(txUnReg)
+				nonce++
+			}
 		}
 	}
 }

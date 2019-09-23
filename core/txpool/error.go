@@ -41,6 +41,13 @@ var (
 	// is higher than the balance of the user's account.
 	ErrInsufficientFunds = errors.New("insufficient funds for gas * price + value")
 
+	// ErrInsufficientLockedFunds is returned if the value of executing a transaction
+	// is higher than the balance of the user's locked account.
+	ErrInsufficientLockedFunds = errors.New("insufficient locked funds for value")
+	// ErrInsufficientFeeFunds is returned if the fee of executing a transaction
+	// is higher than the balance of the user's account.
+	ErrInsufficientFeeFunds = errors.New("insufficient fee funds for gas * price")
+
 	// ErrIntrinsicGas is returned if the transaction is specified to use less gas
 	// than required to start the invocation.
 	ErrIntrinsicGas = errors.New("intrinsic gas too low")
